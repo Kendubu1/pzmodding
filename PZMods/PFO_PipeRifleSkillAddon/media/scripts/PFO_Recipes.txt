@@ -1,0 +1,25 @@
+module PFO
+{
+	imports
+	{
+		Base
+	}
+
+
+	recipe MakePipeRifle
+		{
+		keep [Recipe.GetItemTypes.Saw],
+		keep [Recipe.GetItemTypes.Screwdriver],
+		keep [Recipe.GetItemTypes.WeldingMask],
+		MetalPipe/LeadPipe,
+		BlowTorch=2,
+		Plank = 2,
+		Hinge,
+		DuctTape=3,
+		Result:F2PipeRifle,
+		Category: Welding,
+		SkillRequired:MetalWelding=2;Reloading=1;Maintenance=1;Aiming=1;,
+		Time:400.0,
+		}
+}
+		

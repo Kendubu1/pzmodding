@@ -1,0 +1,135 @@
+module MandelaBowAndArrow
+{
+	model MandelaBowStave
+	{
+		mesh = Weapons/Archery/MandelaBowStave,
+		texture = Weapons/Archery/MandelaBowAndArrowTexture,
+	}
+	model MandelaBow {
+		mesh = Weapons/Archery/MandelaBow,
+		texture = Weapons/Archery/MandelaBowAndArrowTexture,
+
+		attachment muzzle {
+			offset = 0.0000 0.0000 0.0000,
+			rotate = 0.0000 0.0000 0.0000,
+		}
+	}
+	model MandelaBowHeld {
+		mesh = Weapons/Archery/MandelaBowHeld,
+		texture = Weapons/Archery/MandelaBowAndArrowTexture,
+
+		attachment arrow {
+			offset = 0.0150 0.2750 0.0200,
+			rotate = 3.0000 0.0000 -5.0000,
+		}
+	}
+	model MandelaBowDrawn {
+		mesh = Weapons/Archery/MandelaBowDrawn,
+		texture = Weapons/Archery/MandelaBowAndArrowTexture,
+
+		attachment arrow {
+			offset = 0.0150 0.2500 0.0200,
+			rotate = 3.0000 0.0000 -5.0000,
+		}
+	}
+	model MandelaBowUnstrung {
+		mesh = Weapons/Archery/MandelaBowUnstrung,
+		texture = Weapons/Archery/MandelaBowAndArrowTexture,
+
+		attachment arrow {
+			offset = 0.0150 0.2750 0.0200,
+			rotate = 3.0000 0.0000 -5.0000,
+		}
+	}
+	
+	model CompoundBowScorpion {
+		mesh = Weapons/Archery/MandelaCompoundBowScorpionOnBack,
+		texture = Weapons/Archery/CompoundBowScorpionTexture,
+
+		attachment muzzle {
+			offset = 0.0000 0.0000 0.0000,
+			rotate = 0.0000 0.0000 0.0000,
+		}
+	}
+	model CompoundBowScorpionHeld {
+		mesh = Weapons/Archery/MandelaCompoundBowScorpionAngled,
+		texture = Weapons/Archery/CompoundBowScorpionTexture,
+
+		attachment arrow {
+			offset = 0.0000 0.2750 0.0250,
+			rotate = 3.0000 0.0000 -5.0000,
+		}
+	}
+	model CompoundBowScorpionDrawn {
+		mesh = Weapons/Archery/MandelaCompoundBowScorpion,
+		texture = Weapons/Archery/CompoundBowScorpionTexture,
+
+		attachment arrow {
+			offset = 0.0050 0.2750 0.0250,
+			rotate = 3.0000 0.0000 0.0000,
+		}
+	}
+	
+	model MandelaArrowWoodDucttapeIron {
+		mesh = Weapons/Archery/MandelaArrowWoodDucttapeIron,
+		texture = Weapons/Archery/MandelaBowAndArrowTexture,
+	}
+	model MandelaArrowWoodDucttapeIronTaped {
+		mesh = Weapons/Archery/MandelaArrowWoodDucttapeIronTaped,
+		texture = Weapons/Archery/MandelaBowAndArrowTexture,
+	}
+	model MandelaArrowUnfletched {
+		mesh = Weapons/Archery/MandelaArrowUnfletched,
+		texture = Weapons/Archery/MandelaBowAndArrowTexture,
+	}
+	model MandelaArrowUnheaded {
+		mesh = Weapons/Archery/MandelaArrowUnheaded,
+		texture = Weapons/Archery/MandelaBowAndArrowTexture,
+	}
+	
+	model AimingIndicatorGreen
+	{
+		mesh = AimingIndicator,
+		texture = AimingIndicatorGreen,
+	}
+	model AimingIndicatorGrey
+	{
+		mesh = AimingIndicator,
+		texture = AimingIndicatorGrey,
+	}
+	
+	model MandelaArrowBlank {
+		mesh = Weapons/Archery/MandelaArrowBlank,
+		texture = Weapons/Archery/MandelaBowAndArrowTexture,
+		
+		attachment arrow {
+			offset = 0.0000 0.0000 0.0000,
+			rotate = 0.0000 0.0000 0.0000,
+		}
+	}
+	model MandelaArrowShaftWood {
+		mesh = Weapons/Archery/MandelaArrowShaftWood,
+		texture = Weapons/Archery/MandelaBowAndArrowTexture,
+	}
+	model MandelaArrowHeadIron {
+		mesh = Weapons/Archery/MandelaArrowHeadIron,
+		texture = Weapons/Archery/MandelaBowAndArrowTexture,
+	}
+	model MandelaArrowHeadIronTaped {
+		mesh = Weapons/Archery/MandelaArrowHeadIronTaped,
+		texture = Weapons/Archery/MandelaBowAndArrowTexture,
+	}
+	model MandelaArrowHeadFlint {
+		mesh = Weapons/Archery/MandelaArrowHeadFlint,
+		texture = Weapons/1Handed/FlintKnife,
+	}
+	model MandelaArrowFletchingsDucttape {
+		mesh = Weapons/Archery/MandelaArrowFletchingsDucttape,
+		texture = Weapons/Archery/MandelaBowAndArrowTexture,
+	}
+	model MandelaArrowFletchingsDucttapeFluFlu {
+		mesh = Weapons/Archery/MandelaArrowFletchingsDucttapeFluFlu,
+		texture = Weapons/Archery/MandelaBowAndArrowTexture,
+	}
+	
+}

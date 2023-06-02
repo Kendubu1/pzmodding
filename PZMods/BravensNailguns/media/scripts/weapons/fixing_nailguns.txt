@@ -1,0 +1,10 @@
+module Base
+{
+    fixing Fix Nailguns
+	{
+	   Require : Nailgun1;Nailgun2,
+
+	   Fixer : DuctTape=2,
+	   Fixer : ScrapMetal=2,
+	}
+}

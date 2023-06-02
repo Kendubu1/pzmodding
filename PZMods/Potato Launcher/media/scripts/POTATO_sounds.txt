@@ -1,0 +1,31 @@
+module Base
+{
+
+    sound PotatoLauncherShot
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/PotatoLauncher.ogg,
+            distanceMin = 0,
+            distanceMax = 100,
+            reverbMaxRange = 0,
+            reverbFactor = 0,
+            volume = 0.8,
+        }
+    }
+
+    sound PotatoLauncherReload
+    {
+        category = World,
+        clip
+        {
+            file = media/sound/Reload.ogg,
+            distanceMin = 0,
+            distanceMax = 100,
+            reverbMaxRange = 0,
+            reverbFactor = 1,
+            volume = 1.5,
+        }
+    }
+}

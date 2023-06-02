@@ -1,0 +1,26 @@
+IGUI_NO = {
+
+    IGUI_POTATO_needFuel = "Jeg trenger brensel",
+    IGUI_POTATO_needBattery = "Jeg trenger batterier",
+    IGUI_POTATO_charged = "Den er allerede ladet",
+    IGUI_POTATO_continue = "Ingen potetkaster utstyrt, bare fortsett",
+    IGUI_POTATO_vhs_name = "VHS: Dødelige hjemmelagde våpen",
+    IGUI_POTATO_vhs_title = "Dødelige hjemmelagde våpen",
+    IGUI_POTATO_vhs_subtitle = "Episode 2: Potetkaster",
+    IGUI_POTATO_vhs_1 = "Hei venner, forrige uke lærte vi å lage en flammekaster",
+    IGUI_POTATO_vhs_2 = "med matolje, en lighter og plastflasker.",
+    IGUI_POTATO_vhs_3 = "I denne episoden skal vi lære å høste poteter",
+    IGUI_POTATO_vhs_4 = "og deretter kaste de med full kraft",
+    IGUI_POTATO_vhs_5 = "Vi trenger plastrør, lim, sag, poteter",
+    IGUI_POTATO_vhs_6 = "og en enkel elektrisk krets.",
+    IGUI_POTATO_vhs_7 = "La oss nå forberede drivstoffet",
+    IGUI_POTATO_vhs_8 = "Du trenger ikke style håret, ta med hårspray",
+    IGUI_POTATO_vhs_9 = "Eller du kan bruke spraymalingen",
+    IGUI_POTATO_vhs_10 = "Lad kammeret og fyr løs!",
+    IGUI_POTATO_vhs_11 = "Wow! Hvem trenger egentlig pommes frites?",
+    IGUI_POTATO_vhs_12 = "Takk venner, dette var det for i dag. Neste uke",
+    IGUI_POTATO_vhs_13 = "skal vi bygge spikerbomber",
+    IGUI_POTATO_vhs_14 = "Veldig praktisk når vi møter zombieapokalypsen.",
+    IGUI_POTATO_vhs_15 = "Bare tuller! Det er science fiction! Ha det bra!",
+
+}

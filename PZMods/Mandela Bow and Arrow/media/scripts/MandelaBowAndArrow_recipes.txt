@@ -1,0 +1,180 @@
+module MandelaBowAndArrow
+{
+	imports
+	{
+		Base
+	}
+	
+    recipe Make Bow
+    {
+        Plank,
+		keep [Recipe.GetItemTypes.SharpKnife]/SharpedStone,
+
+        Result:MandelaBowAndArrow.MandelaBowStave2,
+		SkillRequired:Woodwork=2,
+        Time:1.0,
+        OnCreate:MBAObowStave_OnCreate,
+        Category:Survivalist,
+    }
+    recipe Make Bow String
+    {
+        Twine=2,
+
+        Result:MandelaBowAndArrow.MandelaBowString2,
+        Time:100.0,
+        Category:Survivalist,
+    }
+    recipe String Bow
+    {
+        MandelaBowAndArrow.MandelaBowWoodLongUnstrung/MandelaBowUnstrung,
+		MandelaBowAndArrow.MandelaBowString2/MandelaBowString,
+
+        Result:MandelaBowAndArrow.MandelaBowWoodLong,
+        Time:200.0,
+        OnCreate:MBAOstringBow_OnCreate,
+		IsHidden:true,
+        Prop1:Source=1,
+    }
+    recipe Unstring Bow
+    {
+        MandelaBowAndArrow.MandelaBowWoodLong,
+
+        Result:MandelaBowAndArrow.MandelaBowWoodLongUnstrung,
+        Time:200.0,
+        OnCreate:MBAOunstringBow_OnCreate,
+		IsHidden:true,
+        Prop1:Source=1,
+    }
+	
+    recipe Make Arrow Shaft
+    {
+        WoodenStick,
+		keep [Recipe.GetItemTypes.SharpKnife]/SharpedStone,
+
+        Result:MandelaBowAndArrow.MBAArrowShaftWood,
+        RemoveResultItem:true,
+        Time:30.0,
+		OnCreate:MandelaBowAndArrow.Server.Recipe.OnMakeArrowShaftWooden,
+        Category:Survivalist,
+    }
+	
+    recipe Make Iron Arrowhead 1
+    {
+        ScrapMetal/Spoon/ButterKnife,
+		keep Saw,
+
+        Result:MandelaBowAndArrow.MandelaArrowHeadIron2,
+        Time:100.0,
+        Category:Survivalist,
+    }
+
+    recipe Make Iron Arrowhead 2
+    {
+        Nails,
+		keep ClubHammer/Sledgehammer,
+		keep [Recipe.GetItemTypes.Hammer],
+		keep Saw,
+
+        Result:MandelaBowAndArrow.MandelaArrowHeadIron2,
+		Sound:Hammering,
+        Time:200.0,
+        Category:Survivalist,
+    }
+    recipe Make Iron Arrowhead 3
+    {
+        Nails,
+		keep ClubHammer=2,
+		keep Saw,
+
+        Result:MandelaBowAndArrow.MandelaArrowHeadIron2,
+		Sound:Hammering,
+        Time:200.0,
+        Category:Survivalist,
+    }
+
+    recipe Make Fletchings Ten
+    {
+        CardDeck/BleachEmpty/DuctTape,
+		keep Scissors/Scalpel,
+
+        Result:MandelaFletchingsDuctTape=10,
+        Time:100.0,
+        Category:Survivalist,
+        Tooltip:Tooltip_MBA_Increases_Accuracy,
+    }
+
+    recipe Make Flint Arrowhead
+    {
+	    SharpedStone,
+
+	    Result:MandelaBowAndArrow.MandelaArrowHeadFlint,
+	    Time:80.0,
+	    Category:Survivalist,
+    }
+
+    recipe Make FluFlu Fletchings Four
+    {
+        CardDeck/BleachEmpty/DuctTape,
+		keep Scissors/Scalpel,
+
+        Result:MandelaFletchingsDuctTapeFluFlu=4,
+        Time:100.0,
+        Category:Survivalist,
+        Tooltip:Tooltip_MBA_FluFlu,
+    }
+	
+    recipe Reclaim Arrowhead from Arrow
+    {
+        MandelaArrowWoodDucttapeIronTaped,
+
+        Result:MandelaArrowHeadIron,
+        OnCreate:MBAODismantletapedArrow_OnCreate,
+        Time:60.0,
+        Category:Survivalist,
+        AllowDestroyedItem:true,
+		IsHidden:true,
+    }
+	
+    recipe Take Arrow Apart
+    {
+        MandelaArrowWoodDucttapeIron,
+
+        //Result:MandelaArrowShaft,
+		Result:MandelaBowAndArrow.MandelaArrowBlank,
+        OnCreate:MandelaBowAndArrow.Server.Recipe.Dismantlearrow_OnCreate,
+        Time:60.0,
+        Category:Survivalist,
+        AllowDestroyedItem:true,
+		IsHidden:true,
+    }
+
+    recipe Unbundle Arrows
+    {
+        MandelaArrowBundle,
+
+        Result:MandelaArrowWoodDucttapeIron=20,
+        Time:20.0,
+		IsHidden:true,
+    }
+	
+	recipe Snap into Pieces
+    {
+        MandelaArrowShaft,
+
+        Result:Twigs,
+        Time:30.0,
+        Category:Survivalist,
+        AllowDestroyedItem:true,
+		IsHidden:true,
+    }
+	
+    recipe Convert Arrow Shaft
+    {
+        MandelaArrowShaft,
+
+        Result:MandelaBowAndArrow.MandelaArrowBlank,
+        Time:10.0,
+		OnCreate:MandelaBowAndArrow.Server.Recipe.OnConvertArrowShaftWooden,
+		IsHidden:true,
+    }
+}

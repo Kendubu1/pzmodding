@@ -1,0 +1,406 @@
+module MandelaBowAndArrow
+{
+    item AimingIndicatorGreen
+    {
+        DisplayCategory = Junk,
+        Weight	=	0,
+        Type	=	Normal,
+        Icon	=	Twine,
+        WorldStaticModel = MandelaBowAndArrow.AimingIndicatorGreen,
+    }
+	
+    item AimingIndicatorGrey
+    {
+        DisplayCategory = Junk,
+        Weight	=	0,
+        Type	=	Normal,
+        Icon	=	Twine,
+        WorldStaticModel = MandelaBowAndArrow.AimingIndicatorGrey,
+    }
+	
+    item MBAArrowShaftWood
+    {
+        Weight	=	0.03,
+        Type	=	Normal,
+        DisplayName	=	Arrow Shaft,
+        Icon	=	MBAOArrowShaft2,
+    }
+	
+    item MandelaBowStave2
+    {
+		Weight	=	1.5,
+		Type	=	Normal,
+		DisplayName	=	Bow Stave,
+		Icon	=	MBAMandelaBowStave,
+		StaticModel = MandelaBowAndArrow.MandelaBowStave,
+        Tooltip = Tooltip_MBA_Bow_Stave,
+    }
+	
+    item MandelaBowString2
+    {
+        Weight	=	0.05,
+        Type	=	Normal,
+        DisplayName	=	Bow String,
+        Icon	=	MBAOStringLoop,
+    }
+	
+    item MandelaArrowHeadIron2
+    {
+        Weight	=	0.07,
+        Type	=	Normal,
+        DisplayName	=	Arrowhead of Iron,
+        Icon	=	MBAOArrowHeadIron,
+    }
+	
+    item MandelaArrowHeadFlint
+    {
+        Weight	=	0.07,
+        Type	=	Normal,
+        DisplayName	=	Arrowhead of Flint,
+        Icon	=	MBAOArrowHeadFlint,
+    }
+	
+    item MandelaFletchingsDuctTape
+    {
+        Weight	=	0.01,
+        Type	=	Normal,
+        DisplayName	=	Fletchings of Plastic,
+        Icon	=	MBAOFletchingsDuctTape,
+        Tooltip = Tooltip_MBA_Increases_Accuracy,
+    }
+	
+    item MandelaFletchingsDuctTapeFluFlu
+    {
+        Weight	=	0.02,
+        Type	=	Normal,
+        DisplayName	=	Fletchings of Plastic (Huge),
+        Icon	=	MBAOFletchingsDuctTapeFluFlu,
+        Tooltip = Tooltip_MBA_FluFlu,
+    }
+	
+	/****************************** ITEM_BOWS ******************************/
+	
+	item MandelaBowWoodLong
+	{
+		ImpactSound	=	null,
+		MaxRange	=	0,
+		RangeFalloff	=	TRUE,
+		WeaponSprite	=	MandelaBowAndArrow.MandelaBow,
+		SoundVolume	=	1,
+		MinAngle	=	0.9,
+		Type	=	Weapon,
+		KnockBackOnNoDeath	=	FALSE,
+		Ranged	=	TRUE,
+		ProjectileCount	=	1,
+		ConditionLowerChanceOneIn	=	60,
+		Weight	=	1.2,
+		SplatNumber	=	5,
+		PushBackMod	=	0,
+		MaxDamage	=	0,
+		SubCategory	=	Firearm,
+		AimingMod	=	2,
+		ConditionMax	=	10,
+		ShareDamage	=	FALSE,
+		MaxHitCount	=	1,
+		IsAimedHandWeapon	=	TRUE,
+		IsAimedFirearm	=	TRUE,
+		DoorDamage	=	0,
+		UseEndurance	=	FALSE,
+		DisplayName	=	Bow,
+		MinRange	=	0.61,
+		SwingTime	=	2,
+		AngleFalloff	=	FALSE,
+		MultipleHitConditionAffected	=	FALSE,
+		SwingSound	=	BatSwing,
+		SoundRadius	=	3,
+		MinDamage	=	0,
+		KnockdownMod	=	0,
+		SplatBloodOnNoDeath	=	TRUE,
+		Icon	=	MBAOMandelaBow,
+		RunAnim	=	Run_Weapon2,
+		CriticalChance = 0,
+        CritDmgMultiplier = 0,
+		AimingPerkCritModifier = 0,
+		HitChance = 1000,
+		AimingPerkHitChanceModifier = 0,
+		RecoilDelay = 50,
+		SoundGain = 2,
+        ReloadTime = 25,
+        AimingTime = 20,
+        RequiresEquippedBothHands = TRUE,
+        BreakSound  =   BreakFishingLine,
+        TwoHandWeapon = TRUE,
+        AmmoBox = MandelaArrowBundle,
+        MaxAmmo = 1,
+        /*InsertAmmoSound = StormyShotgunInsertRound,*/
+        /*EjectAmmoSound = Stormy9mmClipEject,*/
+        /*RackSound = stormyShotgunPump,*/
+        AmmoType = MandelaArrowWoodDucttapeIronAttachment,
+        WeaponReloadType = shotgun,
+        RackAfterShoot = FALSE,
+        JamGunChance = 0,
+        AttachmentType = Rifle,
+		ModelWeaponPart = Base.MandelaArrowWoodDucttapeIronAttachment MandelaBowAndArrow.MandelaArrowWoodDucttapeIron arrow arrow,
+		ModelWeaponPart = Base.MandelaArrowWoodDucttapeIronTapedAttachment MandelaBowAndArrow.MandelaArrowWoodDucttapeIronTaped arrow arrow,
+		ModelWeaponPart = Base.MandelaArrowWoodDucttapeTargetAttachment MandelaBowAndArrow.MandelaArrowWoodDucttapeTarget arrow arrow,
+		ModelWeaponPart = MandelaBowAndArrow.MandelaAttachmentShaftWood MandelaBowAndArrow.MandelaArrowShaftWood arrow arrow,
+		ModelWeaponPart = MandelaBowAndArrow.MandelaAttachmentHeadIron MandelaBowAndArrow.MandelaArrowHeadIron arrow arrow,
+		ModelWeaponPart = MandelaBowAndArrow.MandelaAttachmentHeadIronTaped MandelaBowAndArrow.MandelaArrowHeadIronTaped arrow arrow,
+		ModelWeaponPart = MandelaBowAndArrow.MandelaAttachmentHeadFlint MandelaBowAndArrow.MandelaArrowHeadFlint arrow arrow,
+		ModelWeaponPart = MandelaBowAndArrow.MandelaAttachmentFletchingsDucttape MandelaBowAndArrow.MandelaArrowFletchingsDucttape arrow arrow,
+		ModelWeaponPart = MandelaBowAndArrow.MandelaAttachmentFletchingsDucttapeFluFlu MandelaBowAndArrow.MandelaArrowFletchingsDucttapeFluFlu arrow arrow,
+        haveChamber = FALSE,
+	}
+	
+	item MandelaBowWoodLongUnstrung
+	{
+		ImpactSound	=	null,
+		MaxRange	=	0,
+		RangeFalloff	=	TRUE,
+		WeaponSprite	=	MandelaBowAndArrow.MandelaBowUnstrung,
+		SoundVolume	=	1,
+		MinAngle	=	0.9,
+		Type	=	Weapon,
+		KnockBackOnNoDeath	=	FALSE,
+		Ranged	=	TRUE,
+		ProjectileCount	=	1,
+		ConditionLowerChanceOneIn	=	30,
+		Weight	=	1.15,
+		SplatNumber	=	5,
+		PushBackMod	=	0,
+		MaxDamage	=	0,
+		SubCategory	=	Firearm,
+		AimingMod	=	2,
+		ConditionMax	=	10,
+		ShareDamage	=	FALSE,
+		MaxHitCount	=	1,
+		IsAimedHandWeapon	=	TRUE,
+		IsAimedFirearm	=	TRUE,
+		DoorDamage	=	0,
+		UseEndurance	=	FALSE,
+		DisplayName	=	Bow (Unstrung),
+		MinRange	=	0.61,
+		SwingTime	=	2,
+		AngleFalloff	=	FALSE,
+		MultipleHitConditionAffected	=	FALSE,
+		/*SwingSound	=	FirearmShotgun,*/
+		SoundRadius	=	2,
+		MinDamage	=	0,
+		KnockdownMod	=	0,
+		SplatBloodOnNoDeath	=	TRUE,
+		Icon	=	MBAOMandelaBowUnstrung,
+		RunAnim	=	Run_Weapon2,
+		CriticalChance = 0,
+        CritDmgMultiplier = 0,
+		AimingPerkCritModifier = 0,
+		HitChance = 0,
+		AimingPerkHitChanceModifier = 0,
+		RecoilDelay = 50,
+		SoundGain = 2,
+        ReloadTime = 25,
+        AimingTime = 20,
+        RequiresEquippedBothHands = TRUE,
+        BreakSound  =   BreakWoodItem,
+        TwoHandWeapon = TRUE,
+        AmmoBox = MandelaArrowBundle,
+        MaxAmmo = 1,
+        /*InsertAmmoSound = StormyShotgunInsertRound,*/
+        /*EjectAmmoSound = Stormy9mmClipEject,*/
+        /*RackSound = stormyShotgunPump,*/
+        AmmoType = MandelaArrowWoodDucttapeIronAttachment,
+        WeaponReloadType = shotgun,
+        RackAfterShoot = FALSE,
+        JamGunChance = 0,
+        AttachmentType = Rifle,
+		ModelWeaponPart = Base.MandelaArrowWoodDucttapeIronAttachment MandelaBowAndArrow.MandelaArrowWoodDucttapeIron arrow arrow,
+		ModelWeaponPart = Base.MandelaArrowWoodDucttapeIronTapedAttachment MandelaBowAndArrow.MandelaArrowWoodDucttapeIronTaped arrow arrow,
+		ModelWeaponPart = Base.MandelaArrowWoodDucttapeTargetAttachment MandelaBowAndArrow.MandelaArrowWoodDucttapeTarget arrow arrow,
+		ModelWeaponPart = MandelaBowAndArrow.MandelaAttachmentShaftWood MandelaBowAndArrow.MandelaArrowShaftWood arrow arrow,
+		ModelWeaponPart = MandelaBowAndArrow.MandelaAttachmentHeadIron MandelaBowAndArrow.MandelaArrowHeadIron arrow arrow,
+		ModelWeaponPart = MandelaBowAndArrow.MandelaAttachmentHeadIronTaped MandelaBowAndArrow.MandelaArrowHeadIronTaped arrow arrow,
+		ModelWeaponPart = MandelaBowAndArrow.MandelaAttachmentHeadFlint MandelaBowAndArrow.MandelaArrowHeadFlint arrow arrow,
+		ModelWeaponPart = MandelaBowAndArrow.MandelaAttachmentFletchingsDucttape MandelaBowAndArrow.MandelaArrowFletchingsDucttape arrow arrow,
+		ModelWeaponPart = MandelaBowAndArrow.MandelaAttachmentFletchingsDucttapeFluFlu MandelaBowAndArrow.MandelaArrowFletchingsDucttapeFluFlu arrow arrow,
+        haveChamber = FALSE,
+	}
+	
+	item CompoundBowScorpion
+	{
+		ImpactSound	=	null,
+		MaxRange	=	0,
+		RangeFalloff	=	TRUE,
+		WeaponSprite	=	MandelaBowAndArrow.CompoundBowScorpion,
+		SoundVolume	=	1,
+		MinAngle	=	0.9,
+		Type	=	Weapon,
+		KnockBackOnNoDeath	=	FALSE,
+		Ranged	=	TRUE,
+		ProjectileCount	=	1,
+		ConditionLowerChanceOneIn	=	60,
+		Weight	=	1.2,
+		SplatNumber	=	5,
+		PushBackMod	=	0,
+		MaxDamage	=	0,
+		SubCategory	=	Firearm,
+		AimingMod	=	2,
+		ConditionMax	=	10,
+		ShareDamage	=	FALSE,
+		MaxHitCount	=	1,
+		IsAimedHandWeapon	=	TRUE,
+		IsAimedFirearm	=	TRUE,
+		DoorDamage	=	0,
+		UseEndurance	=	FALSE,
+		DisplayName	=	Bow,
+		MinRange	=	0.61,
+		SwingTime	=	2,
+		AngleFalloff	=	FALSE,
+		MultipleHitConditionAffected	=	FALSE,
+		SwingSound	=	BatSwing,
+		SoundRadius	=	4,
+		MinDamage	=	0,
+		KnockdownMod	=	0,
+		SplatBloodOnNoDeath	=	TRUE,
+		Icon	=	MBACompoundBowScorpion,
+		RunAnim	=	Run_Weapon2,
+		CriticalChance = 0,
+        CritDmgMultiplier = 0,
+		AimingPerkCritModifier = 0,
+		HitChance = 1000,
+		AimingPerkHitChanceModifier = 0,
+		RecoilDelay = 50,
+		SoundGain = 2,
+        ReloadTime = 25,
+        AimingTime = 20,
+        RequiresEquippedBothHands = TRUE,
+        BreakSound  =   BreakFishingLine,
+        TwoHandWeapon = TRUE,
+        AmmoBox = MandelaArrowBundle,
+        MaxAmmo = 1,
+        /*InsertAmmoSound = StormyShotgunInsertRound,*/
+        /*EjectAmmoSound = Stormy9mmClipEject,*/
+        /*RackSound = stormyShotgunPump,*/
+        AmmoType = MandelaArrowWoodDucttapeIronAttachment,
+        WeaponReloadType = shotgun,
+        RackAfterShoot = FALSE,
+        JamGunChance = 0,
+        AttachmentType = Rifle,
+		ModelWeaponPart = Base.MandelaArrowWoodDucttapeIronAttachment MandelaBowAndArrow.MandelaArrowWoodDucttapeIron arrow arrow,
+		ModelWeaponPart = Base.MandelaArrowWoodDucttapeIronTapedAttachment MandelaBowAndArrow.MandelaArrowWoodDucttapeIronTaped arrow arrow,
+		ModelWeaponPart = Base.MandelaArrowWoodDucttapeTargetAttachment MandelaBowAndArrow.MandelaArrowWoodDucttapeTarget arrow arrow,
+		ModelWeaponPart = MandelaBowAndArrow.MandelaAttachmentShaftWood MandelaBowAndArrow.MandelaArrowShaftWood arrow arrow,
+		ModelWeaponPart = MandelaBowAndArrow.MandelaAttachmentHeadIron MandelaBowAndArrow.MandelaArrowHeadIron arrow arrow,
+		ModelWeaponPart = MandelaBowAndArrow.MandelaAttachmentHeadIronTaped MandelaBowAndArrow.MandelaArrowHeadIronTaped arrow arrow,
+		ModelWeaponPart = MandelaBowAndArrow.MandelaAttachmentHeadFlint MandelaBowAndArrow.MandelaArrowHeadFlint arrow arrow,
+		ModelWeaponPart = MandelaBowAndArrow.MandelaAttachmentFletchingsDucttape MandelaBowAndArrow.MandelaArrowFletchingsDucttape arrow arrow,
+		ModelWeaponPart = MandelaBowAndArrow.MandelaAttachmentFletchingsDucttapeFluFlu MandelaBowAndArrow.MandelaArrowFletchingsDucttapeFluFlu arrow arrow,
+        haveChamber = FALSE,
+	}
+	
+	/****************************** ITEM_ARROWS ******************************/
+	
+    item MandelaArrowBlank
+    {
+		MaxRange	=	0.85,
+		WeaponSprite	=	MandelaBowAndArrow.MandelaArrowBlank,
+		MinAngle	=	0.65,
+        Type	=	Weapon,
+		MinimumSwingTime	=	2,
+		KnockBackOnNoDeath	=	FALSE,
+		SwingAmountBeforeImpact	=	0.02,
+		Categories	=	Improvised;SmallBlade,
+		ConditionLowerChanceOneIn	=	1,
+        Weight	=	0.1,
+		SplatNumber	=	1,
+		PushBackMod	=	0.3,
+		SubCategory	=	Stab,
+		AimingMod	=	0.8,
+		ConditionMax	=	5,
+		MaxHitCount	=	1,
+		IsAimedHandWeapon	=	TRUE,
+		DoorDamage	=	1,
+		SwingAnim	=	Stab,
+        DisplayName	=	Arrow Blank (You should not see this),
+        Icon	=	MBAOArrowWoodTapeIron2,
+		MinRange	=	0.61,
+		SwingTime	=	2,
+		KnockdownMod	=	0,
+		SplatBloodOnNoDeath	=	FALSE,
+		RunAnim	=	Run_Weapon2,
+        IdleAnim	=	Idle_Weapon2,
+        BreakSound  =   BreakWoodItem,
+        TreeDamage  =   0,
+        EnduranceMod = 0.5,
+        CriticalChance	=	15,
+        CritDmgMultiplier = 10,
+        MinDamage	=	0,
+        MaxDamage	=	0.7,
+		WeaponLength = 0.19,
+		HitFloorSound	=	BladeHit,
+        ImpactSound	=	BladeHit,
+		HitSound	=	BladeHit,
+		ModelWeaponPart = MandelaBowAndArrow.MandelaAttachmentShaftWood MandelaBowAndArrow.MandelaArrowShaftWood arrow arrow,
+		ModelWeaponPart = MandelaBowAndArrow.MandelaAttachmentHeadIron MandelaBowAndArrow.MandelaArrowHeadIron arrow arrow,
+		ModelWeaponPart = MandelaBowAndArrow.MandelaAttachmentHeadIronTaped MandelaBowAndArrow.MandelaArrowHeadIronTaped arrow arrow,
+		ModelWeaponPart = MandelaBowAndArrow.MandelaAttachmentHeadFlint MandelaBowAndArrow.MandelaArrowHeadFlint arrow arrow,
+		ModelWeaponPart = MandelaBowAndArrow.MandelaAttachmentFletchingsDucttape MandelaBowAndArrow.MandelaArrowFletchingsDucttape arrow arrow,
+		ModelWeaponPart = MandelaBowAndArrow.MandelaAttachmentFletchingsDucttapeFluFlu MandelaBowAndArrow.MandelaArrowFletchingsDucttapeFluFlu arrow arrow,
+        Tooltip = Tooltip_MBA_Modular_Arrow,
+    }
+	
+	/****************************** ITEM_ATTACHMENTS ******************************/
+	
+    item MandelaAttachmentShaftWood {
+        Weight	=	0,
+        /*WeightModifier = 0.03,*/
+        Type	=	WeaponPart,
+        DisplayName	=	Arrow Shaft of Wood (You should not see this),
+        Icon	=	MBAOArrowShaft2,
+        PartType = Stock,
+        MountOn = MandelaArrowBlank,
+    }
+    item MandelaAttachmentHeadIron {
+        Weight	=	0,
+        /*WeightModifier = 0.07,*/
+        Type	=	WeaponPart,
+        DisplayName	=	Arrowhead of Iron (You should not see this),
+        Icon	=	MBAOArrowHeadIron,
+        PartType = Canon,
+        MountOn = MandelaArrowBlank,
+    }
+    item MandelaAttachmentHeadIronTaped {
+        Weight	=	0,
+        /*WeightModifier = 0.07,*/
+        Type	=	WeaponPart,
+        DisplayName	=	Arrowhead of Iron Taped (You should not see this),
+        Icon	=	MBAOArrowHeadIron,
+        PartType = Canon,
+        MountOn = MandelaArrowBlank,
+    }
+    item MandelaAttachmentHeadFlint {
+        Weight	=	0,
+        /*WeightModifier = 0.07,*/
+        Type	=	WeaponPart,
+        DisplayName	=	Arrowhead of Flint (You should not see this),
+        Icon	=	MBAOArrowHeadFlint,
+        PartType = Canon,
+        MountOn = MandelaArrowBlank,
+    }
+    item MandelaAttachmentFletchingsDucttape {
+        Weight	=	0,
+        /*WeightModifier = 0.01,*/
+        Type	=	WeaponPart,
+        DisplayName	=	Fletchings of Duct Tape (You should not see this),
+        Icon	=	MBAOFletchingsDuctTape,
+        PartType = RecoilPad,
+        MountOn = MandelaArrowBlank,
+    }
+    item MandelaAttachmentFletchingsDucttapeFluFlu {
+        Weight	=	0,
+        /*WeightModifier = 0.02,*/
+        Type	=	WeaponPart,
+        DisplayName	=	FluFlu Fletchings of Duct Tape (You should not see this),
+        Icon	=	MBAOFletchingsDuctTapeFluFlu,
+        PartType = RecoilPad,
+        MountOn = MandelaArrowBlank,
+    }
+}

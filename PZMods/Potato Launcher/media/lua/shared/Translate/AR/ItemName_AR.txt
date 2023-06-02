@@ -1,0 +1,7 @@
+ItemName_AR = {
+    ItemName_PotatoLauncher.POTATO_PotatoLauncher = "Lanzapatatas",
+    ItemName_PotatoLauncher.POTATO_MetalPotatoLauncher = "Lanzapatatas de metal",
+    ItemName_PotatoLauncher.POTATO_SprayPaint = "Pintura en aerosol",
+    ItemName_PotatoLauncher.POTATO_Fuel = "Combustible para lanzapatatas",
+    ItemName_PotatoLauncher.POTATO_PotatoLauncherMag = "Cómo construir un lanzapatatas",
+}

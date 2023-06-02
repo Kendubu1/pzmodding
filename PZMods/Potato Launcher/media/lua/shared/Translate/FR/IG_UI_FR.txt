@@ -1,0 +1,26 @@
+IGUI_FR = {
+
+    IGUI_POTATO_needFuel = "J'ai besoin de carburant",
+    IGUI_POTATO_needBattery = "J'ai besoin de piles",
+    IGUI_POTATO_charged = "C'est déjà chargé",
+    IGUI_POTATO_continue = "Pas de Lance-Patate équipé, continuez avec votre équipement",
+    IGUI_POTATO_vhs_name = "VHS: Armes létales faites maison",
+    IGUI_POTATO_vhs_title = "Armes létales faites maison",
+    IGUI_POTATO_vhs_subtitle = "Épisode 2: Lance-patates",
+    IGUI_POTATO_vhs_1 = "Salut les amis, la semaine dernière nous avons appris comment faire un lance-flammes...",
+    IGUI_POTATO_vhs_2 = "... avec de l'huile de cuisine, un briquet et des bouteilles plastiques.",
+    IGUI_POTATO_vhs_3 = "Dans cet épisode, nous allons apprendre à faire pousser des patates...",
+    IGUI_POTATO_vhs_4 = "... et les lancer avec puissance.",
+    IGUI_POTATO_vhs_5 = "Nous aurons besoin de tuyau en plastique, de la colle, une scie et des patates...",
+    IGUI_POTATO_vhs_6 = "... et un simple circuit électrique.",
+    IGUI_POTATO_vhs_7 = "Préparons d'abord le carburant.",
+    IGUI_POTATO_vhs_8 = "Vous n'avez pas besoin de styliser vos cheveux, alors utilisez votre bombe de laque.",
+    IGUI_POTATO_vhs_9 = "Sinon vous pouvez utiliser de la peinture en spray",
+    IGUI_POTATO_vhs_10 = "Maintenant chargez le canon et tirez !",
+    IGUI_POTATO_vhs_11 = "Wow ! Qui a besoin de frites ? Bref.",
+    IGUI_POTATO_vhs_12 = "Merci les amis, c'est tout pour aujourd'hui. La semaine prochaine...",
+    IGUI_POTATO_vhs_13 = "... nous construitons des bombes à clous.",
+    IGUI_POTATO_vhs_14 = "Super pratique quand on fait face à une apocalypse zombie.",
+    IGUI_POTATO_vhs_15 = "Je blague ! C'est juste de la science-fiction ! A plus !",
+
+}

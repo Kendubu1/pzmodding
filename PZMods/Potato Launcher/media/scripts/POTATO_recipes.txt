@@ -1,0 +1,53 @@
+module PotatoLauncher
+{
+    imports
+    {
+        Base
+    }
+
+    recipe Make Potato Launcher Fuel
+    {
+        Base.Hairspray/PotatoLauncher.POTATO_SprayPaint,
+        
+        Result:PotatoLauncher.POTATO_Fuel,
+        Time:15.0,
+        NeedToBeLearn:true,
+    }
+
+	recipe Make Potato Launcher
+	{
+	   Base.Pipe,
+       Base.Glue/Base.Woodglue,
+       Base.DuctTape,
+       Base.ElectronicsScrap,
+	   keep Base.Saw/Base.GardenSaw,
+
+	   CanBeDoneFromFloor:true,
+       Category:DIY,
+	   Result:PotatoLauncher.POTATO_PotatoLauncher,
+	   Sound:Sawing,
+	   Time:230.0,
+       NeedToBeLearn:true,
+	   OnGiveXP:Recipe.OnGiveXP.None,
+	   AnimNode:SawLog,
+	}
+
+	recipe Make Metal Potato Launcher
+	{
+	   Base.MetalPipe,
+       Base.ElectronicsScrap,
+       Base.BlowTorch=5,
+	   keep Base.Saw/Base.GardenSaw,
+       keep Base.WeldingMask,
+
+	   CanBeDoneFromFloor:true,
+       Category:DIY,
+	   Result:PotatoLauncher.POTATO_MetalPotatoLauncher,
+	   SkillRequired:MetalWelding=2,
+	   Sound:Hammering,
+	   Time:300.0,
+       NeedToBeLearn:true,
+	   OnGiveXP:Recipe.OnGiveXP.MetalWelding25,
+	   AnimNode:SawLog,
+	}
+}

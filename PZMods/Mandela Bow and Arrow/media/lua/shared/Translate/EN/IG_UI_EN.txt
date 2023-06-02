@@ -1,0 +1,12 @@
+IGUI_EN = {
+	IGUI_perks_Archery = "Archery",
+    IGUI_MBA_recipe_AddArrowHead = "Add Arrowhead",
+    IGUI_MBA_recipe_AddFletchings = "Add Fletchings",
+    IGUI_MBA_recipe_RemoveArrowHead = "Remove Arrowhead",
+    IGUI_MBA_recipe_RemoveFletchings = "Remove Fletchings",
+    IGUI_MBA_arrow_unfletched = "Arrow (Unfletched)",
+    IGUI_MBA_arrow_headless = "Arrow (Headless)",
+    IGUI_MBA_arrow = "Arrow",
+    IGUI_MBA_fluflu = " (Flu-flu)",
+    IGUI_MBA_snap_into_twigs = "Snap into Twigs",
+}

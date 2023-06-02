@@ -1,0 +1,8 @@
+Tooltip_EN = {
+--magazines
+	Tooltip_WeaponMag1 				= "A pre-War magazine that is entirely devoted to energy weapons",
+	Tooltip_WeaponMag2 				= "A pre-War magazine that is entirely devoted to energy weapons",
+	Tooltip_WeaponMag3 				= "A pre-War magazine that is entirely devoted to energy weapons",
+	Tooltip_WeaponMag4 				= "A pre-War magazine that is entirely devoted to energy weapons",
+	Tooltip_WeaponMag5 				= "A pre-War magazine that is entirely devoted to energy weapons",
+} 	

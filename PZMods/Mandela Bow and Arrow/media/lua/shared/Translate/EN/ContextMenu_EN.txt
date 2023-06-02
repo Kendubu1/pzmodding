@@ -1,0 +1,7 @@
+ContextMenu_EN = {
+    ContextMenu_MBA_Put_On_Arrow = "Put %1 on %2",
+    ContextMenu_MBA_Remove_Arrowhead = "Remove Arrowhead",
+    ContextMenu_MBA_Remove_Fletchings = "Remove Fletchings",
+    ContextMenu_MBA_Make_Bow = "Make Bow",
+    ContextMenu_MBA_snap_into_twigs = "Snap into Twigs",
+} 

@@ -1,0 +1,17 @@
+module PotatoLauncher {
+    imports {
+        Base
+    }
+
+    model PotatoLauncher
+    {
+        mesh = weapons/firearm/PotatoLauncher3,
+		texture = weapons/firearm/PotatoLauncher3,
+
+        attachment world
+        {
+            offset = 0.0000 0.0000 0.0000,
+            rotate = 0.0000 0.0000 0.0000,
+        }
+    }
+}

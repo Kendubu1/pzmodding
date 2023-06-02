@@ -1,0 +1,7 @@
+ItemName_NO = {
+    ItemName_PotatoLauncher.POTATO_PotatoLauncher = "Potetkaster",
+    ItemName_PotatoLauncher.POTATO_MetalPotatoLauncher = "Potetkaster i metall",
+    ItemName_PotatoLauncher.POTATO_SprayPaint = "Spraymaling",
+    ItemName_PotatoLauncher.POTATO_Fuel = "Brensel til potetkaster",
+    ItemName_PotatoLauncher.POTATO_PotatoLauncherMag = "Hvordan lage en potetkaster",
+}

@@ -1,0 +1,8 @@
+Tooltip_EN = {
+	-- Item tooltip
+	Tooltip_MBA_Bow_Stave = "This stave is not yet a bow.<br>It must be carved some more.<br>It's in the right click menu.",
+	Tooltip_MBA_Old_Shaft = "Can't be used to make arrows. The mod was<br>changed and different arrow shafts are used now.",
+	Tooltip_MBA_Increases_Accuracy = "Increases accuracy.",
+	Tooltip_MBA_FluFlu = "Reduces range.<br>Increases accuracy by the same amount normal fletchings do.",
+	Tooltip_MBA_Modular_Arrow = "Assembly and disassembly in right-click menu",
+}

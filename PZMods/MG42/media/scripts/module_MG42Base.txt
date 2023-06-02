@@ -1,0 +1,12 @@
+module Base
+{
+	model MG42
+	{
+		mesh = weapons/firearm/MG42,
+		attachment muzzle
+		{
+			offset = 0.00126 0.02468 0.62235,
+			rotate = 0.0000 0.0000 0.0000,
+		}
+	}
+}

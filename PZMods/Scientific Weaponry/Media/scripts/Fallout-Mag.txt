@@ -1,0 +1,71 @@
+module SW
+{
+	item WeaponMag1
+	{
+		Weight = 0.1,
+		Type = Literature,
+		DisplayName = Future Weapons Today Vol. 1 (Basics),
+		Icon = SMag,
+		TeachedRecipes = Make Energy Cell;Make 2mm EC Round,
+		StaticModel = SMag,
+		ReplaceOnUse    =   WeaponMag1,
+		WorldStaticModel = SMag,
+		Tooltip             = Tooltip_WeaponMag1,
+		DisplayCategory = SkillBook,
+	}
+	item WeaponMag2
+	{
+		Weight = 0.1,
+		Type = Literature,
+		DisplayName = Future Weapons Today Vol. 2 (Melee),
+		Icon = SMag,
+		TeachedRecipes = Assemble Thermic Lance;Assemble Super Sledge;Assemble Ballistic-Power Fist;Assemble Shishkebab,
+		StaticModel = SMag,
+		ReplaceOnUse    =   WeaponMag2,
+	    WorldStaticModel = SMag,
+		Tooltip             = Tooltip_WeaponMag2,
+		DisplayCategory = SkillBook,
+	}
+
+	item WeaponMag3
+	{
+		Weight = 0.1,
+		Type = Literature,
+		DisplayName = Future Weapons Today Vol. 3 (Pistol),
+		Icon = SMag,
+		TeachedRecipes = Make Microfusion Cell;Assemble AEP7 Laser Pistol;Assemble PPK12 Gauss Pistol;Assemble Urban Plasma Pistol,
+		StaticModel = SMag,
+		ReplaceOnUse    =   WeaponMag3,
+		WorldStaticModel = SMag,
+		Tooltip             = Tooltip_WeaponMag3,
+		DisplayCategory = SkillBook,
+	}
+	
+	item WeaponMag4
+	{
+		Weight = 0.1,
+		Type = Literature,
+		DisplayName = Future Weapons Today Vol. 4 (Rifle),
+		Icon = SMag,
+		TeachedRecipes = Make Electron Charge Pack;Assemble AER9 Laser Rifle;Assemble M75 Gauss Rifle;Assemble Urban Plasma Rifle,
+		StaticModel = SMag,
+		ReplaceOnUse    =   WeaponMag4,
+		WorldStaticModel = SMag,
+		Tooltip             = Tooltip_WeaponMag4,
+		DisplayCategory = SkillBook,
+	}
+	item WeaponMag5
+	{
+		Weight = 0.1,
+		Type = Literature,
+		DisplayName = Future Weapons Today Vol. 5 (Heavy),
+		Icon = SMag,
+		TeachedRecipes = Assemble Gatling Laser;Assemble Anti-Materiel Rifle;Assemble Chinese Gauss Rifle,
+		StaticModel = SMag,
+		ReplaceOnUse    =   WeaponMag5,
+		WorldStaticModel = SMag,
+		Tooltip             = Tooltip_WeaponMag5,
+		DisplayCategory = SkillBook,
+	}
+	
+}

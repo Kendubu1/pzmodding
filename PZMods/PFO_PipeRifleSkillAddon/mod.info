@@ -1,0 +1,6 @@
+name=Project Fallout: The Pipe Rifle (Skill Addon)
+id=PFOPipeRifleSkillAddon
+require=PFOPipeRifle
+description= Skill addon for Project Fallout: The Pipe Rifle. Changes required levels for crafting the Pipe Rifle.
+poster=poster.png
+icon=icon.png

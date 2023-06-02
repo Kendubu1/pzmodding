@@ -1,0 +1,3 @@
+Recipe_EN = {
+	Recipe_MakePipeRifle = "Make Pipe Rifle",
+}

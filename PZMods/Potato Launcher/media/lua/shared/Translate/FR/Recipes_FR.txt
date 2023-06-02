@@ -1,0 +1,6 @@
+Recipes_FR = {
+    Recipe_Make_Potato_Launcher = "Fabriquer un Lance-Patate",
+    Recipe_Make_Metal_Potato_Launcher = "Fabriquer un Lance-Patate en métal",
+    Recipe_Make_Potato_Launcher_Fuel = "Fabriquer du carburant pour Lance-Patate",
+
+}

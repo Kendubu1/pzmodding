@@ -1,0 +1,16 @@
+module Base
+{
+	model Nailgun1
+	{
+        mesh = weapons/firearm/nailgun1|nailgun,
+		texture = weapons/firearm/nailgun1,
+        scale = 0.006,
+	}
+
+	model Nailgun2
+	{
+        mesh = weapons/firearm/nailgun2|nailgun,
+		texture = weapons/firearm/nailgun2,
+        scale = 0.006,
+	}
+}

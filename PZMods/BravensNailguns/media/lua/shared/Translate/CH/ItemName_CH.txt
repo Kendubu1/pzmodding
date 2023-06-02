@@ -1,0 +1,5 @@
+ItemName_CH = {
+    ItemName_Base.Nailgun1 = "钉枪"
+    ItemName_Base.Nailgun2 = "战术钉枪",
+    ItemName_Base.NailClip = "夹子钉",
+}

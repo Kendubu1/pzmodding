@@ -1,0 +1,3 @@
+Recipe_RU = {
+	Recipe_MakePipeRifle = "Сделать Самопал",	
+}

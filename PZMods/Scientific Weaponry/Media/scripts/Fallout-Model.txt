@@ -1,0 +1,213 @@
+module Base
+{
+	model TLance
+	{
+		mesh = weapons/melee/TLance,
+		texture = weapons/melee/TLance,
+
+		attachment world
+		{
+			offset = 0.0000 0.0000 0.0000,
+			rotate = 90.0000 90.0000 0.0000,
+		}
+	}
+	model supersledge0
+	{
+		mesh = weapons/melee/supersledge,
+		texture = weapons/melee/supersledge0,
+
+		attachment world
+		{
+			offset = 0.0000 0.0000 0.0000,
+			rotate = 0.0000 0.0000 0.0000,
+		}
+	}
+	model supersledge1
+	{
+		mesh = weapons/melee/supersledge,
+		texture = weapons/melee/supersledge1,
+
+		attachment world
+		{
+			offset = 0.0000 0.0000 0.0000,
+			rotate = 0.0000 0.0000 0.0000,
+		}
+	}
+	model supersledge2
+	{
+		mesh = weapons/melee/supersledge,
+		texture = weapons/melee/supersledge2,
+
+		attachment world
+		{
+			offset = 0.0000 0.0000 0.0000,
+			rotate = 0.0000 0.0000 0.0000,
+		}
+	}
+	model ballisticfist
+	{
+		mesh = weapons/melee/ballisticfist,
+		texture = weapons/melee/ballisticfist,
+
+		attachment world
+		{
+			offset = 0.0000 0.0000 0.0000,
+			rotate = 0.0000 0.0000 90.0000,
+		}
+	}
+	model shishkebab
+	{
+		mesh = weapons/melee/shishkebab,
+		texture = weapons/melee/shishkebab,
+
+		attachment world
+		{
+			offset = 0.0000 0.0000 0.0140,
+			rotate = -2.0000 0.0000 0.0000,
+		}
+	}
+	model LaserR
+	{
+		mesh = weapons/firearm/LaserR,
+		texture = weapons/firearm/LaserRifle1,
+
+		attachment world
+		{
+			offset = 0.0000 0.0000 0.0000,
+			rotate = 0.0000 0.0000 0.0000,
+		}
+	}
+	model PlasmaR
+	{
+		mesh = weapons/firearm/PlasmaR,
+		texture = weapons/firearm/PlasmaR,
+
+		attachment world
+		{
+			offset = 0.0000 0.0000 0.0000,
+			rotate = 0.0000 0.0000 0.0000,
+		}
+	}
+	model Gauss
+	{
+		mesh = weapons/firearm/Gauss,
+		texture = weapons/firearm/Gauss,
+		scale   = 1.5,
+
+		attachment world
+		{
+			offset = 0.0000 0.0000 0.0000,
+			rotate = 0.0000 0.0000 0.0000,
+		}
+	}
+	model GLaser
+	{
+		mesh = weapons/firearm/GLaser,
+		texture = weapons/firearm/GLaser,
+
+		attachment world
+		{
+			offset = 0.0000 0.0000 0.0000,
+			rotate = -90.0000 180.0000 0.0000,
+		}
+	}
+	model ASniper
+	{
+		mesh = weapons/firearm/ASniper,
+		texture = weapons/firearm/ASniper,
+
+		attachment world
+		{
+			offset = 0.0000 0.0000 0.0000,
+			rotate = 0.0000 0.0000 0.0000,
+		}
+	}
+	model LaserP
+	{
+		mesh = weapons/firearm/LaserP,
+		texture = weapons/firearm/LaserP,
+
+		attachment world
+		{
+			offset = 0.0000 0.0000 0.0000,
+			rotate = 90.0000 0.0000 0.0000,
+		}
+	}
+	model PlasmaP
+	{
+		mesh = weapons/firearm/PlasmaP,
+		texture = weapons/firearm/PlasmaP,
+
+		attachment world
+		{
+			offset = 0.0000 0.0000 0.0000,
+			rotate = 0.0000 0.0000 0.0000,
+		}
+	}
+	model GRifle
+	{
+		mesh = weapons/firearm/GRifle,
+		texture = weapons/firearm/GRifle,
+
+		attachment world
+		{
+			offset = 0.0000 0.0000 0.0000,
+			rotate = 0.0000 0.0000 0.0000,
+		}
+	}
+	model GPistol
+	{
+		mesh = weapons/firearm/GPistol,
+		texture = weapons/firearm/GPistol,
+
+		attachment world
+		{
+			offset = 0.0000 0.0000 0.0000,
+			rotate = 0.0000 0.0000 0.0000,
+		}
+	}
+	model Microfusion_Cell
+	{
+		mesh = weapons/parts/Microfusion_Cell,
+		texture = weapons/parts/Microfusion_Cell,
+
+		attachment world
+		{
+			offset = 0.0000 0.0000 0.0000,
+			rotate = 0.0000 0.0000 0.0000,
+		}
+	}
+	model Electron_Charge_Pack
+	{
+		mesh = weapons/parts/Microfusion_Cell,
+		texture = weapons/parts/Electron_Charge_Pack,
+
+		attachment world
+		{
+			offset = 0.0000 0.0000 0.0000,
+			rotate = 0.0000 0.0000 0.0000,
+		}
+	}
+	model Energy_Cell
+	{
+		mesh = weapons/parts/Energy_Cell,
+		texture = weapons/parts/Energy_Cell,
+
+		attachment world
+		{
+			offset = 0.0000 0.0000 0.0000,
+			rotate = 0.0000 0.0000 0.0000,
+		}
+	}
+	model SMag
+	{
+		mesh = weapons/parts/SMag,
+		texture = weapons/parts/SMag,
+
+		attachment world
+		{
+			offset = 0.0000 0.0000 0.0000,
+			rotate = 0.0000 0.0000 0.0000,
+		}
+	}
+}

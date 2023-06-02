@@ -1,0 +1,3 @@
+Tooltip_EN = {
+	Tooltip_F2PipeRifle = "Pipe Rifle. Worse than normal rifle, but it's better than nothing",
+}

@@ -1,0 +1,16 @@
+module Base
+{
+	sound NailgunShoot
+	{
+		category = Item,
+		maxInstancesPerEmitter = 2,
+
+		clip
+		{
+			file = media/sound/nailgun_shoot.wav,
+			distanceMin = 0,
+			distanceMax = 10,
+			volume = 1.6f,
+		}
+	}
+}

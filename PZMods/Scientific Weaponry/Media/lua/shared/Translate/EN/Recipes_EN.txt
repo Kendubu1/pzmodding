@@ -1,0 +1,30 @@
+Recipe_EN = {
+	recipe_Charge_Microfusion_Cell = "Charge Microfusion Cell",
+	recipe_Charge_Electron_Charge_Pack = "Charge Electron Charge Pack",
+	recipe_Make_Microfusion_Cell = "Make Microfusion Cell",
+	recipe_Make_Electron_Charge_Pack = "Make Electron Charge Pack",
+	recipe_Charge_Energy_Cell = "Charge Energy Cell",
+	recipe_Make_Energy_Cell = "Make Energy Cell",
+	
+	recipe_Open_Box_of_.50_MG_Bullets = "Open Box of .50 MG Bullets",
+	recipe_Place_.50_MG_Bullets_in_Box = "Place .50 MG Bullets in Box",
+	recipe_Open_Box_of_2mm_EC_Ammunition = "Open Box of 2mm EC Ammunition",
+	recipe_Place_2mm_EC_Rounds_in_Box = "2mm EC Rounds in Box",
+	recipe_Make_2mm_EC_Round = "Make 2mm EC Round",
+	recipe_Make_.50_MG_Bullet = "Make .50 MG Bullet",
+
+	recipe_Assemble_Thermic_Lance = "Assemble Thermic Lance",
+	recipe_Assemble_AER9_Laser_Rifle = "Assemble AER9 Laser Rifle",
+	recipe_Assemble_AEP7_Laser_Pistol = "Assemble AEP7 Laser Pistol",
+	recipe_Assemble_M75_Gauss_Rifle = "Assemble M75 Gauss Rifle",
+	recipe_Assemble_Shishkebab = "Assemble Shishkebab",
+	recipe_Assemble_Urban_Plasma_Rifle = "Assemble Urban Plasma Rifle",
+	recipe_Assemble_Urban_Plasma_Pistol = "Assemble Urban Plasma Pistol",
+	recipe_Assemble_Chinese_Gauss_Rifle = "Assemble Chinese Gauss Rifle",
+	recipe_Assemble_PPK12_Gauss_Pistol = "Assemble PPK12 Gauss Pistol",
+	recipe_Assemble_Gatling_Laser = "Assemble Gatling Laser",
+	recipe_Assemble_Anti-Materiel_Rifle = "Assemble Anti-Materiel Rifle",
+	recipe_Assemble_Super_Sledge = "Assemble Super Sledge",
+	recipe_Assemble_Ballistic-Power_Fist = "Assemble Ballistic-Power Fist",	
+
+}

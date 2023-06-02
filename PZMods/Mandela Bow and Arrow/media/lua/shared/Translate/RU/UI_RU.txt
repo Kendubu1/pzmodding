@@ -1,0 +1,4 @@
+UI_RU = {
+    UI_trait_archer = "Лучник",
+    UI_trait_archerdesc = "Начните игру с луком и стрелами.<br>+3 к навыку Луки",
+}

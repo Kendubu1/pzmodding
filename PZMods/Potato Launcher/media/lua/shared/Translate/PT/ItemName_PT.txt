@@ -1,0 +1,6 @@
+ItemName_PT = {
+    ItemName_PotatoLauncher.POTATO_PotatoLauncher = "Canhão de Batatas",
+    ItemName_PotatoLauncher.POTATO_SprayPaint = "Tinta Spray",
+    ItemName_PotatoLauncher.POTATO_Fuel = "Combustível de Canhão de Batatas",
+    ItemName_PotatoLauncher.POTATO_PotatoLauncherMag = "Como criar um Canhão de Batatas",
+}

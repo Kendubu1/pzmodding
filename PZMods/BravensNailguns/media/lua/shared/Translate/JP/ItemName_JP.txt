@@ -1,0 +1,5 @@
+ItemName_JP = {
+    ItemName_Base.Nailgun1 = "ネイルガン"
+    ItemName_Base.Nailgun2 = "戦術的なネイルガン",
+    ItemName_Base.NailClip = "ネイルクリップ",
+}

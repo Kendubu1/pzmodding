@@ -1,0 +1,5 @@
+ItemName_DE = {
+    ItemName_Base.Nailgun1 = "Nagelpistole"
+    ItemName_Base.Nailgun2 = "Taktische Nagelpistole",
+    ItemName_Base.NailClip = "Nagelclip",
+}

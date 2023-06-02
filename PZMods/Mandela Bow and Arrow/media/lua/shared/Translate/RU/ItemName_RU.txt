@@ -1,0 +1,16 @@
+ItemName_RU = {
+	ItemName_Base.MandelaBow = "Лук",
+	ItemName_Base.MandelaBowUnstrung = "Заготовка под лук",
+	ItemName_Base.MandelaBowStave = "Заготовка под лук",
+	ItemName_Base.MandelaBowString = "Тетива",
+	ItemName_Base.MandelaArrowWoodDucttapeIron = "Стрела",
+	ItemName_Base.MandelaArrowWoodDucttapeIronTaped = "Стрела (Простая)",
+	ItemName_Base.MandelaArrowFibreglassColouredTarget = "Стрела",
+	ItemName_Base.MandelaArrowFibreglassColouredIron = "Стрела",
+	ItemName_Base.MandelaArrowWoodDucttapeIronAttachment = "Стрела",
+	ItemName_Base.MandelaArrowBundle = "Стрелы (Связка)",
+	ItemName_Base.MandelaArrowShaft = "Древко стрелы",
+	ItemName_Base.MandelaArrowHeadIron = "Железный наконечник стрелы",
+	ItemName_Base.MandelaFletchings = "Оперение",
+	ItemName_Base.MBAOQuiver = "Колчан",
+}

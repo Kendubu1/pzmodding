@@ -1,0 +1,26 @@
+IGUI_EN = {
+
+    IGUI_POTATO_needFuel = "I need fuel",
+    IGUI_POTATO_needBattery = "I need batteries",
+    IGUI_POTATO_charged = "It is already charged",
+    IGUI_POTATO_continue = "No Potato Launcher equipped, continue with your stuff",
+    IGUI_POTATO_vhs_name = "VHS: Letal Homemade Weapons",
+    IGUI_POTATO_vhs_title = "Letal Homemade Weapons",
+    IGUI_POTATO_vhs_subtitle = "Episode 2: Potato Launcher",
+    IGUI_POTATO_vhs_1 = "Hi friends, last week we learned how to create a flamethrower",
+    IGUI_POTATO_vhs_2 = "with cooking oil, a lighter and plastic bottles.",
+    IGUI_POTATO_vhs_3 = "In this episode, we will learn to harvest potatoes",
+    IGUI_POTATO_vhs_4 = "and then launch them with all the power",
+    IGUI_POTATO_vhs_5 = "We're going to need plastic pipes, glue, a saw, potatoes",
+    IGUI_POTATO_vhs_6 = "and a simple electric cirtcuit.",
+    IGUI_POTATO_vhs_7 = "Now let's prepare the fuel",
+    IGUI_POTATO_vhs_8 = "You don't need to style your hair, bring your hairspray",
+    IGUI_POTATO_vhs_9 = "Or you can use that spray paint",
+    IGUI_POTATO_vhs_10 = "Now load the chamber and fire!",
+    IGUI_POTATO_vhs_11 = "Wow! Who needs french fries? Anyway.",
+    IGUI_POTATO_vhs_12 = "Thanks friends, this it it for today. Next week",
+    IGUI_POTATO_vhs_13 = "we will build nail bombs.",
+    IGUI_POTATO_vhs_14 = "Very handy when we face the zombie apocalypse.",
+    IGUI_POTATO_vhs_15 = "Just kiding! That's science fiction! Bye!",
+
+}

@@ -1,0 +1,122 @@
+module MG420
+{
+	imports
+	{
+		Base,
+	}
+
+	item MG42
+	{
+		ImpactSound	=	BulletHitMG42,
+		MaxRange	=	15,
+		WeaponSprite	= MG42,
+		SoundVolume	=	100,
+		MinAngle	=	0.995,
+		Type	=	Weapon,
+		MinimumSwingTime	=	0.040,
+		ToHitModifier	=	1.5,
+		NPCSoundBoost	=	1.5,
+		KnockBackOnNoDeath	=	TRUE,
+		Ranged	=	TRUE,
+		SwingAmountBeforeImpact	=	0,
+		ProjectileCount	=	3,
+		ConditionLowerChanceOneIn	=	40,
+		Weight	=	10,
+		SplatNumber	=	9,
+		PushBackMod	=	4,
+		MinDamage	=	1,
+		MaxDamage	=	2.5,
+		SubCategory	=	Firearm,
+		ConditionMax	=	30,
+		ShareDamage	=	FALSE,
+		MaxHitCount	=	5,
+		IsAimedFirearm	=	TRUE,
+		DoorDamage	=	35,
+		UseEndurance	=	FALSE,
+		SwingAnim	=	Rifle,
+		DisplayName	=	MG42,
+		MinRange	=	2,
+		SwingTime	=	0.050,
+		MultipleHitConditionAffected	=	FALSE,
+		SwingSound	=	MG42Sound,
+		SoundRadius	=	220,
+		SplatSize	=	3,
+		KnockdownMod	=	2,
+		SplatBloodOnNoDeath	=	TRUE,
+		Icon	=	MG42,
+		RunAnim	=	Run_Weapon2,
+		CriticalChance = 25,
+        CritDmgMultiplier = 3,
+       		AimingPerkCritModifier = 15,
+       		HitChance = 45,
+       		AimingPerkHitChanceModifier = 15,
+       		AimingPerkMinAngleModifier = 0,
+       		AimingPerkRangeModifier = 2,
+       		RecoilDelay = 0,
+       		PiercingBullets = TRUE,
+       		SoundGain = 1,
+       		ReloadTime = 10,
+       		AimingTime = 15,
+       		RequiresEquippedBothHands = TRUE,
+		BreakSound  =   BreakMetalItem,
+        TwoHandWeapon = TRUE,
+        MetalValue = 60,
+        AmmoBox = 556Box,
+        MaxAmmo = 50,
+        InsertAmmoSound = MG42Insert,
+        EjectAmmoSound = MG42Eject,
+        RackSound = MG42Rack,
+        MagazineType = MG42Can,
+        AmmoType = MG420.MG42Bullets,
+        WeaponReloadType = boltaction,
+        JamGunChance = 0.1,
+        AttachmentType = Rifle,
+        FireMode = Auto,
+	}
+    item MG42Can
+    {
+        CanStack	=	FALSE,
+        Weight	=	0.2,
+        Type	=	Normal,
+        DisplayName	=	MG42 Ammo Can,
+        Icon	=	MG42Can,
+        MaxAmmo = 50,
+        AmmoType = MG420.MG42Bullets,
+        StaticModel = GunMagazine,
+    }
+	item MG42Bullets
+	{
+		Count 		= 1,
+		Weight 		= 0.02,
+		Type 		= Normal,
+		DisplayName 		= 7.92 × 57mm Bullets,
+		DisplayCategory 		= Ammo,
+		Icon 		= MG42Bullets,
+		MetalValue 		= 1,
+		ResizeWorldIcon 		= .50,
+	}
+	item MG42BulletsBox
+    {
+        Weight	=	0.45,
+        AlwaysWelcomeGift	=	TRUE,
+        Type	=	Normal,
+        DisplayName	=	Box of 7.92 × 57mm Bullets,
+        DisplayCategory = Ammo,
+        Icon	=	MG42BulletsBox,
+        MetalValue = 40,
+	}
+	recipe Unbox 7.92 × 57mm Bullets,
+	{
+		MG42BulletsBox,
+		Result:MG42Bullets=100,
+		Time:70,
+		NeedToBeLearn:false,
+	}
+	recipe Box 7.92 × 57mm Bullets,
+	{
+		MG42Bullets=100,
+		Result:MG42BulletsBox,
+		Time:70,
+		NeedToBeLearn:false,
+	}
+}

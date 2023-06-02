@@ -1,0 +1,27 @@
+version=1.0.2
+name=Potato Launcher
+id=PotatoLauncher
+
+icon=icon.png
+description=[h1]Potato Launcher[/h1]
+description=
+description=Headshot your zombies with a potato
+description=
+description=[img]https://i.imgur.com/p7Fv1Z6.gif[/img]
+description=
+description=[h2]Contributors[/h2]
+description=French Translation: Xianah
+description=Norwegian Translation: humblegar
+description=Portuguese Translation: Gravedigger
+description=Russian Translation: Prone
+description=
+description=If you want to contribute, just leave a comment or reach out to me in PZ discord.
+description=
+description=[url=http://theindiestone.com/forums/index.php/topic/2530-mod-permissions/?p=36478][img=http://projectzomboid.com/images/MODS_03.png][/url]
+
+
+
+pzversion=41
+tags=Build 41, Silly/Fun, Weapons
+
+poster=preview.png

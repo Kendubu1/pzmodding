@@ -1,0 +1,8 @@
+Recipes_EN = {
+    Recipe_Make_Fletchings_Ten = "Make Fletchings",
+    Recipe_Make_Fletchings_Two = "Make Fletchings",
+    Recipe_Make_Iron Arrowhead_1 = "Make Iron Arrowhead",
+    Recipe_Make_Iron Arrowhead_2 = "Make Iron Arrowhead",
+    Recipe_Make_Iron Arrowhead_3 = "Make Iron Arrowhead",
+    Recipe_Make_FluFlu_Fletchings_Four = "Make Huge Fletchings",
+}

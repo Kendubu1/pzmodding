@@ -1,0 +1,33 @@
+module PotatoLauncher
+{
+    imports
+    {
+        Base
+    }
+
+    item POTATO_SprayPaint
+    {
+        DisplayCategory = Paint,
+        Weight = 0.2,
+        Type = Drainable,
+        DisplayName = Spray Paint,
+		UseWhileEquipped = FALSE,
+        Icon = Hairspray,
+        WorldStaticModel = HairSpray,
+        UseDelta = 0.1,
+        Tags = PotatoFuel,
+    }
+
+    item POTATO_Fuel
+    {
+        DisplayCategory = Material,
+        Weight = 0.2,
+        Type = Normal,
+        DisplayName = Potato Launcher Fuel,
+        Icon = Hairspray,
+        WorldStaticModel = HairSpray,
+        UseDelta = 0.1,
+        Type = Drainable,
+        Tags = PotatoFuel,
+    }
+}

@@ -1,0 +1,5 @@
+UI_EN = {
+UI_trait_archer = "Archer",
+UI_trait_archerdesc = "Start with a bow and arrows.<br>+3 Archery",
+UI_MBA_Progress = "Progress",
+}

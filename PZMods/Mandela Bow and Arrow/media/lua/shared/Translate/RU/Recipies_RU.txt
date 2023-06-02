@@ -1,0 +1,14 @@
+Recipe_RU = {
+Recipe_Make_Bow = "Заготовка под лук",
+Recipe_Make_Bow_String = "Тетива для лука",
+Recipe_String_Bow = "Сделать лук",
+Recipe_Unstring_Bow = "Снять тетиву с лука",
+Recipe_Make_Arrow_Shaft = "Древко стрелы",
+Recipe_Make_Iron_Arrowhead = "Железный наконечник для стрелы",
+Recipe_Make_Fletchings = "Оперение для стрелы",
+Recipe_Make_Arrow = "Сделать стрелу",
+Recipe_Tape_Arrowhead_to_side_of_Arrow_Shaft = "Сделать простую стрелу",
+Recipe_Reclaim_Arrowhead_from_Arrow = "Разобрать простую стрелу",
+Recipe_Take_Arrow_Apart = "Разобрать стрелу",
+Recipe_Unbundle_Arrows = "Разделить связку стрел",
+}

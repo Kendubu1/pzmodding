@@ -1,0 +1,7 @@
+name=Bow and Arrow
+poster=poster.png
+id=MandelaBowAndArrow
+versionMin=41.0
+description=Adds archery. Works a bit differently in multiplayer. It uses firearm controls - reload, aim, shoot. You can check the game's controls menu for more detail. Arrows are constructed from the parts from the right-click menu. Compatible with the quiver in the mod "Better Belts".
+icon=icon.png
+tags=Items,Weapons

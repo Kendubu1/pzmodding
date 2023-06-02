@@ -1,0 +1,26 @@
+IGUI_PT = {
+
+    IGUI_POTATO_needFuel = "Requer combustível",
+    IGUI_POTATO_needBattery = "Requer baterias",
+    IGUI_POTATO_charged = "Já está carregado",
+    IGUI_POTATO_continue = "O Canhão de Batatas não está equipado, continue com seu equipamento",
+    IGUI_POTATO_vhs_name = "VHS: Armas Artesanais Letais",
+    IGUI_POTATO_vhs_title = "Armas Artesanais Letais",
+    IGUI_POTATO_vhs_subtitle = "Episódio 2: Canhão de Batatas",
+    IGUI_POTATO_vhs_1 = "Olá amigos, semana passada aprendemos como criar um Lança Chamas.",
+    IGUI_POTATO_vhs_2 = "Com óleo de cozinha, um isqueiro e garrafas de plástico.",
+    IGUI_POTATO_vhs_3 = "Neste episódio, aprenderemos a colher batatas",
+    IGUI_POTATO_vhs_4 = "e lançá-las com toda potência através de um Canhão de Batatas.",
+    IGUI_POTATO_vhs_5 = "Precisaremos de canos de plástico, cola, uma serra ou serrote, algumas batatas",
+    IGUI_POTATO_vhs_6 = "e um simples circuito elétrico.",
+    IGUI_POTATO_vhs_7 = "Agora, vamos preparar o combustível.",
+    IGUI_POTATO_vhs_8 = "Não é hora de se preocupar com aparência, então traga seu spray de cabelo.",
+    IGUI_POTATO_vhs_9 = "Ou use uma tinta spray. Você precisará daquele gás.",
+    IGUI_POTATO_vhs_10 = "Carregue a câmara e atire!",
+    IGUI_POTATO_vhs_11 = "Uau! Quem precisa de batata frita? De qualquer maneira...",
+    IGUI_POTATO_vhs_12 = "Obrigado amigos, por hoje é isso. Na próxima semana,",
+    IGUI_POTATO_vhs_13 = "construiremos bombas de pregos.",
+    IGUI_POTATO_vhs_14 = "Muito útil quando nos deparamos com um apocalipse zumbi.",
+    IGUI_POTATO_vhs_15 = "Brincadeira! Isso é ficção científica! Até mais!",
+
+}

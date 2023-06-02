@@ -1,0 +1,23 @@
+module PotatoLauncher {
+    imports {
+        Base
+    }
+
+    fixing Fix POTATO_PotatoLauncher
+	{
+	   Require: POTATO_PotatoLauncher,
+	   ConditionModifier : 1.5,
+
+       Fixer : DuctTape=2,
+       Fixer : Glue=2,
+       Fixer : Woodglue=2,
+	}
+
+    fixing Fix POTATO_MetalPotatoLauncher
+	{
+	   Require: POTATO_MetalPotatoLauncher,
+	   ConditionModifier : 4,
+
+       Fixer : BlowTorch=2,
+	}
+}

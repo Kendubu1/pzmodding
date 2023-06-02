@@ -1,0 +1,14 @@
+module Base
+{
+	model AMR
+	{
+		mesh = weapons/firearms/AMR,
+		texture = weapons/firearms/AMR,
+
+		attachment world
+		{
+			offset = -0.0190 -0.1670 -0.0040,
+			rotate = 50.0000 2.0000 -4.0000,
+		}
+	}
+}
