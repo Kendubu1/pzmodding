@@ -1,26 +1,27 @@
 module JunkJet
 {
-    import
+    imports
     {
-        Base
+        Base,JunkJet
     }
 
     item JunkJet_Weapon
     {
-        DisplayName = JunkJet,
+        DisplayName = Junk Jet,
         DisplayCategory = Weapon,
-        Icon = AssaultRifle2,
-        WeaponSprite = DoubleBarrelShotgun,
+        Icon = JunkJet,
+        WeaponSprite = JunkJet,
         Type = Weapon,
         SubCategory = Firearm,
         Ranged = TRUE,
         IsAimedFirearm = TRUE,
         WeaponReloadType = revolver,
-        FireMode = Single,
+        /* FireMode = Single, */
         AttachmentType = Rifle,
         UseEndurance = FALSE,
         RequiresEquippedBothHands = TRUE,
         TwoHandWeapon = TRUE,
+        Tooltip = Tooltip_JunkJetWeapon,
         /*============ PERFORMANCE DATA============= */
         MinRange = 2,
         MaxRange = 16,
@@ -51,10 +52,10 @@ module JunkJet
         StopPower = 40,
         /*============= AMMUNITION DATA============= */
         AmmoType = JunkJet_Ammo,
-        AmmoBox = JunkJet_Drum
-        MaxAmmo = 1,
+        /* MagazineType = JunkJet_Drum, */
+        JamGunChance = 0,
+        MaxAmmo = 99,
         ProjectileCount = 1,
-        ClipSize = 1,
         MaxHitCount = 1,
         haveChamber = FALSE,
         PiercingBullets = FALSE,
@@ -93,22 +94,13 @@ module JunkJet
     {
         DisplayName = Junk Jet Ammo,
         DisplayCategory = Ammo,
-        Count	=	1,
-        Weight = 0.2,
+        Count = 1,
+        Icon = JunkJet,
+        Weight = 0.1,
         Type = Normal,
-        WorldStaticModel = RifleAmmo,
-    }
-
-    item JunkJet_Drum
-    {
-        DisplayName	= Junk Jet Drum,
-        DisplayCategory = Ammo,
-    	CanStack	=	FALSE,
-        MaxAmmo = 10,
-	    Weight	=	0.6,
-        Type	=	Normal,
-        AmmoType = JunkJet.JunkJet_Ammo,
-        GunType = JunkJet.JunkJet_Weapon,
+        WorldStaticModel = JunkJet,
+        Tooltip = Tooltip_JunkJetAmmo,
 
     }
+
 }

@@ -1,0 +1,39 @@
+module JunkJet
+{
+    imports 
+    {
+        Base,JunkJet
+    }
+
+    recipe Make JunkJet Ammo
+    {
+        ToyCar/Doll/Bullets38/Bullets44/Bullets45/Bullets9mm/556Bullets/308Bullets/223Bullets/ShotgunShells,
+        Result:JunkJet_Ammo=1,
+        Time:10.0,
+        OnCreate:Recipe.OnCreate.junkJetAmmoLoad,
+    }
+
+    recipe Make JunkJet 
+    {
+		SmallSheetMetal=20,
+		SheetMetal=4,
+		Plank=2,
+		MetalPipe/LeadPipe = 8,
+		Screws=45,
+		Nails=25,
+		Wire=5,
+		destroy CarBattery1/CarBattery2/CarBattery3,		
+		BlowTorch=90,
+		keep WeldingMask,
+		keep [Recipe.GetItemTypes.Hammer],
+		keep [Recipe.GetItemTypes.Saw],
+		keep [Recipe.GetItemTypes.Screwdriver],
+		Result:JunkJet_Weapon,
+		Time:3000,
+		Category:Weapons,
+		/* SkillRequired:MetalWelding=9;Electricity=10, */
+		OnGiveXP:Recipe.OnGiveXP.MetalWelding25,
+		NeedToBeLearn:false,
+	}
+    
+}

@@ -1,0 +1,4 @@
+Recipe_EN = {
+	Recipe_Make_JunkJet_Ammo = "Make JunkJet Ammo",
+	Recipe_Make_JunkJet_Drum = "Make JunkJet Drum",
+}

@@ -38,4 +38,4 @@ local function JunkStart(user,firearm)
     end    
 end
 
--- Events.OnPressReloadButton.Add(JunkStart)
+Events.OnPressReloadButton.Add(JunkStart)

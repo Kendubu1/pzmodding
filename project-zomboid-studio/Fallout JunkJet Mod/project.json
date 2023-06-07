@@ -1,6 +1,6 @@
 {
     "$schema": "https://raw.githubusercontent.com/Konijima/project-zomboid-studio/master/pzstudio.schema.json",
-    "title": "Fallout JunkJet Mod",
+    "title": "Fallout 4 Junk Jet",
     "authors": [],
     "workshop": {
         "visibility": "public",
@@ -11,8 +11,8 @@
     },
     "mods": {
         "JunkJet": {
-            "name": "Fallout JunkJet Mod",
-            "description": ""
+            "name": "Fallout 4 Junk Jet",
+            "description": "Junk Jet fires any junk item loaded into its hopper, such as a toy car. Items must be loaded in manually, and fired items have a chance of being picked up after being shot, making this a ranged weapon with theoretically unlimited ammunition"
         }
     }
 }

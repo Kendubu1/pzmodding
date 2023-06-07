@@ -1,0 +1,35 @@
+module JunkJet
+{
+    imports 
+    {
+        Base
+    }
+
+
+    model JunkJet
+	{
+		mesh = weapons/firearm/JunkJet_Model,
+		texture = weapons/firearm/JunkJet_Texture,
+
+        attachment world
+        {
+            offset = 0.0000 0.0000 0.0000,
+            rotate = 0.0000 0.0000 0.0000,
+        }
+    }
+    
+    
+    model JunkJet_Ammo
+	
+    {
+		mesh = weapons/firearm/JunkJet,
+		texture = weapons/firearm/JunkJet,
+        
+        attachment world
+        {
+            offset = 0.0000 0.0000 0.0000,
+            rotate = 0.0000 0.0000 0.0000,
+        }
+    }
+    
+}

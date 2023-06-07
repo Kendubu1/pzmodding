@@ -1,0 +1,8 @@
+{
+    "Lua.diagnostics.globals": [
+        "getPlayer",
+        "Events",
+        "Recipe",
+        "junkJetAmmoLoad"
+    ]
+}

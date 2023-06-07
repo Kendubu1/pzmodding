@@ -1,0 +1,5 @@
+ItemName_EN = {
+	ItemName_JunkJet.JunkJet_Weapon = "Junk Jet",
+	ItemName_JunkJet.JunkJet_Ammo = "Junk Jet Ammo",
+	ItemName_JunkJet.JunkJet_Drum = "Junk Jet Drum",
+}
