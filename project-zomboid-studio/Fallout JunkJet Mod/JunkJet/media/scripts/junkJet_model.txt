@@ -8,8 +8,8 @@ module JunkJet
 
     model JunkJet
 	{
-		mesh = weapons/firearm/JunkJet_Model,
-		texture = weapons/firearm/JunkJet_Texture,
+		mesh = weapons/firearm/JunkJet,
+		texture = weapons/firearm/JunkJet,
 
         attachment world
         {
@@ -22,8 +22,9 @@ module JunkJet
     model JunkJet_Ammo
 	
     {
-		mesh = weapons/firearm/JunkJet,
-		texture = weapons/firearm/JunkJet,
+		mesh = WorldItems/JunkJet_Ammo,
+		texture = WorldItems/JunkJet_Ammo,
+        scale = 0.4,
         
         attachment world
         {

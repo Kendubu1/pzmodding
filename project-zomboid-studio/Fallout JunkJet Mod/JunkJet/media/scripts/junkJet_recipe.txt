@@ -7,10 +7,12 @@ module JunkJet
 
     recipe Make JunkJet Ammo
     {
-        ToyCar/Doll/Bullets38/Bullets44/Bullets45/Bullets9mm/556Bullets/308Bullets/223Bullets/ShotgunShells,
+        Money/Bell/Button/CatToy/ChessBlack/ChessWhite/Cologne/Crayons/CreditCard/DogChew/KnittingNeedles/Leash/Perfume/Pinecone/RubberBand/ToiletPaper/ToyCar/WaterDish/Bricktoys/Frame/Rubberducky/Rubberducky2/Doll/Cork/Corkscrew/Toothbrush/Toothpaste/CardDeck/Comb/Dice/Cube/Locket/Razor/ToyBear/Wallet/Wallet2/Wallet3/Wallet4/Yoyo/BeerCanEmpty/PopEmpty/Pop2Empty/Pop3Empty/Camera/CameraDisposable/CameraExpensive/CameraFilm/Chopsticks/Plate/PlateBlue/PlateOrange/PlateFancy/PaperNapkins/Straw/PlasticTray/FountainCup/CuttingBoardPlastic/CuttingBoardWooden/GamePieceBlack/GamePieceRed/GamePieceWhite/CheckerBoard/BackgammonBoard/PokerChips/Stapler/HolePuncher/Belt/KatePic/JamesPic/HankPic/MariannePic/ChrisPic/CortmanPic/BobPic/CaseyPic/Cigarettes/Baseball/Basketball/Dart/Football/GolfBall/SoccerBall/TennisBall/Football2/PoolBall,
         Result:JunkJet_Ammo=1,
         Time:10.0,
         OnCreate:Recipe.OnCreate.junkJetAmmoLoad,
+		NeedToBeLearn:True,
+
     }
 
     recipe Make JunkJet 
@@ -31,9 +33,9 @@ module JunkJet
 		Result:JunkJet_Weapon,
 		Time:3000,
 		Category:Weapons,
-		/* SkillRequired:MetalWelding=9;Electricity=10, */
+		/* SkillRequired:MetalWelding=3;Electricity=3, */
 		OnGiveXP:Recipe.OnGiveXP.MetalWelding25,
-		NeedToBeLearn:false,
+		NeedToBeLearn:True,
 	}
     
 }

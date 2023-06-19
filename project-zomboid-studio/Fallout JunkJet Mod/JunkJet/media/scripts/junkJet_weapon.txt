@@ -95,12 +95,26 @@ module JunkJet
         DisplayName = Junk Jet Ammo,
         DisplayCategory = Ammo,
         Count = 1,
-        Icon = JunkJet,
+        Icon = JunkJet_Ammo,
+        StaticModel = JunkJet_Ammo,
         Weight = 0.1,
         Type = Normal,
-        WorldStaticModel = JunkJet,
+        WorldStaticModel = JunkJet_Ammo,
         Tooltip = Tooltip_JunkJetAmmo,
 
+    }
+    
+    item JunkJet_Mag
+    {
+        DisplayCategory = SkillBook,
+        Weight = 0.1,
+        Type = Literature,
+        DisplayName = Vault Dwellers Builder Guide: Junk Jet,
+        Icon = MagazineBlacksmith4,
+        TeachedRecipes = Make JunkJet;Make JunkJet Ammo,
+        ReplaceOnUse = JunkJet_Mag,
+        StaticModel = Magazine,
+        WorldStaticModel = MagazineGround,
     }
 
 }
