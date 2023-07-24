@@ -1,3 +1,1 @@
-[h1]Fallout 4 Junk Jet[/h1]
-
-Junk Jet fires any junk item loaded into its hopper, such as a toy car. Items must be loaded in manually, and fired items have a chance of being picked up after being shot, making this a ranged weapon with theoretically unlimited ammunition
+Unleash the marvel of a vault dweller's ingenuity with the Junk Jet Mod for Project Zomboid, where any scavenged junk item becomes a potent projectile, transforming your scavenging prowess into a source of unlimited ammunition.

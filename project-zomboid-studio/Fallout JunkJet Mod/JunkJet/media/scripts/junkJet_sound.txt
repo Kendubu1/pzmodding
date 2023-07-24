@@ -1,0 +1,17 @@
+module JunkJet
+{
+  sound JunkJet_Shoot
+  {
+    category = Object,
+    clip
+    {
+        file = media/sound/junkjetshoot.wav,
+        distanceMin = 0,
+        distanceMax = 100,
+        reverbMaxRange = 0,
+        reverbFactor = 0,
+        volume = 2.0,
+    }
+  }
+    
+}

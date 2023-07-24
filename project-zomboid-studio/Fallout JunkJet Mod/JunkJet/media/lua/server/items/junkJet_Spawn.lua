@@ -1,3 +1,7 @@
+-- script used to refereces we're items should be spawned in pz
+-- weapon has high chance to be found in garage or police station
+-- mag has low chances to be found in a mailbox & high chance in libray or bookstore
+
 require 'Items/ProceduralDistributions'
 require 'Items/Distributions'
 

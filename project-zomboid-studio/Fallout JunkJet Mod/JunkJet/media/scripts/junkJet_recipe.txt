@@ -17,14 +17,13 @@ module JunkJet
 
     recipe Make JunkJet 
     {
-		SmallSheetMetal=20,
+		SmallSheetMetal=5,
 		SheetMetal=4,
-		Plank=2,
 		MetalPipe/LeadPipe = 8,
-		Screws=45,
-		Nails=25,
-		Wire=5,
-		destroy CarBattery1/CarBattery2/CarBattery3,		
+		Screws=15,
+		Nails=15,
+		Wire=1,
+		destroy CarBattery1,		
 		BlowTorch=90,
 		keep WeldingMask,
 		keep [Recipe.GetItemTypes.Hammer],
@@ -33,7 +32,7 @@ module JunkJet
 		Result:JunkJet_Weapon,
 		Time:3000,
 		Category:Weapons,
-		/* SkillRequired:MetalWelding=3;Electricity=3, */
+		/* SkillRequired:MetalWelding=1;Electricity=2, */
 		OnGiveXP:Recipe.OnGiveXP.MetalWelding25,
 		NeedToBeLearn:True,
 	}
