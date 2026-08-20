@@ -81,6 +81,21 @@ function stubs.install(flags)
     end
     function getText(key) return key end
     function getPlayer() return stubs.player end
+    function getSpecificPlayer() return stubs.player end
+    function isDebugEnabled() return stubs.debug == true end
+
+    -- A context menu that records what was added to it.
+    function stubs.newContextMenu()
+        local menu = { options = {} }
+        function menu:addOption(name, target, onClick, a, b)
+            local entry = { name = name, target = target, onClick = onClick, a = a, b = b }
+            table.insert(self.options, entry)
+            return entry
+        end
+        function menu:addSubMenu(option, sub) option.sub = sub end
+        return menu
+    end
+    ISContextMenu = { getNew = function() return stubs.newContextMenu() end }
     -- No world: every square is "not loaded", which is exactly the case the
     -- blast engine has to survive without complaining.
     function getCell() return stubs.cell end
@@ -105,6 +120,7 @@ function stubs.loadMod(base)
     dofile(base .. "server/NukeStrike_Zones.lua")
     dofile(base .. "client/NukeStrike_Client.lua")
     dofile(base .. "client/NukeStrike_Commands.lua")
+    dofile(base .. "client/NukeStrike_ContextMenu.lua")
 end
 
 --------------------------------------------------------------------------------

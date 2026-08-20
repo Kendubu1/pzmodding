@@ -27,6 +27,7 @@ local HELP = {
     "  /nuke coords             print your own coordinates",
     "  /nuke abort              call back an inbound strike",
     "  /nuke clear              forget every strike, and clear the haze",
+    "You can also right-click any square and use the Nuke Strike menu.",
 }
 
 ---@param text string

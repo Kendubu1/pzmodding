@@ -35,6 +35,22 @@ Workshop item — the client half draws the flash and the haze, so a player with
 it will see a building fall over in silence. Restart after installing; mods are
 not hot-loadable.
 
+## Two ways to set one off
+
+**Right-click the ground.** A **Nuke Strike** submenu appears on any square, with
+*Call a strike on x, y*, *Roll the die for x, y*, and *Call one with no warning*.
+The coordinates on the labels are the square you clicked. This is the trigger to
+use in single player, which has no dependable chat box, and it is the quickest
+one anywhere: point at the spot and click.
+
+**Type `/nuke`.** Press **T** or **Enter** to open chat on a server, then type the
+command. This is the one you want when the coordinates came off a map rather than
+off your screen — you cannot right-click a place you are not standing near.
+
+The menu only shows for people who could call a strike anyway, but that is a
+courtesy rather than a lock: the server checks again when the command arrives,
+and its answer is the one that counts.
+
 ## Commands
 
 Anyone can type these. The server decides whether to listen, and by default only
@@ -161,7 +177,7 @@ NukeStrike/
         └── lua/
             ├── shared/       gating, options, geometry, command parsing, networking
             ├── server/       Zones (what has been nuked), Blast (doing it), Server (commands, fallout)
-            └── client/       Client (flash, sound, haze overlay), Commands (/nuke)
+            └── client/       Client (flash, sound, haze overlay), Commands (/nuke), ContextMenu (right-click)
 ```
 
 Build 42 only loads files from the version folder matching the running build, and
