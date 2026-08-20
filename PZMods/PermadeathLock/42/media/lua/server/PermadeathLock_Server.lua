@@ -29,6 +29,20 @@ local MODULE = PL.MODULE
 ---@type table<string, integer>
 local strikes = {}
 
+-- Players an admin has taken off the list while their character was still lying
+-- dead in the world.
+--
+-- The sweep records any dead player it finds who has no record, so without this
+-- a pardon is quietly undone about a minute after it is given: the corpse is
+-- still standing there, the sweep sees a dead player with no record, and puts
+-- them straight back on the list. The player then makes a new character and is
+-- blocked by a lock they were told had been lifted.
+--
+-- The flag is dropped the moment they are seen alive again - that is their new
+-- character, and any death after it counts normally.
+---@type table<string, boolean>
+local forgiven = {}
+
 --------------------------------------------------------------------------------
 -- helpers
 --------------------------------------------------------------------------------
@@ -182,6 +196,10 @@ local function recordDeath(player, reason)
     if token == nil and not remembered then
         local record = Store.record(player, reason)
         if record ~= nil then
+            -- Tell them what just happened. Without this the only sign that the
+            -- lock has closed is being thrown off the server when they try to
+            -- make a new character, which reads as a crash rather than a rule.
+            sendServerCommand(player, MODULE, "fateSealed", {})
             print("[PermadeathLock] " .. record.username .. " died (" .. reason
                 .. ") and is locked out. No Fate Token on the body or in their last living inventory.")
         end
@@ -217,24 +235,35 @@ end
 ---@param player IsoPlayer
 ---@param record table
 local function applyRestore(player, record)
-    local raised = 0
+    local restored, missing = 0, {}
     if PL.getOption("RestoreSkillsOnRevive", true) then
-        raised = Store.applySkills(player, record.skills)
+        restored, missing = Store.applySkills(player, record.skills)
     end
     Store.finishRestore(record.username)
     strikes[PL.key(record.username)] = nil
+    forgiven[PL.key(record.username)] = nil
 
     local source = "An admin brought you back."
     if record.reason == PL.REASON_TOKEN then
         source = "Your Fate Token paid for this life."
     end
 
-    if raised > 0 then
-        tell(player, source .. " " .. raised .. " skill(s) restored from your last character.")
+    if restored > 0 then
+        tell(player, source .. " " .. restored .. " skill(s) restored from your last character.")
     else
         tell(player, source .. " Try to stay alive this time.")
     end
-    print("[PermadeathLock] Restored " .. record.username .. " (" .. raised .. " skills).")
+
+    print("[PermadeathLock] Restored " .. record.username .. " (" .. restored .. " skills).")
+    -- Loud on purpose. A perk in the snapshot that the game no longer knows
+    -- about - a mod removed since the death, or a renamed vanilla perk - is
+    -- silently dropped, and the player is the last person who should have to
+    -- work that out.
+    if #missing > 0 then
+        print("[PermadeathLock] WARNING: " .. #missing .. " perk(s) in "
+            .. record.username .. "'s snapshot no longer exist and were skipped: "
+            .. table.concat(missing, ", "))
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -259,19 +288,25 @@ local function checkPlayer(player)
 
     if PL.isExempt(player) then return end
 
+    local key = PL.key(username)
+
     if player:isDead() then
-        recordDeath(player, "died")
+        -- Pardoned since they died: leave the corpse alone rather than putting
+        -- them back on the list they were just taken off.
+        if not forgiven[key] then recordDeath(player, "died") end
         return
     end
 
-    -- Alive: note whether they are carrying a token, so a death spotted after
-    -- the corpse has taken the inventory still counts.
+    -- Alive: this is a new character, so an earlier pardon has done its job.
+    forgiven[key] = nil
+
+    -- Note whether they are carrying a token, so a death spotted after the
+    -- corpse has taken the inventory still counts.
     rememberToken(player)
 
     if record == nil or not record.locked then return end
 
     -- Alive while locked out means they made a new character. Ask once, then act.
-    local key = PL.key(username)
     strikes[key] = (strikes[key] or 0) + 1
 
     if strikes[key] == 1 then
@@ -360,8 +395,23 @@ local function commandPardon(admin, target)
         tell(admin, target .. " is not on the death list.")
         return
     end
-    strikes[PL.key(target)] = nil
+    local key = PL.key(target)
+    strikes[key] = nil
+
     tell(admin, target .. " pardoned. They may rejoin with a fresh character.")
+
+    -- Only flagged when they are online AND dead right now, which is the case
+    -- the flag exists for. Setting it for an offline player would also excuse a
+    -- fresh death in the minute after they reconnect.
+    local online = findOnline(target)
+    if online ~= nil and online:isDead() then
+        forgiven[key] = true
+        -- Worth saying out loud: a pardon does not stand their character back
+        -- up, and an admin watching the corpse not move assumes it did nothing.
+        tell(admin, "Their current character is still dead - the game gives no way to undo that. They")
+        tell(admin, "need to reconnect and make a new one; they will not be blocked.")
+    end
+
     print("[PermadeathLock] " .. admin:getUsername() .. " pardoned " .. target .. ".")
 end
 
@@ -424,6 +474,10 @@ local function handleAdmin(player, args)
         commandList(player)
     elseif sub == "listdata" then
         commandListData(player)
+    elseif sub == "ui" then
+        -- Normally the client opens the panel itself without a round trip. This
+        -- branch catches an older client, and keeps the help text honest.
+        sendServerCommand(player, MODULE, "openUI", {})
     elseif sub == "revive" then
         commandRevive(player, target)
     elseif sub == "pardon" then
@@ -442,6 +496,19 @@ local function handleAdmin(player, args)
         else
             local removed = Store.clear()
             strikes = {}
+            -- Same trap as a single pardon, for everyone at once: any online
+            -- player currently lying dead would be re-recorded by the next
+            -- sweep, undoing the wipe a minute after it happened.
+            forgiven = {}
+            local players = getOnlinePlayers()
+            if players ~= nil then
+                for i = 0, players:size() - 1 do
+                    local other = players:get(i)
+                    if other ~= nil and other:isDead() then
+                        forgiven[PL.key(other:getUsername())] = true
+                    end
+                end
+            end
             tell(player, "Death list cleared (" .. removed .. " record(s) removed).")
             print("[PermadeathLock] " .. player:getUsername() .. " cleared the death list.")
         end

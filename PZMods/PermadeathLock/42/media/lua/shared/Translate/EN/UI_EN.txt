@@ -1,5 +1,0 @@
--- getText resolves a key from the table its prefix names, so every IGUI_ key
--- has to live in IGUI_EN.txt. Keeping them here meant the game found nothing
--- and printed the key itself back at the player.
-UI_EN = {
-}

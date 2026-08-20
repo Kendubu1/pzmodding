@@ -14,14 +14,23 @@ Events = setmetatable({}, { __index = function(t, k)
     return handlers
 end })
 
--- Perk stubs: three perks, ids matching what a snapshot would store.
-local function makePerk(id)
+-- Perk stubs. The id and the display name are DELIBERATELY different for
+-- Woodwork, because they are in the real game ("Woodwork" / "Carpentry") and
+-- the mod once snapshotted one and looked the other up. getPerkFromName matches
+-- the display name only, exactly like PerkFactory does, so a restore that goes
+-- through it finds nothing for that perk.
+local function makePerk(id, displayName)
     return {
         getId = function() return id end,
+        getName = function() return displayName or id end,
         getType = function() return "TYPE_" .. id end,
     }
 end
-local perkList = { makePerk("Woodwork"), makePerk("Aiming"), makePerk("Fitness") }
+local perkList = {
+    makePerk("Woodwork", "Carpentry"),
+    makePerk("Aiming", "Aiming"),
+    makePerk("Fitness", "Fitness"),
+}
 PerkFactory = {
     PerkList = {
         size = function() return #perkList end,
@@ -29,7 +38,7 @@ PerkFactory = {
     },
     getPerkFromName = function(name)
         for _, perk in ipairs(perkList) do
-            if perk.getId() == name then return perk end
+            if perk.getName() == name then return perk end
         end
         return nil
     end,
@@ -126,12 +135,32 @@ check("unlocked state survives reload", Store.isLocked("Bob"), false)
 
 -- 5. applying the restore to a fresh character
 local newBob = makePlayer("Bob", { TYPE_Aiming = 5 })
-local raised = Store.applySkills(newBob, Store.get("Bob").skills)
-check("perks raised", raised, 1)
+local restored, missing = Store.applySkills(newBob, Store.get("Bob").skills)
+-- REGRESSION: Woodwork is stored by id and its display name is "Carpentry".
+-- Resolving the snapshot through getPerkFromName found nothing for it, so the
+-- level was never given back.
+check("perk stored by id is restored", newBob._levels.TYPE_Woodwork, 4)
 check("lower saved level does not demote", newBob._levels.TYPE_Aiming, 5)
-check("higher saved level is restored", newBob._levels.TYPE_Woodwork, 4)
+-- The count is every perk the character now holds at the recorded level, not
+-- just the ones that had to be raised: Aiming was already high enough and still
+-- counts, because it was restored as promised.
+check("count includes perks already high enough", restored, 2)
+check("nothing reported missing", #missing, 0)
 Store.finishRestore("Bob")
 check("record gone after restore", Store.get("Bob"), nil)
+
+-- 5b. a snapshot naming a perk the game no longer has is reported, not silently
+-- dropped
+local ghost = makePlayer("Ghost", {})
+local ghostRestored, ghostMissing = Store.applySkills(ghost, { Aiming = 3, Sorcery = 4 })
+check("known perk still restored", ghost._levels.TYPE_Aiming, 3)
+check("unknown perk not counted as restored", ghostRestored, 1)
+check("unknown perk reported missing", ghostMissing[1], "Sorcery")
+
+-- 5c. display names in a hand-edited file still resolve
+local handEdited = makePlayer("Hand", {})
+Store.applySkills(handEdited, { Carpentry = 6 })
+check("display name resolves too", handEdited._levels.TYPE_Woodwork, 6)
 
 -- 6. manual add / pardon / clear
 Store.addManual("Carl", "added by admin")

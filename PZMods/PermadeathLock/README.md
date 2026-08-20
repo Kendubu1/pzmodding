@@ -70,6 +70,21 @@ the mod uses two paths:
 | Client handshake | `OnPlayerDeath`, `OnCreatePlayer` | Reports the death, asks for status on spawn. Gives the player a readable notice and disconnects them. |
 | Server sweep | `EveryOneMinute` over `getOnlinePlayers()` | Records any dead player, and catches anyone locked out who is walking around. |
 
+### What the player sees
+
+Three notices, all modal dialogs rather than chat lines — two of them land while
+the player is dead and the chat window is not on screen behind the death UI.
+
+| When | Message |
+| --- | --- |
+| Died with no token | Their fate has been decided; wait and pray for a pardon. |
+| Died with a token | The token burned away; they are not locked out. |
+| Blocked on spawn | Why they cannot play, and that an admin can lift it. Disconnects after 12s. |
+
+The two death-time notices sit *below* the middle of the screen, clear of the
+death screen's own scrolling text and above its "continue with a new character"
+buttons. The block notice is centred; there is nothing behind it.
+
 The handshake is the polite path and the sweep is the authoritative one. A player
 running a modified client that never reports its death is still caught by the
 sweep within one in-game minute: they are asked to leave, and if they are still
@@ -118,6 +133,11 @@ name, how long ago they died, their state, and how many skills are held for
 them. Select a row and use **Pardon** or **Revive**; **Refresh** re-reads from
 the server and **Clear all** wipes the list behind a confirmation.
 
+The client opens the panel itself rather than asking the server to; the server
+has no `ui` subcommand to fall through to, and when the client-side handling
+went missing in 1.3.0 the symptom was the command silently printing the help
+text.
+
 It is only a face on the chat commands. Every button sends the same message the
 typed command does, and the server re-checks the sender's access level before
 acting, so the panel grants nothing.
@@ -150,9 +170,21 @@ levels the dead one had.
 
 `pardon` just removes them from the list — they come back with nothing.
 
+Pardoning someone whose character is *still lying dead in the world* does not
+stand that character back up; nothing can. They have to reconnect and make a new
+one, and the command says so. Their corpse is left alone by the sweep from then
+on, so the pardon is not quietly undone a minute later.
+
 Skills are restored, not overwritten: a level the new character already exceeds is
-left alone. Traits, profession and inventory are **not** restored — traits are not
-readable from the Lua API in B42, and inventory would need item serialisation.
+left alone, and it still counts as restored — they have the level the dead
+character had, which is what was promised. Experience part-way through a level is
+not carried over. Traits, profession and inventory are **not** restored — traits
+are not readable from the Lua API in B42, and inventory would need item
+serialisation.
+
+A perk in an old snapshot that the game no longer knows about (a mod removed
+since the death, a renamed vanilla perk) is skipped and named in the server log
+rather than being dropped in silence.
 
 ## The Fate Token
 
@@ -171,7 +203,14 @@ times over in a single death — but the other two are still on the body.
 It shows in the inventory under its own **Fate** category. That category is the
 mod's, not a vanilla one: naming a vanilla category Build 42 has since dropped
 makes the inventory print the raw translation key (`IGUI_ItemCat_Misc`) instead
-of a name. Shipping our own key in `IGUI_EN.txt` cannot go stale that way.
+of a name. Shipping our own key cannot go stale that way.
+
+The label lives in `Translate/EN/IG_UI_EN.txt`, and **the file name is not a
+typo**. The game maps a fixed set of translation file names onto table names;
+`IGUI` is not one of them, so a file called `IGUI_EN.txt` is never read at all
+and every key in it renders as its own name. The table inside is still
+`IGUI_EN = { ... }`. This cost a release: the category showed as
+`IGUI_ItemCat_Fate` until the file was renamed.
 
 ### Handing them out
 
@@ -209,6 +248,9 @@ identification only — matching is always by username.
 
 ## Testing it
 
+0. Confirm the console says `[PermadeathLock] Server module 1.4.0 loaded.` before
+   anything else. Testing an older copy that is still sitting in `Zomboid/mods/`
+   looks exactly like a fix not working.
 1. Start with `ExemptAdmins` **off** (otherwise you will never trigger it as an
    admin, and hosts are always admins).
 2. Join, then get yourself killed — there is no vanilla `/kill` command, so use
@@ -223,6 +265,10 @@ identification only — matching is always by username.
 6. For the Fate Token: `/additem <name> Base.FateToken`, die again, and check the
    console says `died holding a Fate Token; not locked out`. You should be able to
    reconnect straight away, with your skills.
+7. For the pardon path: die, then `/permadeath pardon <name>` while your corpse is
+   still in the world. Wait two in-game minutes, run `/permadeath list`, and
+   confirm you are **not** back on it. Then make a new character and confirm you
+   are let in.
 
 Server-side messages are prefixed `[PermadeathLock]` in the console log.
 

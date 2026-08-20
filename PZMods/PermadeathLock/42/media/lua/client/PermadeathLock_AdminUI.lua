@@ -170,6 +170,26 @@ end
 function PermadeathLockUI:onPardon() self:actOnSelection("pardon") end
 function PermadeathLockUI:onRevive() self:actOnSelection("revive") end
 
+function PermadeathLockUI:onRefresh()
+    self.status:setName("Refreshing...")
+    send("listData", nil)
+end
+
+--- Wiping the list is the one action here that cannot be undone, so it asks.
+--- Both this and onRefresh were referenced by createChildren but never defined,
+--- which left the panel's whole second row of buttons dead.
+function PermadeathLockUI:onClearAll()
+    local width, height = 340, 150
+    local x = (getCore():getScreenWidth() - width) / 2
+    local y = (getCore():getScreenHeight() - height) / 2
+
+    local modal = ISModalDialog:new(x, y, width, height,
+        "Wipe the entire death list? Everyone on it may return with a new character.",
+        true, self, PermadeathLockUI.onClearAllConfirm)
+    modal:initialise()
+    modal:addToUIManager()
+end
+
 ---@param button ISButton
 function PermadeathLockUI:onClearAllConfirm(button)
     if button.internal ~= "YES" then return end

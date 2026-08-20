@@ -30,14 +30,20 @@ function getOnlinePlayers()
     return { size = function() return #online end, get = function(_, i) return online[i + 1] end }
 end
 
-local function makePerk(id)
-    return { getId = function() return id end, getType = function() return "TYPE_" .. id end }
+-- As in test_store: the id and the display name differ, because they do in the
+-- real game, and getPerkFromName matches the display name only.
+local function makePerk(id, displayName)
+    return {
+        getId = function() return id end,
+        getName = function() return displayName or id end,
+        getType = function() return "TYPE_" .. id end,
+    }
 end
-local perkList = { makePerk("Woodwork"), makePerk("Aiming") }
+local perkList = { makePerk("Woodwork", "Carpentry"), makePerk("Aiming", "Aiming") }
 PerkFactory = {
     PerkList = { size = function() return #perkList end, get = function(_, i) return perkList[i + 1] end },
     getPerkFromName = function(name)
-        for _, p in ipairs(perkList) do if p.getId() == name then return p end end
+        for _, p in ipairs(perkList) do if p.getName() == name then return p end end
     end,
 }
 
@@ -236,6 +242,23 @@ sweep()
 check("second death re-locks them", Store.isLocked("Dee"), true)
 
 --------------------------------------------------------------------------------
+io.write("\n-- the notice sent at the moment of death --\n")
+
+reset()
+sent = {}
+local pat = makePlayer("Pat", { dead = true })
+online = { pat }
+sweep()
+check("dying with no token is announced to the player", lastCommandTo("Pat"), "fateSealed")
+
+reset()
+sent = {}
+local quin = makePlayer("Quin", { dead = true, tokens = 1 })
+online = { quin }
+sweep()
+check("dying with a token announces the token instead", lastCommandTo("Quin"), "tokenSpent")
+
+--------------------------------------------------------------------------------
 io.write("\n-- admin command authorisation --\n")
 
 reset()
@@ -256,6 +279,50 @@ onClientCommand(MODULE, "admin", admin, { sub = "clear" })
 check("clear without confirm is refused", Store.count(), 2)
 onClientCommand(MODULE, "admin", admin, { sub = "clear", target = "confirm" })
 check("clear with confirm wipes", Store.count(), 0)
+
+-- REGRESSION: pardoning a player whose character is still lying dead in the
+-- world used to be undone by the very next sweep. The sweep records any dead
+-- player it finds with no record, so a minute after the pardon they were back
+-- on the list - and were then blocked when they made a new character, which is
+-- exactly the "I cleared myself and still cannot spawn in" report.
+reset()
+local rae = makePlayer("Rae", { dead = true })
+online = { rae }
+sweep()
+check("Rae is locked out after dying", Store.isLocked("Rae"), true)
+onClientCommand(MODULE, "admin", admin, { sub = "pardon", target = "Rae" })
+check("pardon takes them off the list", Store.get("Rae"), nil)
+sweep()                                   -- corpse still standing there
+check("the next sweep does not re-record them", Store.get("Rae"), nil)
+sweep()
+check("nor the sweep after that", Store.get("Rae"), nil)
+
+-- and once they are back on their feet a fresh death counts again
+rae._dead = false
+sweep()
+rae._dead = true
+sweep()
+check("a death after the pardon still locks them", Store.isLocked("Rae"), true)
+
+-- the same trap for a whole-list wipe
+reset()
+local sam = makePlayer("Sam", { dead = true })
+online = { sam }
+sweep()
+check("Sam is locked out after dying", Store.isLocked("Sam"), true)
+onClientCommand(MODULE, "admin", admin, { sub = "clear", target = "confirm" })
+sweep()
+check("clear all is not undone by the next sweep", Store.count(), 0)
+
+-- but pardoning someone who is OFFLINE must not excuse a later death
+reset()
+Store.addManual("Tess", "test")
+online = {}
+onClientCommand(MODULE, "admin", admin, { sub = "pardon", target = "Tess" })
+local tess = makePlayer("Tess", { dead = true })
+online = { tess }
+sweep()
+check("offline pardon does not excuse the next death", Store.isLocked("Tess"), true)
 
 -- reviving someone who is online and alive heals them on the spot
 reset()

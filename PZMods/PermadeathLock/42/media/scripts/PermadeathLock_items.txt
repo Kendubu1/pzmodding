@@ -8,9 +8,11 @@ module Base
         Build 42 item syntax - ItemType replaces Build 41's Type.
 
         DisplayCategory is the mod's own category, not a vanilla one, and its
-        label ships in IGUI_EN.txt. Naming a vanilla category that Build 42 has
-        since dropped shows the raw key in the inventory instead of a name -
-        "Misc" rendered as IGUI_ItemCat_Misc.
+        label ships as IGUI_ItemCat_Fate in Translate/EN/IG_UI_EN.txt. Note the
+        file name: the game does not read a file called IGUI_EN.txt, so a label
+        put there shows as its own key. Naming a vanilla category that Build 42
+        has since dropped fails the same way - "Misc" rendered as
+        IGUI_ItemCat_Misc.
     */
     item FateToken
     {
