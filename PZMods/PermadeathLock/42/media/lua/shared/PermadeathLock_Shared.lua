@@ -9,7 +9,7 @@
 PermadeathLock = PermadeathLock or {}
 local PL = PermadeathLock
 
-PL.VERSION = "1.0.1"
+PL.VERSION = "1.0.2"
 
 -- Module name used by sendClientCommand / sendServerCommand.
 PL.MODULE = "PermadeathLock"

@@ -59,7 +59,7 @@ end
 
 --- An inventory holding `tokens` copies of the Fate Token. Removal goes through
 --- the item's own container, mirroring how the mod spends one.
-local function makeInventory(owner, tokens)
+local function makeInventory(owner, tokens, nativeLookupBlind)
     local items = {}
     local container
     container = {
@@ -68,18 +68,26 @@ local function makeInventory(owner, tokens)
                 if held == item then table.remove(items, i) return end
             end
         end,
+        -- nativeLookupBlind mimics getItemsFromFullType not reaching the item,
+        -- which forces the hand-rolled scan to be the thing that finds it.
         getItemsFromFullType = function(_, fullType, _includeInv)
             local hits = {}
-            for _, item in ipairs(items) do
-                if item.getFullType() == fullType then hits[#hits + 1] = item end
+            if not nativeLookupBlind then
+                for _, item in ipairs(items) do
+                    if item.getFullType() == fullType then hits[#hits + 1] = item end
+                end
             end
             return { size = function() return #hits end, get = function(_, i) return hits[i + 1] end }
+        end,
+        getItems = function()
+            return { size = function() return #items end, get = function(_, i) return items[i + 1] end }
         end,
     }
     for _ = 1, tokens or 0 do
         items[#items + 1] = {
             getFullType = function() return "Base.FateToken" end,
             getContainer = function() return container end,
+            getInventory = function() error("not a container") end,
         }
     end
     owner._items = items
@@ -107,7 +115,7 @@ local function makePlayer(username, opts)
         end,
     }
     self.getInventory = function() return self._container end
-    self._container = makeInventory(self, opts.tokens)
+    self._container = makeInventory(self, opts.tokens, opts.nativeLookupBlind)
     return self
 end
 
@@ -318,6 +326,36 @@ local kim = makePlayer("Kim", { dead = true, tokens = 1 })
 onClientCommand(MODULE, "reportDeath", kim, {})
 check("reportDeath honours the token", Store.isLocked("Kim"), false)
 check("reportDeath consumes the token", #kim._items, 0)
+
+-- the hand-rolled scan finds it when the native lookup does not
+reset()
+local lena = makePlayer("Lena", { dead = true, tokens = 1, nativeLookupBlind = true })
+online = { lena }
+sweep()
+check("manual scan finds the token", Store.isLocked("Lena"), false)
+check("manual scan consumes the token", #lena._items, 0)
+
+-- REGRESSION: the corpse has already taken the inventory by the time the sweep
+-- notices the death. The token must still count, from the last living sweep.
+reset()
+local milo = makePlayer("Milo", { levels = { TYPE_Aiming = 4 }, tokens = 1 })
+online = { milo }
+sweep()                                   -- seen alive, carrying a token
+milo._dead = true
+milo._container = makeInventory(milo, 0)  -- corpse took everything
+sweep()
+check("death after inventory moved still counts", Store.isLocked("Milo"), false)
+check("remembered save still queues a restore", Store.get("Milo").pendingRestore, true)
+check("remembered save keeps the skills", Store.get("Milo").skills["Aiming"], 4)
+
+-- but an empty-handed player is still locked out, cache or no cache
+reset()
+local nia = makePlayer("Nia", { tokens = 0 })
+online = { nia }
+sweep()
+nia._dead = true
+sweep()
+check("no token means locked out", Store.isLocked("Nia"), true)
 
 --------------------------------------------------------------------------------
 io.write("\n-- disabling the mod --\n")

@@ -44,18 +44,26 @@ local function onDialogClosed()
     leaveServer()
 end
 
+--- Centred modal. Used rather than chat because both notices land while the
+--- player is dead, and the chat window is not on screen behind the death UI.
+---@param text string
+---@param onClose function?
+local function showNotice(text, onClose)
+    local width, height = 520, 220
+    local x = (getCore():getScreenWidth() - width) / 2
+    local y = (getCore():getScreenHeight() - height) / 2
+
+    local modal = ISModalDialog:new(x, y, width, height, text, false, nil, onClose)
+    modal:initialise()
+    modal:addToUIManager()
+end
+
 ---@param text string
 local function showBlockNotice(text)
     if booting then return end
     booting = true
 
-    local width, height = 520, 220
-    local x = (getCore():getScreenWidth() - width) / 2
-    local y = (getCore():getScreenHeight() - height) / 2
-
-    local modal = ISModalDialog:new(x, y, width, height, text, false, nil, onDialogClosed)
-    modal:initialise()
-    modal:addToUIManager()
+    showNotice(text, onDialogClosed)
 
     -- Backstop: leave even if the notice is never dismissed.
     Events.OnTick.Add(bootTick)
@@ -86,6 +94,9 @@ local function onServerCommand(module, command, args)
 
     if command == "blocked" then
         showBlockNotice(getText("IGUI_PermadeathLock_Blocked"))
+    elseif command == "tokenSpent" then
+        -- Arrives at the moment of death, so it has to be a modal.
+        showNotice(getText("IGUI_PermadeathLock_TokenSpent"), nil)
     elseif command == "message" then
         local text = args and args.text
         if text ~= nil and text ~= "" then

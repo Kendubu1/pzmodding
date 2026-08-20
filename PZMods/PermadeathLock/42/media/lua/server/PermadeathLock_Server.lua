@@ -80,6 +80,42 @@ end
 -- fate tokens
 --------------------------------------------------------------------------------
 
+-- Whether each player was carrying a token when last seen ALIVE. A death is
+-- often only noticed by the sweep a second or two after the fact, by which time
+-- the corpse has taken the inventory and the token is no longer reachable from
+-- the player. Without this, a token that was definitely being carried finds
+-- nothing and the player is wrongly locked out.
+---@type table<string, boolean>
+local carriedToken = {}
+
+local scanForToken
+
+--- Walk a container and its bags by hand. A backstop for the native lookup,
+--- which we do not want to depend on for reaching inside nested containers.
+---@param container ItemContainer?
+---@param depth integer
+---@return InventoryItem?
+scanForToken = function(container, depth)
+    if container == nil or depth > 3 then return nil end
+
+    local items = container:getItems()
+    if items == nil then return nil end
+
+    for i = 0, items:size() - 1 do
+        local item = items:get(i)
+        if item ~= nil then
+            if item:getFullType() == PL.FATE_TOKEN then return item end
+            -- Only container items answer getInventory; the rest throw.
+            local ok, nested = pcall(function() return item:getInventory() end)
+            if ok and nested ~= nil then
+                local found = scanForToken(nested, depth + 1)
+                if found ~= nil then return found end
+            end
+        end
+    end
+    return nil
+end
+
 --- Find a Fate Token anywhere on the character, bags included.
 --- Searched by full type so there is no ambiguity with a similarly named item
 --- from another mod.
@@ -89,9 +125,27 @@ local function findFateToken(player)
     local inventory = player:getInventory()
     if inventory == nil then return nil end
 
-    local found = inventory:getItemsFromFullType(PL.FATE_TOKEN, true)
-    if found == nil or found:size() == 0 then return nil end
-    return found:get(0)
+    local ok, found = pcall(function()
+        return inventory:getItemsFromFullType(PL.FATE_TOKEN, true)
+    end)
+    if ok and found ~= nil and found:size() > 0 then return found:get(0) end
+
+    local scanned
+    ok, scanned = pcall(scanForToken, inventory, 0)
+    if ok then return scanned end
+    return nil
+end
+
+--- Note whether a LIVING player is carrying a token. Never called for the dead:
+--- their inventory has usually moved to the corpse, and recording "no token"
+--- then would erase what we learned while they were alive.
+---@param player IsoPlayer
+local function rememberToken(player)
+    if player:isDead() then return end
+
+    local key = PL.key(player:getUsername())
+    if key == nil then return end
+    carriedToken[key] = findFateToken(player) ~= nil
 end
 
 --- Burn the token. Failure is not fatal: the save is already earned, and the
@@ -113,30 +167,45 @@ local function recordDeath(player, reason)
     -- Already on the list: the token was either spent or not needed.
     if Store.get(player:getUsername()) ~= nil then return end
 
-    local token = nil
+    local key = PL.key(player:getUsername())
+    local token, remembered = nil, false
     if PL.getOption("FateTokenEnabled", true) then
         token = findFateToken(player)
+        remembered = carriedToken[key] == true
     end
 
-    if token == nil then
+    if token == nil and not remembered then
         local record = Store.record(player, reason)
         if record ~= nil then
-            print("[PermadeathLock] " .. record.username .. " died (" .. reason .. ") and is locked out.")
+            print("[PermadeathLock] " .. record.username .. " died (" .. reason
+                .. ") and is locked out. No Fate Token on the body or in their last living inventory.")
         end
+        carriedToken[key] = nil
         return
     end
 
-    local burned = true
-    if PL.getOption("FateTokenConsume", true) then
+    local burned = false
+    if token ~= nil and PL.getOption("FateTokenConsume", true) then
         burned = consumeFateToken(token)
     end
 
     local record = Store.record(player, PL.REASON_TOKEN, true)
     if record ~= nil then
-        tell(player, "Your Fate Token burns away. Reconnect and make a new character - what you learned comes with you.")
-        print("[PermadeathLock] " .. record.username .. " died holding a Fate Token; not locked out."
-            .. (burned and "" or " WARNING: the token could not be removed from the body."))
+        -- A modal, not a chat line: this lands as the player dies, and the chat
+        -- window is not on screen behind the death UI.
+        sendServerCommand(player, MODULE, "tokenSpent", {})
+
+        local how
+        if token == nil then
+            how = " Found in their last living inventory, not on the body, so it could not be removed."
+        elseif burned then
+            how = " Token consumed."
+        else
+            how = " WARNING: the token could not be removed from the body."
+        end
+        print("[PermadeathLock] " .. record.username .. " died holding a Fate Token; not locked out." .. how)
     end
+    carriedToken[key] = nil
 end
 
 --- Hand a revived player's queued skills to the character they are now playing.
@@ -189,6 +258,10 @@ local function checkPlayer(player)
         recordDeath(player, "died")
         return
     end
+
+    -- Alive: note whether they are carrying a token, so a death spotted after
+    -- the corpse has taken the inventory still counts.
+    rememberToken(player)
 
     if record == nil or not record.locked then return end
 
@@ -381,6 +454,10 @@ local function onClientCommand(module, command, player, args)
     if PL.isExempt(player) then return end
 
     if command == "reportDeath" then
+        -- The client reports the instant it dies. If the server has not caught
+        -- up yet this is the last chance to see the inventory intact, so take a
+        -- snapshot either way; rememberToken is a no-op once they are dead.
+        rememberToken(player)
         -- Verified against the character's real state rather than taken on trust.
         if player:isDead() then recordDeath(player, "died") end
     end
