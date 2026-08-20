@@ -57,15 +57,14 @@ function PermadeathLockUI:createChildren()
     self:addChild(self.list)
 
     local buttonY = top + 22 + listHeight + PAD
-    local buttonWidth = (self.width - (PAD * 4)) / 3
+    local buttonWidth = (self.width - (PAD * 3)) / 2
 
     self.pardonBtn = self:makeButton(PAD, buttonY, buttonWidth, "Pardon", "onPardon")
     self.reviveBtn = self:makeButton(PAD * 2 + buttonWidth, buttonY, buttonWidth, "Revive", "onRevive")
-    self.bodyBtn = self:makeButton(PAD * 3 + buttonWidth * 2, buttonY, buttonWidth, "Revive at body", "onReviveAtBody")
 
     local secondRow = buttonY + BUTTON_HEIGHT + PAD
     self.refreshBtn = self:makeButton(PAD, secondRow, buttonWidth, "Refresh", "onRefresh")
-    self.clearBtn = self:makeButton(self.width - PAD - buttonWidth, secondRow, buttonWidth, "Clear all", "onClearAll")
+    self.clearBtn = self:makeButton(PAD * 2 + buttonWidth, secondRow, buttonWidth, "Clear all", "onClearAll")
 end
 
 ---@param x number
@@ -103,11 +102,19 @@ function PermadeathLockUI:drawRow(y, item, alt)
     local name = row.username
     if row.online then name = name .. " (online)" end
 
-    self:drawText(name, 8, y + 3, 1, 1, 1, 1, self.font)
-    self:drawText(row.age or "", 190, y + 3, 0.7, 0.7, 0.7, 1, self.font)
-    self:drawText(state, 300, y + 3, r, g, b, 1, self.font)
-    self:drawText(row.skills .. " skills", 430, y + 3, 0.7, 0.7, 0.7, 1, self.font)
-    self:drawText(row.hasBody and "body known" or "-", 510, y + 3, 0.6, 0.6, 0.6, 1, self.font)
+    -- Columns as fractions of the actual width, not fixed pixel offsets. The
+    -- old numbers assumed short text and "under an hour ago" ran straight into
+    -- the state beside it.
+    local width = self:getWidth()
+    local nameX = 8
+    local ageX = math.floor(width * 0.34)
+    local stateX = math.floor(width * 0.60)
+    local skillX = math.floor(width * 0.82)
+
+    self:drawText(name, nameX, y + 3, 1, 1, 1, 1, self.font)
+    self:drawText(row.age or "", ageX, y + 3, 0.7, 0.7, 0.7, 1, self.font)
+    self:drawText(state, stateX, y + 3, r, g, b, 1, self.font)
+    self:drawText(row.skills .. " skills", skillX, y + 3, 0.7, 0.7, 0.7, 1, self.font)
 
     return y + self.itemheight
 end
@@ -162,17 +169,6 @@ end
 
 function PermadeathLockUI:onPardon() self:actOnSelection("pardon") end
 function PermadeathLockUI:onRevive() self:actOnSelection("revive") end
-function PermadeathLockUI:onReviveAtBody() self:actOnSelection("reviveatbody") end
-function PermadeathLockUI:onRefresh() send("listData", nil) end
-
-function PermadeathLockUI:onClearAll()
-    local modal = ISModalDialog:new(0, 0, 320, 130,
-        "Wipe the whole death list? Everyone locked out will be able to return.",
-        true, self, PermadeathLockUI.onClearAllConfirm)
-    modal:initialise()
-    modal:addToUIManager()
-    modal:setAlwaysOnTop(true)
-end
 
 ---@param button ISButton
 function PermadeathLockUI:onClearAllConfirm(button)
@@ -193,7 +189,7 @@ function PermadeathLockUI.open()
         return PermadeathLockUI.instance
     end
 
-    local width, height = 620, 420
+    local width, height = 820, 440
     local x = (getCore():getScreenWidth() - width) / 2
     local y = (getCore():getScreenHeight() - height) / 2
 

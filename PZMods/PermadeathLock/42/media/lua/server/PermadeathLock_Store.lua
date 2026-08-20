@@ -6,12 +6,7 @@
     Zomboid/Lua/ so they survive a restart and can be inspected by hand.
 
     One line per player:
-        username <tab> steamID <tab> timestamp <tab> reason <tab> skills <tab>
-        locked <tab> pendingRestore <tab> x <tab> y <tab> z <tab> atBody <tab>
-        forename <tab> surname <tab> look
-
-    Trailing fields were added after the format shipped. Reading tolerates their
-    absence, so a death list written by an older build still loads.
+        username <tab> steamID <tab> timestamp <tab> reason <tab> skills <tab> locked <tab> pendingRestore
 
     'skills' is a comma separated Perk:Level list, kept so an admin can revive a
     player and hand their next character the levels the dead one had.
@@ -29,7 +24,7 @@ local records = {}
 local loaded = false
 
 local FIELD_SEP = "\t"
-local HEADER = "# PermadeathLock death list - username, steamID, timestamp, reason, skills, locked, pendingRestore, x, y, z, atBody"
+local HEADER = "# PermadeathLock death list - username, steamID, timestamp, reason, skills, locked, pendingRestore"
 
 --------------------------------------------------------------------------------
 -- text helpers
@@ -51,33 +46,6 @@ local function split(str, sep)
         out[#out + 1] = string.sub(str, start, index - 1)
         start = index + #sep
     end
-end
-
---- The appearance blob is opaque and produced by the game, so it may well
---- contain the field separator. Escaped rather than stripped: unlike a reason
---- string, mangling it would produce a face that is subtly wrong.
----@param value string?
----@return string
-local function escapeBlob(value)
-    if value == nil or value == "" then return "" end
-    local text = tostring(value)
-    text = text:gsub("%%", "%%25")
-    text = text:gsub("\t", "%%09")
-    text = text:gsub("\r", "%%0D")
-    text = text:gsub("\n", "%%0A")
-    return text
-end
-
----@param value string?
----@return string?
-local function unescapeBlob(value)
-    if value == nil or value == "" then return nil end
-    local text = tostring(value)
-    text = text:gsub("%%09", "\t")
-    text = text:gsub("%%0D", "\r")
-    text = text:gsub("%%0A", "\n")
-    text = text:gsub("%%25", "%%")
-    return text
 end
 
 --- Strip anything that would break the one-record-per-line format.
@@ -182,13 +150,6 @@ local function serialise(record)
         skills,
         record.locked and "1" or "0",
         record.pendingRestore and "1" or "0",
-        record.x ~= nil and tostring(record.x) or "",
-        record.y ~= nil and tostring(record.y) or "",
-        record.z ~= nil and tostring(record.z) or "",
-        record.atBody and "1" or "0",
-        clean(record.forename),
-        clean(record.surname),
-        escapeBlob(record.look),
     }, FIELD_SEP)
 end
 
@@ -209,16 +170,6 @@ local function deserialise(line)
         -- locked unless the file says otherwise.
         locked = (fields[6] or "1") ~= "0",
         pendingRestore = (fields[7] or "0") == "1",
-        -- Where they fell. nil for anything recorded before this was tracked,
-        -- which is why every reader has to cope with not knowing.
-        x = tonumber(fields[8]),
-        y = tonumber(fields[9]),
-        z = tonumber(fields[10]),
-        atBody = (fields[11] or "0") == "1",
-        -- Who they were. Restored so a campaign keeps its protagonist.
-        forename = fields[12] ~= "" and fields[12] or nil,
-        surname = fields[13] ~= "" and fields[13] or nil,
-        look = unescapeBlob(fields[14]),
     }
 end
 
@@ -334,26 +285,6 @@ function Store.record(player, reason, saved)
     local ok, value = pcall(function() return player:getSteamID() end)
     if ok and value ~= nil then steamID = tostring(value) end
 
-    -- Where they died, so a revive can put the next character on the body.
-    local x, y, z
-    local gotPos = pcall(function()
-        x, y, z = player:getX(), player:getY(), player:getZ()
-    end)
-    if not gotPos then x, y, z = nil, nil, nil end
-
-    -- Name and appearance, so the next character can be the same person.
-    local forename, surname, look
-    pcall(function()
-        local desc = player:getDescriptor()
-        if desc ~= nil then
-            forename, surname = desc:getForename(), desc:getSurname()
-        end
-    end)
-    pcall(function()
-        local visual = player:getHumanVisual()
-        if visual ~= nil then look = visual:getLastStandString() end
-    end)
-
     local record = {
         username = username,
         steamID = steamID,
@@ -362,13 +293,6 @@ function Store.record(player, reason, saved)
         skills = snapshotSkills(player),
         locked = not saved,
         pendingRestore = saved == true,
-        x = x,
-        y = y,
-        z = z,
-        atBody = false,
-        forename = forename,
-        surname = surname,
-        look = look,
     }
     records[key] = record
     Store.save()
@@ -412,9 +336,8 @@ end
 
 --- Unlock a player and queue their skills to be handed to their next character.
 ---@param username string
----@param atBody boolean? also put that character where this one died
 ---@return table? record nil when they were not on the list
-function Store.revive(username, atBody)
+function Store.revive(username)
     ensureLoaded()
     local key = PL.key(username)
     local record = key and records[key]
@@ -422,24 +345,8 @@ function Store.revive(username, atBody)
 
     record.locked = false
     record.pendingRestore = true
-    -- Only honoured if we know where they fell.
-    record.atBody = atBody == true and record.x ~= nil
     Store.save()
     return record
-end
-
---- True when this record knows who the player was.
----@param record table?
----@return boolean
-function Store.hasIdentity(record)
-    return record ~= nil and (record.look ~= nil or record.forename ~= nil)
-end
-
---- True when this record knows where the player died.
----@param record table?
----@return boolean
-function Store.hasBody(record)
-    return record ~= nil and record.x ~= nil and record.y ~= nil
 end
 
 --- Called once the queued skills have been applied to a live character.

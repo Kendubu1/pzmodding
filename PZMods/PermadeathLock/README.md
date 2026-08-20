@@ -99,31 +99,37 @@ Under **Permadeath Lock** in the sandbox settings:
 Type these in chat as an admin (`/pd` is a shorthand):
 
 ```
-/permadeath ui                    open the admin panel
-/permadeath status                is the lock on, and how many are locked out
-/permadeath list                  show the death list
-/permadeath revive <user>         bring a player back, keeping their skills
-/permadeath reviveatbody <user>   as revive, but they wake where they died
-/permadeath pardon <user>         let a player back in, from scratch
-/permadeath add <user>            lock a player out by hand
-/permadeath clear confirm         wipe the whole death list
-/permadeath reload                re-read the death list from disk
+/permadeath status          is the lock on, and how many are locked out
+/permadeath ui              open the admin panel
+/permadeath list            show the death list
+/permadeath revive <user>   bring a player back, keeping their skills
+/permadeath pardon <user>   let a player back in, from scratch
+/permadeath add <user>      lock a player out by hand
+/permadeath clear confirm   wipe the whole death list
+/permadeath reload          re-read the death list from disk
 ```
+
+Usernames are matched case-insensitively.
 
 ### The admin panel
 
-`/permadeath ui` opens a window over the death list: select a player, then
-**Pardon**, **Revive** or **Revive at body**, with Refresh and a confirmed
-Clear all. Each row shows how long ago they died, whether they are locked or
-awaiting a restore, how many skills are held for them, and whether their death
-location is known.
+`/permadeath ui` opens a window listing everyone on the death list, with their
+name, how long ago they died, their state, and how many skills are held for
+them. Select a row and use **Pardon** or **Revive**; **Refresh** re-reads from
+the server and **Clear all** wipes the list behind a confirmation.
 
-The panel is a view, not an authority. Every button sends the same command the
-chat equivalent does, and the server re-checks access level before acting, so a
-non-admin who forces the window open sees nothing and is refused on every
-click.
+It is only a face on the chat commands. Every button sends the same message the
+typed command does, and the server re-checks the sender's access level before
+acting, so the panel grants nothing.
 
-Usernames are matched case-insensitively.
+### What this deliberately does not do
+
+An earlier version could put a revived player back at their body, clear the
+zombies around it, remove the corpse, and restore the dead character's name and
+face. It was cut. The pieces worked in isolation but the whole was fragile and
+hard to reason about, and permadeath is worth more when the way back is simple
+and predictable. What remains is: you die, you are locked out, an admin can
+pardon you or revive you.
 
 ### Revive vs pardon
 
@@ -143,27 +149,6 @@ levels the dead one had.
   restored immediately and they are healed to full.
 
 `pardon` just removes them from the list — they come back with nothing.
-
-### Waking at the body
-
-`revive at body` also puts the new character where the old one died, and clears
-loaded zombies within `ClearZombiesRadius` tiles of it, so they can loot their
-own corpse. It is the admin's choice per revive, not a server-wide mode — Fate
-Token saves never do this, so the token buys a life back but you still walk to
-your gear.
-
-Worth knowing before using it:
-
-- **Only deaths recorded since v1.1.0 have coordinates.** Older records cannot
-  return to a body, and the command says so rather than silently reviving them
-  somewhere random.
-- **Only loaded zombies can be cleared.** Anything outside the loaded chunks
-  wanders back in. This is a window to loot, not a safe zone.
-- **The body may not be there** if corpses were wiped or the area reset.
-- **You may arrive somewhere still lethal** — fire, water, a horde bigger than
-  the radius.
-- The teleport runs about a second after the character spawns. Doing it in the
-  same frame loses to the game's own spawn placement.
 
 Skills are restored, not overwritten: a level the new character already exceeds is
 left alone. Traits, profession and inventory are **not** restored — traits are not
@@ -207,65 +192,6 @@ table.insert(ProceduralDistributions.list["MedicalClinicMisc"].items, 0.5)
 ```
 
 The number is a weight, not a percentage — keep it low.
-
-## Compatibility
-
-Nothing here replaces a vanilla system. The mod adds one item, hooks events
-additively, and wraps `ISChat.onCommandEntered` — passing anything that is not
-`/permadeath` or `/pd` straight to whatever was there before, so other chat mods
-keep working whichever load order they end up in.
-
-### This Is Your Life
-
-Compatible. It states that it does not modify death, respawning, skills/XP,
-traits or chat commands, which is the whole surface this mod uses. Two
-interactions are worth knowing about rather than being surprised by:
-
-- **Revive at body overrides the hometown spawn.** It places the new character
-  in their chosen town; a revive-at-body then moves them to their corpse a
-  moment later. That is the point of the feature, but it does mean the two
-  disagree and this one wins. A plain `revive` leaves their spawn alone.
-- **A locked-out player still goes through character creation before the block
-  lands.** The postcards, the newspaper, the DMV screen, then a notice telling
-  them they cannot play. Unavoidable for now: the game gives server Lua no
-  event for a player connecting, so the earliest we hear about anyone is when
-  they spawn.
-
-Restored skills do not fight its town XP bonuses. Levels are only ever raised
-toward the recorded value, never lowered, so whichever is higher stands.
-
-## Coming back as the same person
-
-A restored character takes the **name and face** of the one who died, alongside
-the skills. For a campaign that is the point: the death book stays coherent and
-a story branch keeps its protagonist instead of having to be written off.
-
-Be clear about what this is. The character still died — nothing in the Lua API
-un-kills anyone. What returns is a new character wearing the same identity. In
-play the difference is invisible; on paper it matters, so it is worth saying.
-
-The identity carries **forward**, not back to day one: each death snapshots who
-they were at that moment, so the token returns the current version of them, day
-fifty included.
-
-The appearance is captured with `HumanVisual:getLastStandString()`, an opaque
-blob the game produces. It is escaped before being written, because the death
-list is tab separated and the blob may well contain a tab — mangling it would
-give someone a subtly wrong face rather than an obvious error. How much it
-covers beyond body, hair and beard is not something offline tests can answer.
-
-### Your own corpse
-
-Revive-at-body would otherwise drop you next to your own body, wearing your own
-face, to loot yourself. So on return the corpse is removed and everything it
-carried is left on the ground where it fell: you wake where you died, your
-belongings beside you, no second body to explain.
-
-Only your own body — zombie corpses and other players are left alone — and only
-the one at the death square, found by searching the eight squares around it
-since bodies do not always land exactly where the character stood.
-
-Turn off `RemoveCorpseOnReturn` if you would rather have the horror.
 
 ## The death list
 
