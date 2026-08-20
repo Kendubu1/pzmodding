@@ -145,3 +145,7 @@ Server-side messages are prefixed `[PermadeathLock]` in the console log.
 - The sweep runs once per in-game minute, so a locked-out player may be in the
   world for up to two of those before their character is killed. They cannot get a
   meaningful head start, but they are not blocked instantly either.
+
+## Tests
+
+Offline logic checks live in `tests/`. See `tests/README.md`.

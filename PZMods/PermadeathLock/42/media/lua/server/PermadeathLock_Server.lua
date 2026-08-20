@@ -112,6 +112,18 @@ end
 local function checkPlayer(player)
     local username = player:getUsername()
     if PL.key(username) == nil then return end
+
+    local record = Store.get(username)
+
+    -- Alive, and an admin has cleared them: this is the new character. Checked
+    -- before the exemption, because a queued restore is owed to the player
+    -- whatever their access level - an admin who becomes exempt after being
+    -- revived should still get their skills back.
+    if record ~= nil and record.pendingRestore and not player:isDead() then
+        applyRestore(player, record)
+        return
+    end
+
     if PL.isExempt(player) then return end
 
     if player:isDead() then
@@ -119,16 +131,7 @@ local function checkPlayer(player)
         return
     end
 
-    local record = Store.get(username)
-    if record == nil then return end
-
-    -- Alive, and an admin has cleared them: this is the new character.
-    if record.pendingRestore then
-        applyRestore(player, record)
-        return
-    end
-
-    if not record.locked then return end
+    if record == nil or not record.locked then return end
 
     -- Alive while locked out means they made a new character. Ask once, then act.
     local key = PL.key(username)
@@ -303,19 +306,24 @@ local function onClientCommand(module, command, player, args)
     end
 
     if not PL.isEnabled() then return end
+
+    if command == "checkStatus" then
+        local record = Store.get(player:getUsername())
+        if record == nil then return end
+        -- As in the sweep: a queued restore is honoured even for exempt players.
+        if record.pendingRestore and not player:isDead() then
+            applyRestore(player, record)
+        elseif record.locked and not PL.isExempt(player) then
+            sendBlocked(player, record)
+        end
+        return
+    end
+
     if PL.isExempt(player) then return end
 
     if command == "reportDeath" then
         -- Verified against the character's real state rather than taken on trust.
         if player:isDead() then recordDeath(player, "died") end
-    elseif command == "checkStatus" then
-        local record = Store.get(player:getUsername())
-        if record == nil then return end
-        if record.pendingRestore then
-            applyRestore(player, record)
-        elseif record.locked then
-            sendBlocked(player, record)
-        end
     end
 end
 
