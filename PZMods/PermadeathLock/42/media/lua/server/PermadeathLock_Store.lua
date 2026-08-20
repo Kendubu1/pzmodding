@@ -260,10 +260,15 @@ end
 
 --- Add a death. Re-recording an existing death is a no-op, so the original
 --- timestamp and skill snapshot survive repeated sweeps over a dead body.
+---
+--- A 'saved' death (the player spent a Fate Token) is recorded unlocked with a
+--- restore already queued: they are never blocked, and their next character
+--- collects the skills automatically.
 ---@param player IsoPlayer
 ---@param reason string?
+---@param saved boolean? true when a Fate Token was spent
 ---@return table? record nil when nothing was recorded
-function Store.record(player, reason)
+function Store.record(player, reason, saved)
     ensureLoaded()
     if player == nil then return nil end
 
@@ -284,8 +289,8 @@ function Store.record(player, reason)
         time = getTimestamp(),
         reason = reason or "died",
         skills = snapshotSkills(player),
-        locked = true,
-        pendingRestore = false,
+        locked = not saved,
+        pendingRestore = saved == true,
     }
     records[key] = record
     Store.save()

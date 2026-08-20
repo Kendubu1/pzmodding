@@ -31,3 +31,19 @@ option PermadeathLock.RestoreSkillsOnRevive
     page = PermadeathLock,
     translation = PermadeathLock_RestoreSkillsOnRevive,
 }
+
+option PermadeathLock.FateTokenEnabled
+{
+    type = boolean,
+    default = true,
+    page = PermadeathLock,
+    translation = PermadeathLock_FateTokenEnabled,
+}
+
+option PermadeathLock.FateTokenConsume
+{
+    type = boolean,
+    default = true,
+    page = PermadeathLock,
+    translation = PermadeathLock_FateTokenConsume,
+}

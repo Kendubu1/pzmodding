@@ -2,7 +2,8 @@
 
 Dedicated-server permadeath for Project Zomboid **Build 42**. When a player dies they
 go on a death list and cannot come back with a new character. Admins can pardon
-someone (fresh start) or revive them (new character, old skills).
+someone (fresh start) or revive them (new character, old skills), and players
+carrying a **Fate Token** buy back one death without needing an admin at all.
 
 ## Install
 
@@ -28,6 +29,8 @@ PermadeathLock/
     ├── poster.png
     └── media/
         ├── sandbox-options.txt
+        ├── scripts/          item script for the Fate Token
+        ├── textures/         its inventory icon
         └── lua/{shared,server,client}/
 ```
 
@@ -67,6 +70,8 @@ Under **Permadeath Lock** in the sandbox settings:
 | `ExemptAdmins` | on | Admins are never recorded or blocked. Stops you locking yourself out. |
 | `EnforceKill` | on | Kill locked-out players whose client ignored the disconnect request. |
 | `RestoreSkillsOnRevive` | on | Revived players get their old skill levels on their next character. |
+| `FateTokenEnabled` | on | Dying with a Fate Token spends it instead of locking you out. |
+| `FateTokenConsume` | on | The token is removed from the body when it saves someone. Off = lootable and reusable. |
 
 ## Admin commands
 
@@ -107,6 +112,40 @@ Skills are restored, not overwritten: a level the new character already exceeds 
 left alone. Traits, profession and inventory are **not** restored — traits are not
 readable from the Lua API in B42, and inventory would need item serialisation.
 
+## The Fate Token
+
+`Base.FateToken` is an item that buys back one death. Die carrying one — anywhere
+on you, bags included — and the token burns away instead of locking you out. Your
+next character comes back with the skills the dead one had, automatically, with no
+admin involved.
+
+It does **not** stop you dying. There is no pre-death hook in the game, so nothing
+can veto a killing blow; the token is insurance that pays out afterwards, not a
+shield. Your corpse and everything on it still stay where they fell.
+
+One token is spent per death. Carrying three does not make you immortal three
+times over in a single death — but the other two are still on the body.
+
+### Handing them out
+
+Nothing spawns them by default; that is a deliberate balance decision left to you.
+Give one out with:
+
+```
+/additem <username> Base.FateToken
+```
+
+To make them lootable instead, add a distribution file under
+`42/media/lua/server/` — for a rare medical-cabinet spawn:
+
+```lua
+require 'Items/ProceduralDistributions'
+table.insert(ProceduralDistributions.list["MedicalClinicMisc"].items, "Base.FateToken")
+table.insert(ProceduralDistributions.list["MedicalClinicMisc"].items, 0.5)
+```
+
+The number is a weight, not a percentage — keep it low.
+
 ## The death list
 
 Stored at `Zomboid/Lua/PermadeathLock_deaths.txt`, one tab-separated record per
@@ -133,6 +172,9 @@ identification only — matching is always by username.
 5. As an admin (second account, or turn `ExemptAdmins` back on), run
    `/permadeath revive <name>`, reconnect on the first account, and confirm the
    skills come back.
+6. For the Fate Token: `/additem <name> Base.FateToken`, die again, and check the
+   console says `died holding a Fate Token; not locked out`. You should be able to
+   reconnect straight away, with your skills.
 
 Server-side messages are prefixed `[PermadeathLock]` in the console log.
 

@@ -18,6 +18,13 @@ PL.MODULE = "PermadeathLock"
 -- read or edit it with the server down, then use /permadeath reload.
 PL.DEATH_FILE = "PermadeathLock_deaths.txt"
 
+-- The Fate Token. Dying while carrying one spends it instead of locking you out.
+PL.FATE_TOKEN = "Base.FateToken"
+
+-- Recorded as the death reason when a token was spent, so the restore can tell
+-- the player what saved them.
+PL.REASON_TOKEN = "spent a Fate Token"
+
 --- Read a sandbox option, falling back to a default if the options failed to load.
 ---@param name string
 ---@param default any

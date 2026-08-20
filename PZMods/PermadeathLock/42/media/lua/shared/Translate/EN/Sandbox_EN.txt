@@ -12,4 +12,10 @@ Sandbox_EN = {
 
     Sandbox_PermadeathLock_RestoreSkillsOnRevive = "Restore skills on revive",
     Sandbox_PermadeathLock_RestoreSkillsOnRevive_tooltip = "When an admin revives a player, give their next character the skill levels the dead character had. Turn off to let revived players return from scratch.",
+
+    Sandbox_PermadeathLock_FateTokenEnabled = "Fate Tokens work",
+    Sandbox_PermadeathLock_FateTokenEnabled_tooltip = "Dying while carrying a Fate Token (Base.FateToken) spends it instead of locking you out: your next character keeps the skills of the one that died. Turn off to disable the item without removing it from the world.",
+
+    Sandbox_PermadeathLock_FateTokenConsume = "Fate Tokens are consumed",
+    Sandbox_PermadeathLock_FateTokenConsume_tooltip = "Remove the token from the body when it saves someone. Turn off and the token stays on the corpse, so it can be looted and used again.",
 }

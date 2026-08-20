@@ -57,6 +57,35 @@ function getFileReader(name, createIfNull)
     return { readLine = function() i = i + 1 return lines[i] end, close = function() end }
 end
 
+--- An inventory holding `tokens` copies of the Fate Token. Removal goes through
+--- the item's own container, mirroring how the mod spends one.
+local function makeInventory(owner, tokens)
+    local items = {}
+    local container
+    container = {
+        Remove = function(_, item)
+            for i, held in ipairs(items) do
+                if held == item then table.remove(items, i) return end
+            end
+        end,
+        getItemsFromFullType = function(_, fullType, _includeInv)
+            local hits = {}
+            for _, item in ipairs(items) do
+                if item.getFullType() == fullType then hits[#hits + 1] = item end
+            end
+            return { size = function() return #hits end, get = function(_, i) return hits[i + 1] end }
+        end,
+    }
+    for _ = 1, tokens or 0 do
+        items[#items + 1] = {
+            getFullType = function() return "Base.FateToken" end,
+            getContainer = function() return container end,
+        }
+    end
+    owner._items = items
+    return container
+end
+
 local function makePlayer(username, opts)
     opts = opts or {}
     local held = {}
@@ -77,6 +106,8 @@ local function makePlayer(username, opts)
             return { RestoreToFullHealth = function() self._healed = true end }
         end,
     }
+    self.getInventory = function() return self._container end
+    self._container = makeInventory(self, opts.tokens)
     return self
 end
 
@@ -222,6 +253,69 @@ online = { eveNew }
 onClientCommand(MODULE, "admin", admin, { sub = "revive", target = "eve" })
 check("online revive restores skills", eveNew._levels.TYPE_Aiming, 6)
 check("online revive heals", eveNew._healed, true)
+
+--------------------------------------------------------------------------------
+io.write("\n-- fate tokens --\n")
+
+reset()
+local gil = makePlayer("Gil", { levels = { TYPE_Woodwork = 7 }, dead = true, tokens = 1 })
+online = { gil }
+sweep()
+check("token holder is recorded", Store.get("Gil") ~= nil, true)
+check("token holder is NOT locked out", Store.isLocked("Gil"), false)
+check("token queues a restore", Store.get("Gil").pendingRestore, true)
+check("token is consumed", #gil._items, 0)
+check("death reason names the token", Store.get("Gil").reason, PermadeathLock.REASON_TOKEN)
+check("skills captured before the save", Store.get("Gil").skills["Woodwork"], 7)
+
+-- the saved player walks straight back in and collects their skills
+local gilNew = makePlayer("Gil", {})
+online = { gilNew }
+sent = {}
+sweep()
+check("saved player is not blocked", lastCommandTo("Gil"), "message")
+check("saved player keeps their skills", gilNew._levels.TYPE_Woodwork, 7)
+check("record cleared after the save is spent", Store.get("Gil"), nil)
+
+-- second death with no token left: locked as normal
+gilNew._dead = true
+online = { gilNew }
+sweep()
+check("no second save without a token", Store.isLocked("Gil"), true)
+
+-- only one token is spent per death
+reset()
+local hana = makePlayer("Hana", { dead = true, tokens = 3 })
+online = { hana }
+sweep()
+check("exactly one token spent", #hana._items, 2)
+
+-- with consumption disabled the token stays on the body
+reset()
+SandboxVars.PermadeathLock.FateTokenConsume = false
+local ivan = makePlayer("Ivan", { dead = true, tokens = 1 })
+online = { ivan }
+sweep()
+check("token kept when consumption is off", #ivan._items, 1)
+check("still saved when consumption is off", Store.isLocked("Ivan"), false)
+SandboxVars.PermadeathLock.FateTokenConsume = true
+
+-- with the token disabled entirely it is ignored
+reset()
+SandboxVars.PermadeathLock.FateTokenEnabled = false
+local jo = makePlayer("Jo", { dead = true, tokens = 1 })
+online = { jo }
+sweep()
+check("token ignored when disabled", Store.isLocked("Jo"), true)
+check("disabled token is not consumed", #jo._items, 1)
+SandboxVars.PermadeathLock.FateTokenEnabled = true
+
+-- the client death report takes the same path as the sweep
+reset()
+local kim = makePlayer("Kim", { dead = true, tokens = 1 })
+onClientCommand(MODULE, "reportDeath", kim, {})
+check("reportDeath honours the token", Store.isLocked("Kim"), false)
+check("reportDeath consumes the token", #kim._items, 0)
 
 --------------------------------------------------------------------------------
 io.write("\n-- disabling the mod --\n")

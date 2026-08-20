@@ -73,15 +73,66 @@ local function describeAge(timestamp)
     return math.floor(hours / 24) .. "d ago"
 end
 
+--------------------------------------------------------------------------------
+-- fate tokens
+--------------------------------------------------------------------------------
+
+--- Find a Fate Token anywhere on the character, bags included.
+--- Searched by full type so there is no ambiguity with a similarly named item
+--- from another mod.
+---@param player IsoPlayer
+---@return InventoryItem?
+local function findFateToken(player)
+    local inventory = player:getInventory()
+    if inventory == nil then return nil end
+
+    local found = inventory:getItemsFromFullType(PL.FATE_TOKEN, true)
+    if found == nil or found:size() == 0 then return nil end
+    return found:get(0)
+end
+
+--- Burn the token. Failure is not fatal: the save is already earned, and the
+--- corpse keeping the item is a smaller problem than denying the rescue.
+---@param item InventoryItem
+---@return boolean removed
+local function consumeFateToken(item)
+    local container = item:getContainer()
+    if container == nil then return false end
+    container:Remove(item)
+    return true
+end
+
 ---@param player IsoPlayer
 ---@param reason string
 local function recordDeath(player, reason)
     if not PL.isEnabled() then return end
     if PL.isExempt(player) then return end
+    -- Already on the list: the token was either spent or not needed.
+    if Store.get(player:getUsername()) ~= nil then return end
 
-    local record = Store.record(player, reason)
+    local token = nil
+    if PL.getOption("FateTokenEnabled", true) then
+        token = findFateToken(player)
+    end
+
+    if token == nil then
+        local record = Store.record(player, reason)
+        if record ~= nil then
+            print("[PermadeathLock] " .. record.username .. " died (" .. reason .. ") and is locked out.")
+        end
+        return
+    end
+
+    local burned = true
+    if PL.getOption("FateTokenConsume", true) then
+        burned = consumeFateToken(token)
+    end
+
+    local record = Store.record(player, PL.REASON_TOKEN, true)
     if record ~= nil then
-        print("[PermadeathLock] " .. record.username .. " died (" .. reason .. ") and is locked out.")
+        tell(player, "Your Fate Token burns away. Reconnect and make a new character - what you learned comes with you.")
+        print("[PermadeathLock] " .. record.username .. " died holding a Fate Token; not locked out."
+            .. (burned and "" or " WARNING: the token could not be removed from the body."))
     end
 end
 
@@ -96,10 +147,15 @@ local function applyRestore(player, record)
     Store.finishRestore(record.username)
     strikes[PL.key(record.username)] = nil
 
+    local source = "An admin brought you back."
+    if record.reason == PL.REASON_TOKEN then
+        source = "Your Fate Token paid for this life."
+    end
+
     if raised > 0 then
-        tell(player, "An admin brought you back. " .. raised .. " skill(s) restored from your last character.")
+        tell(player, source .. " " .. raised .. " skill(s) restored from your last character.")
     else
-        tell(player, "An admin brought you back. Try to stay alive this time.")
+        tell(player, source .. " Try to stay alive this time.")
     end
     print("[PermadeathLock] Restored " .. record.username .. " (" .. raised .. " skills).")
 end
