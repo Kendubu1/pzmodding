@@ -70,6 +70,12 @@ the mod uses two paths:
 | Client handshake | `OnPlayerDeath`, `OnCreatePlayer` | Reports the death, asks for status on spawn. Gives the player a readable notice and disconnects them. |
 | Server sweep | `EveryOneMinute` over `getOnlinePlayers()` | Records any dead player, and catches anyone locked out who is walking around. |
 
+Everything the panel can do, chat can do, and the server re-checks the caller's
+real access level either way. The one client command that is not an admin action
+— the acknowledgement that a token has been added or removed — is not trusted
+for anything: the resulting count is re-read server-side, so the worst a forged
+one can do is make an admin's panel redraw.
+
 ### What the player sees
 
 Three notices, all modal dialogs rather than chat lines — two of them land while
@@ -119,6 +125,8 @@ Type these in chat as an admin (`/pd` is a shorthand):
 /permadeath list            show the death list
 /permadeath revive <user>   bring a player back, keeping their skills
 /permadeath pardon <user>   let a player back in, from scratch
+/permadeath give <user>     hand a player a Fate Token
+/permadeath take <user>     take a Fate Token back
 /permadeath add <user>      lock a player out by hand
 /permadeath clear confirm   wipe the whole death list
 /permadeath reload          re-read the death list from disk
@@ -128,10 +136,34 @@ Usernames are matched case-insensitively.
 
 ### The admin panel
 
-`/permadeath ui` opens a window listing everyone on the death list, with their
-name, how long ago they died, their state, and how many skills are held for
-them. Select a row and use **Pardon** or **Revive**; **Refresh** re-reads from
-the server and **Clear all** wipes the list behind a confirmation.
+`/permadeath ui` opens a window over the **whole roster** — everyone online as
+well as everyone on the death list. Most of what an admin needs to know is about
+people who are not dead, so limiting it to the list made it much less useful
+than it looks.
+
+| Column | What it says |
+| --- | --- |
+| Player | Username. A trailing `*` means they are offline. |
+| State | `LOCKED OUT`, `awaiting restore`, `alive`, `alive (exempt)`, `dead, not listed`, `offline` |
+| Died | How long ago, for anyone on the list |
+| Skills held | How many perk levels are being kept for their next character |
+| Tokens | Fate Tokens they are carrying right now |
+
+Rows sort trouble-first: locked out, then awaiting a restore, then anyone else
+listed, then everyone simply playing, alphabetically inside each group. The
+roster refreshes itself every few seconds while the window is open, and keeps
+your selection across a refresh so a row cannot slide out from under a click.
+
+Select a row and use **Pardon**, **Revive**, **Give token** or **Take token**.
+**Refresh** re-reads from the server, and **Clear all** wipes the death list
+behind a confirmation — it sits alone in the far corner so a misclick on Refresh
+cannot land on it.
+
+Two states are worth knowing on sight. **`alive (exempt)`** means the lock can
+never apply to that player — they are an admin and `ExemptAdmins` is on, which
+is the single most common reason for "the mod isn't working". **`dead, not
+listed`** means a corpse the sweep has not recorded yet, or one belonging to
+someone an admin has just pardoned.
 
 The client opens the panel itself rather than asking the server to; the server
 has no `ui` subcommand to fall through to, and when the client-side handling
@@ -215,11 +247,21 @@ and every key in it renders as its own name. The table inside is still
 ### Handing them out
 
 Nothing spawns them by default; that is a deliberate balance decision left to you.
-Give one out with:
 
-```
-/additem <username> Base.FateToken
-```
+From the admin panel, select a player and press **Give token** or **Take token**.
+From chat, `/permadeath give <user>` and `/permadeath take <user>` do the same.
+Vanilla's `/additem <username> Base.FateToken` also works.
+
+The target has to be **online**: a token is a real item and someone has to be
+there to hold it.
+
+The handover itself is carried out by the target's *own client*, not by the
+server reaching into their inventory — in Project Zomboid a player's inventory
+belongs to their machine, and an item pushed in server-side is not reliably
+synced back. So the sequence is: the server asks their client, their client adds
+or removes the item, and only then does the panel that asked get a refreshed
+count. That count is read from the server's own view of the inventory, not from
+the number the client reported, so a modified client cannot inflate it.
 
 To make them lootable instead, add a distribution file under
 `42/media/lua/server/` — for a rare medical-cabinet spawn:
@@ -269,6 +311,9 @@ identification only — matching is always by username.
    still in the world. Wait two in-game minutes, run `/permadeath list`, and
    confirm you are **not** back on it. Then make a new character and confirm you
    are let in.
+8. For the panel: `/permadeath ui`, and confirm you appear on it while alive.
+   Select yourself, press **Give token**, and watch the Tokens column go to 1
+   without you touching Refresh. **Take token** should put it back to 0.
 
 Server-side messages are prefixed `[PermadeathLock]` in the console log.
 

@@ -89,6 +89,16 @@ local function makeInventory(owner, tokens, nativeLookupBlind)
             return { size = function() return #items end, get = function(_, i) return items[i + 1] end }
         end,
     }
+    container.AddItem = function(_, fullType)
+        local item = {
+            getFullType = function() return fullType end,
+            getContainer = function() return container end,
+            IsInventoryContainer = function() return false end,
+            getInventory = function() error("getInventory called on a plain item") end,
+        }
+        items[#items + 1] = item
+        return item
+    end
     for _ = 1, tokens or 0 do
         items[#items + 1] = {
             getFullType = function() return "Base.FateToken" end,
@@ -428,27 +438,86 @@ sweep()
 check("no token means locked out", Store.isLocked("Nia"), true)
 
 --------------------------------------------------------------------------------
-io.write("\n-- the admin panel's data feed --\n")
+io.write("\n-- the admin panel's roster feed --\n")
 
 reset()
 local sara = makePlayer("Sara", { levels = { TYPE_Woodwork = 3, TYPE_Aiming = 1 }, dead = true })
 online = { sara }
 sweep()
 
-sent = {}
 local panelAdmin = makePlayer("Admin", { admin = true })
+sent = {}
 onClientCommand(MODULE, "admin", panelAdmin, { sub = "listdata" })
 local payload = sent[#sent]
 check("listData answers an admin", payload.command, "listData")
-check("one row per record", #payload.args.rows, 1)
 check("the row names the player", payload.args.rows[1].username, "Sara")
 check("and counts their skills", payload.args.rows[1].skills, 2)
 check("and reports them locked", payload.args.rows[1].locked, true)
 check("the payload carries the version", payload.args.version, PermadeathLock.VERSION)
 
+-- the roster covers the living too, which is the point of it
+local wes = makePlayer("Wes", { tokens = 2 })
+online = { sara, wes, panelAdmin }
+sent = {}
+onClientCommand(MODULE, "admin", panelAdmin, { sub = "listdata" })
+payload = sent[#sent]
+local rows = {}
+for _, row in ipairs(payload.args.rows) do rows[row.username] = row end
+check("a player who never died is listed", rows.Wes ~= nil, true)
+check("they are not on the death list", rows.Wes and rows.Wes.listed, false)
+check("their tokens are counted", rows.Wes and rows.Wes.tokens, 2)
+check("and they are reported online", rows.Wes and rows.Wes.online, true)
+check("an exempt admin is flagged as such", rows.Admin and rows.Admin.exempt, true)
+check("the dead player is still there", rows.Sara and rows.Sara.locked, true)
+
+-- trouble sorts to the top
+check("locked players come first", payload.args.rows[1].username, "Sara")
+
 sent = {}
 onClientCommand(MODULE, "admin", makePlayer("Nobody", {}), { sub = "listdata" })
 check("but not a non-admin", sent[1] and sent[1].command, "message")
+
+--------------------------------------------------------------------------------
+io.write("\n-- handing out and taking back tokens --\n")
+
+reset()
+local tara = makePlayer("Tara", {})
+local tokenAdmin = makePlayer("Admin", { admin = true })
+online = { tara, tokenAdmin }
+
+sent = {}
+onClientCommand(MODULE, "admin", tokenAdmin, { sub = "give", target = "tara" })
+check("the target's client is asked to add it", lastCommandTo("Tara"), "giveToken")
+check("nothing is pushed into the inventory from here", #tara._items, 0)
+
+-- the client does it and reports back
+onClientCommand(MODULE, "admin", tokenAdmin, { sub = "give", target = "tara" })
+tara._container:AddItem("Base.FateToken")
+sent = {}
+onClientCommand(MODULE, "tokenResult", tara, { action = "give", ok = true })
+check("the admin who asked is told", lastCommandTo("Admin"), "listData")
+check("and the fresh roster reaches them", sent[#sent].args.rows ~= nil, true)
+
+-- a non-admin cannot hand themselves one
+sent = {}
+local greedy = makePlayer("Greedy", {})
+online = { greedy }
+onClientCommand(MODULE, "admin", greedy, { sub = "give", target = "Greedy" })
+check("a non-admin is refused", lastCommandTo("Greedy"), "message")
+
+-- and an unsolicited result is ignored rather than spraying panels
+reset()
+online = { tara, tokenAdmin }
+sent = {}
+onClientCommand(MODULE, "tokenResult", tara, { action = "give", ok = true })
+check("an unasked-for result is dropped", #sent, 0)
+
+-- taking one back from someone offline is refused, not silently lost
+reset()
+online = { tokenAdmin }
+sent = {}
+onClientCommand(MODULE, "admin", tokenAdmin, { sub = "take", target = "Ghosty" })
+check("offline target is refused", lastCommandTo("Admin"), "message")
 
 --------------------------------------------------------------------------------
 io.write("\n-- disabling the mod --\n")
