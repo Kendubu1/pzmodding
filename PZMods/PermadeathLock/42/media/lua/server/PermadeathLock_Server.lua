@@ -213,6 +213,173 @@ local function recordDeath(player, reason)
     carriedToken[key] = nil
 end
 
+--------------------------------------------------------------------------------
+-- returning to the body
+--------------------------------------------------------------------------------
+
+-- Teleports queued to run a moment after the restore. Doing it in the same
+-- frame as the spawn loses the race: the game is still placing the new
+-- character, and its position wins.
+--
+-- The wait is generous on purpose. Character-creation mods run their own
+-- placement and spawn scripts - This Is Your Life drops you in a chosen
+-- hometown and plays an opening scene - and moving someone mid-script is a good
+-- way to break it. Landing after all of that is worth a second and a half.
+local TELEPORT_DELAY_TICKS = 90
+
+---@type table[]
+local pendingTeleports = {}
+
+--- Remove loaded zombies around a point.
+--- Only zombies the server currently has in memory can be touched; any outside
+--- the loaded chunks stream back in as normal. This buys a window to loot, not
+--- a safe zone.
+---@param x number
+---@param y number
+---@param z number
+---@param radius number
+---@return integer removed
+local function clearZombiesAround(x, y, z, radius)
+    if radius <= 0 then return 0 end
+
+    local cell = getCell()
+    if cell == nil then return 0 end
+    local zombies = cell:getZombieList()
+    if zombies == nil then return 0 end
+
+    local removed = 0
+    -- Backwards: removal mutates the list.
+    for i = zombies:size() - 1, 0, -1 do
+        local zombie = zombies:get(i)
+        if zombie ~= nil then
+            local dx = zombie:getX() - x
+            local dy = zombie:getY() - y
+            if math.abs(zombie:getZ() - z) < 1 and (dx * dx + dy * dy) <= radius * radius then
+                zombie:removeFromWorld()
+                zombie:removeFromSquare()
+                removed = removed + 1
+            end
+        end
+    end
+    return removed
+end
+
+--------------------------------------------------------------------------------
+-- being the same person again
+--------------------------------------------------------------------------------
+
+--- Stamp the dead character's name and face onto the one now being played.
+--- The character still died - this is continuity of identity, not resurrection -
+--- but it is what keeps a campaign's protagonist the same person across lives.
+---@param player IsoPlayer
+---@param record table
+---@return boolean applied
+local function restoreIdentity(player, record)
+    if not PL.getOption("RestoreIdentity", true) then return false end
+    if not Store.hasIdentity(record) then return false end
+
+    local applied = false
+
+    pcall(function()
+        local desc = player:getDescriptor()
+        if desc == nil then return end
+        if record.forename ~= nil then desc:setForename(record.forename) applied = true end
+        if record.surname ~= nil then desc:setSurname(record.surname) applied = true end
+    end)
+
+    if record.look ~= nil then
+        pcall(function()
+            local visual = player:getHumanVisual()
+            if visual == nil then return end
+            if visual:loadLastStandString(record.look) then applied = true end
+        end)
+        -- Redrawn next frame: the model is mid-render right now.
+        pcall(function() player:resetModelNextFrame() end)
+    end
+
+    return applied
+end
+
+--- Clear away the body they are standing on, leaving what it carried on the
+--- floor. Without this the fiction breaks immediately: you wake up wearing your
+--- own face, next to your own corpse, and loot yourself.
+---@param x number
+---@param y number
+---@param z number
+---@param username string
+---@return boolean removed
+---@return integer itemsDropped
+local function clearOwnCorpse(x, y, z, username)
+    if not PL.getOption("RemoveCorpseOnReturn", true) then return false, 0 end
+
+    local cell = getCell()
+    if cell == nil then return false, 0 end
+
+    local dropped = 0
+    -- The body lands on or beside the death square, not always exactly on it.
+    for dx = -1, 1 do
+        for dy = -1, 1 do
+            local square = cell:getGridSquare(x + dx, y + dy, z)
+            if square ~= nil then
+                local bodies = square:getDeadBodys()
+                if bodies ~= nil then
+                    for i = bodies:size() - 1, 0, -1 do
+                        local body = bodies:get(i)
+                        -- Only ours: zombie corpses and other players stay put.
+                        if body ~= nil and not body:isZombie() then
+                            local container = body:getContainer()
+                            if container ~= nil then
+                                local items = container:getItems()
+                                for n = 0, items:size() - 1 do
+                                    local item = items:get(n)
+                                    if item ~= nil then
+                                        square:AddWorldInventoryItem(item, 0, 0, 0)
+                                        dropped = dropped + 1
+                                    end
+                                end
+                                container:clear()
+                            end
+                            body:removeFromWorld()
+                            body:removeFromSquare()
+                            print("[PermadeathLock] Cleared " .. username
+                                .. "'s body; " .. dropped .. " item(s) left on the ground.")
+                            return true, dropped
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return false, dropped
+end
+
+--- Put a player where the record says they died, and clear the welcome party.
+---@param player IsoPlayer
+---@param record table
+local function placeAtBody(player, record)
+    if not Store.hasBody(record) then return end
+
+    local x, y, z = record.x, record.y, record.z or 0
+    player:teleportTo(x, y, z)
+
+    local radius = tonumber(PL.getOption("ClearZombiesRadius", 15)) or 0
+    local removed = clearZombiesAround(x, y, z, radius)
+    local cleared, dropped = clearOwnCorpse(x, y, z, record.username)
+
+    local message = "You wake where you fell."
+    if cleared then
+        message = message .. (dropped > 0
+            and (" Your belongings are on the ground beside you.")
+            or " There is no sign you were ever gone.")
+    end
+    if removed > 0 then
+        message = message .. " " .. removed .. " zombie(s) cleared."
+    end
+    tell(player, message)
+    print(string.format("[PermadeathLock] Returned %s to (%d, %d, %d); %d zombie(s) cleared.",
+        record.username, x, y, z, removed))
+end
+
 --- Hand a revived player's queued skills to the character they are now playing.
 ---@param player IsoPlayer
 ---@param record table
@@ -221,8 +388,19 @@ local function applyRestore(player, record)
     if PL.getOption("RestoreSkillsOnRevive", true) then
         raised = Store.applySkills(player, record.skills)
     end
+    -- Queued before the record is cleared, since it carries the coordinates.
+    if record.atBody and Store.hasBody(record) then
+        pendingTeleports[#pendingTeleports + 1] = {
+            username = record.username,
+            record = record,
+            ticks = TELEPORT_DELAY_TICKS,
+        }
+    end
+
     Store.finishRestore(record.username)
     strikes[PL.key(record.username)] = nil
+
+    local sameName = restoreIdentity(player, record)
 
     local source = "An admin brought you back."
     if record.reason == PL.REASON_TOKEN then
@@ -234,7 +412,8 @@ local function applyRestore(player, record)
     else
         tell(player, source .. " Try to stay alive this time.")
     end
-    print("[PermadeathLock] Restored " .. record.username .. " (" .. raised .. " skills).")
+    print("[PermadeathLock] Restored " .. record.username .. " (" .. raised .. " skills"
+        .. (sameName and ", identity restored" or "") .. ").")
 end
 
 --------------------------------------------------------------------------------
@@ -297,6 +476,28 @@ end
 
 Events.EveryOneMinute.Add(sweep)
 
+--- Run queued teleports once the game has finished placing the new character.
+local function processTeleports()
+    if #pendingTeleports == 0 then return end
+
+    for i = #pendingTeleports, 1, -1 do
+        local pending = pendingTeleports[i]
+        pending.ticks = pending.ticks - 1
+        if pending.ticks <= 0 then
+            table.remove(pendingTeleports, i)
+            local player = findOnline(pending.username)
+            if player ~= nil and not player:isDead() then
+                placeAtBody(player, pending.record)
+            else
+                print("[PermadeathLock] " .. pending.username
+                    .. " left before they could be returned to their body.")
+            end
+        end
+    end
+end
+
+Events.OnTick.Add(processTeleports)
+
 --------------------------------------------------------------------------------
 -- admin commands
 --------------------------------------------------------------------------------
@@ -304,7 +505,9 @@ Events.EveryOneMinute.Add(sweep)
 local HELP = {
     "/permadeath status            - is the lock on, and how many are locked out",
     "/permadeath list              - show the death list",
+    "/permadeath ui                - open the admin panel",
     "/permadeath revive <user>     - bring a player back, keeping their skills",
+    "/permadeath reviveatbody <user> - as revive, but they wake where they died",
     "/permadeath pardon <user>     - let a player back in, from scratch",
     "/permadeath add <user>        - lock a player out by hand",
     "/permadeath clear confirm     - wipe the whole death list",
@@ -319,22 +522,31 @@ end
 
 ---@param admin IsoPlayer
 ---@param target string?
-local function commandRevive(admin, target)
+---@param atBody boolean? put their next character where this one died
+local function commandRevive(admin, target, atBody)
     if target == nil then
         tell(admin, "Usage: /permadeath revive <username>")
         return
     end
 
-    local record = Store.revive(target)
+    if atBody and not Store.hasBody(Store.get(target)) then
+        tell(admin, "No death location recorded for " .. target
+            .. " - reviving them normally. Only deaths recorded since this feature shipped have one.")
+        atBody = false
+    end
+
+    local record = Store.revive(target, atBody)
     if record == nil then
         tell(admin, target .. " is not on the death list.")
         return
     end
     strikes[PL.key(record.username)] = nil
 
+    local where = record.atBody and " They will wake where they died." or ""
+
     local online = findOnline(record.username)
     if online == nil then
-        tell(admin, record.username .. " revived. Their skills will be restored when they next log in.")
+        tell(admin, record.username .. " revived. Their skills will be restored when they next log in." .. where)
     elseif online:isDead() then
         -- The game exposes no way to un-kill a character, so the body stays dead.
         tell(admin, record.username .. " revived, but their current character is already dead - the game gives no way")
@@ -362,6 +574,36 @@ local function commandPardon(admin, target)
     strikes[PL.key(target)] = nil
     tell(admin, target .. " pardoned. They may rejoin with a fresh character.")
     print("[PermadeathLock] " .. admin:getUsername() .. " pardoned " .. target .. ".")
+end
+
+--- The death list as data, for the admin panel to render. The chat listing
+--- stays as it is: one is for reading, the other for a UI to lay out.
+---@param admin IsoPlayer
+local function sendListData(admin)
+    local rows = {}
+    for _, record in ipairs(Store.all()) do
+        local skillCount = 0
+        for _ in pairs(record.skills or {}) do skillCount = skillCount + 1 end
+
+        rows[#rows + 1] = {
+            username = record.username,
+            time = record.time or 0,
+            age = describeAge(record.time),
+            locked = record.locked == true,
+            pendingRestore = record.pendingRestore == true,
+            reason = record.reason or "",
+            skills = skillCount,
+            hasBody = Store.hasBody(record),
+            online = findOnline(record.username) ~= nil,
+        }
+    end
+
+    sendServerCommand(admin, MODULE, "listData", {
+        rows = rows,
+        enabled = PL.isEnabled(),
+        tokens = PL.getOption("FateTokenEnabled", true) == true,
+        version = PL.VERSION,
+    })
 end
 
 ---@param admin IsoPlayer
@@ -396,7 +638,14 @@ local function handleAdmin(player, args)
     elseif sub == "list" then
         commandList(player)
     elseif sub == "revive" then
-        commandRevive(player, target)
+        commandRevive(player, target, false)
+    elseif sub == "reviveatbody" then
+        commandRevive(player, target, true)
+    elseif sub == "listdata" then
+        sendListData(player)
+    elseif sub == "ui" then
+        sendServerCommand(player, MODULE, "openUI", {})
+        sendListData(player)
     elseif sub == "pardon" then
         commandPardon(player, target)
     elseif sub == "add" then

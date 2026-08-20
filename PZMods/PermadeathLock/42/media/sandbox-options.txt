@@ -47,3 +47,29 @@ option PermadeathLock.FateTokenConsume
     page = PermadeathLock,
     translation = PermadeathLock_FateTokenConsume,
 }
+
+option PermadeathLock.ClearZombiesRadius
+{
+    type = integer,
+    min = 0,
+    max = 60,
+    default = 15,
+    page = PermadeathLock,
+    translation = PermadeathLock_ClearZombiesRadius,
+}
+
+option PermadeathLock.RestoreIdentity
+{
+    type = boolean,
+    default = true,
+    page = PermadeathLock,
+    translation = PermadeathLock_RestoreIdentity,
+}
+
+option PermadeathLock.RemoveCorpseOnReturn
+{
+    type = boolean,
+    default = true,
+    page = PermadeathLock,
+    translation = PermadeathLock_RemoveCorpseOnReturn,
+}

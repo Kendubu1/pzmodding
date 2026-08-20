@@ -39,6 +39,18 @@ end })
 
 -- Minimal stubs for what the files touch while loading.
 ISChat = { onCommandEntered = function() end }
+
+--- Stand-in for an ISUI class: enough for `X:derive("Name")` at load time.
+local function isClass()
+    local cls = {}
+    cls.derive = function() return isClass() end
+    return cls
+end
+ISCollapsableWindow = isClass()
+ISScrollingListBox = isClass()
+ISButton = isClass()
+ISLabel = isClass()
+ISModalDialog = isClass()
 function getFileReader() return nil end
 function getFileWriter() return nil end
 
@@ -47,6 +59,7 @@ dofile(base .. "shared/PermadeathLock_Shared.lua")
 -- Alphabetical, as the game loads them: Server before Store.
 dofile(base .. "server/PermadeathLock_Server.lua")
 dofile(base .. "server/PermadeathLock_Store.lua")
+dofile(base .. "client/PermadeathLock_AdminUI.lua")
 dofile(base .. "client/PermadeathLock_Client.lua")
 dofile(base .. "client/PermadeathLock_Commands.lua")
 
