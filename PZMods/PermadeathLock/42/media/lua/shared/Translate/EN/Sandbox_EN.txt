@@ -1,0 +1,21 @@
+Sandbox_EN = {
+    Sandbox_PermadeathLock = "Permadeath Lock",
+
+    Sandbox_PermadeathLock_Enabled = "Enable permadeath lock",
+    Sandbox_PermadeathLock_Enabled_tooltip = "When on, a player who dies is added to the death list and cannot return with a new character. Turn off to suspend the lock without uninstalling the mod; the death list is kept.",
+
+    Sandbox_PermadeathLock_ExemptAdmins = "Exempt admins",
+    Sandbox_PermadeathLock_ExemptAdmins_tooltip = "Admins are never added to the death list and are never blocked. Useful for testing, and stops you locking yourself out of your own server.",
+
+    Sandbox_PermadeathLock_EnforceKill = "Kill clients that ignore the block",
+    Sandbox_PermadeathLock_EnforceKill_tooltip = "The block is normally enforced by asking the client to disconnect. A modified client can ignore that. With this on, a locked-out player still in the world one minute later is killed server-side instead.",
+
+    Sandbox_PermadeathLock_RestoreSkillsOnRevive = "Restore skills on revive",
+    Sandbox_PermadeathLock_RestoreSkillsOnRevive_tooltip = "When an admin revives a player, give their next character the skill levels the dead character had. Turn off to let revived players return from scratch.",
+
+    Sandbox_PermadeathLock_FateTokenEnabled = "Fate Tokens work",
+    Sandbox_PermadeathLock_FateTokenEnabled_tooltip = "Dying while carrying a Fate Token (Base.FateToken) spends it instead of locking you out: your next character keeps the skills of the one that died. Turn off to disable the item without removing it from the world.",
+
+    Sandbox_PermadeathLock_FateTokenConsume = "Fate Tokens are consumed",
+    Sandbox_PermadeathLock_FateTokenConsume_tooltip = "Remove the token from the body when it saves someone. Turn off and the token stays on the corpse, so it can be looted and used again.",
+}

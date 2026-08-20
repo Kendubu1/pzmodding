@@ -1,0 +1,49 @@
+VERSION = 1,
+
+option PermadeathLock.Enabled
+{
+    type = boolean,
+    default = true,
+    page = PermadeathLock,
+    translation = PermadeathLock_Enabled,
+}
+
+option PermadeathLock.ExemptAdmins
+{
+    type = boolean,
+    default = true,
+    page = PermadeathLock,
+    translation = PermadeathLock_ExemptAdmins,
+}
+
+option PermadeathLock.EnforceKill
+{
+    type = boolean,
+    default = true,
+    page = PermadeathLock,
+    translation = PermadeathLock_EnforceKill,
+}
+
+option PermadeathLock.RestoreSkillsOnRevive
+{
+    type = boolean,
+    default = true,
+    page = PermadeathLock,
+    translation = PermadeathLock_RestoreSkillsOnRevive,
+}
+
+option PermadeathLock.FateTokenEnabled
+{
+    type = boolean,
+    default = true,
+    page = PermadeathLock,
+    translation = PermadeathLock_FateTokenEnabled,
+}
+
+option PermadeathLock.FateTokenConsume
+{
+    type = boolean,
+    default = true,
+    page = PermadeathLock,
+    translation = PermadeathLock_FateTokenConsume,
+}

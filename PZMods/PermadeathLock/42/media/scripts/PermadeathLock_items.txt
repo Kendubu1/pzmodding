@@ -1,0 +1,19 @@
+module Base
+{
+    /*
+        The Fate Token. Carrying one when you die spends it: Permadeath Lock
+        records the death but does not lock you out, and your next character
+        collects the skills the dead one had.
+
+        Build 42 item syntax - ItemType replaces Build 41's Type.
+    */
+    item FateToken
+    {
+        DisplayCategory = Misc,
+        ItemType = base:normal,
+        DisplayName = Fate Token,
+        Icon = FateToken,
+        Weight = 0.1,
+        Tooltip = Tooltip_FateToken,
+    }
+}
