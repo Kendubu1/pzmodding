@@ -99,14 +99,29 @@ Under **Permadeath Lock** in the sandbox settings:
 Type these in chat as an admin (`/pd` is a shorthand):
 
 ```
-/permadeath status          is the lock on, and how many are locked out
-/permadeath list            show the death list
-/permadeath revive <user>   bring a player back, keeping their skills
-/permadeath pardon <user>   let a player back in, from scratch
-/permadeath add <user>      lock a player out by hand
-/permadeath clear confirm   wipe the whole death list
-/permadeath reload          re-read the death list from disk
+/permadeath ui                    open the admin panel
+/permadeath status                is the lock on, and how many are locked out
+/permadeath list                  show the death list
+/permadeath revive <user>         bring a player back, keeping their skills
+/permadeath reviveatbody <user>   as revive, but they wake where they died
+/permadeath pardon <user>         let a player back in, from scratch
+/permadeath add <user>            lock a player out by hand
+/permadeath clear confirm         wipe the whole death list
+/permadeath reload                re-read the death list from disk
 ```
+
+### The admin panel
+
+`/permadeath ui` opens a window over the death list: select a player, then
+**Pardon**, **Revive** or **Revive at body**, with Refresh and a confirmed
+Clear all. Each row shows how long ago they died, whether they are locked or
+awaiting a restore, how many skills are held for them, and whether their death
+location is known.
+
+The panel is a view, not an authority. Every button sends the same command the
+chat equivalent does, and the server re-checks access level before acting, so a
+non-admin who forces the window open sees nothing and is refused on every
+click.
 
 Usernames are matched case-insensitively.
 
@@ -128,6 +143,27 @@ levels the dead one had.
   restored immediately and they are healed to full.
 
 `pardon` just removes them from the list — they come back with nothing.
+
+### Waking at the body
+
+`revive at body` also puts the new character where the old one died, and clears
+loaded zombies within `ClearZombiesRadius` tiles of it, so they can loot their
+own corpse. It is the admin's choice per revive, not a server-wide mode — Fate
+Token saves never do this, so the token buys a life back but you still walk to
+your gear.
+
+Worth knowing before using it:
+
+- **Only deaths recorded since v1.1.0 have coordinates.** Older records cannot
+  return to a body, and the command says so rather than silently reviving them
+  somewhere random.
+- **Only loaded zombies can be cleared.** Anything outside the loaded chunks
+  wanders back in. This is a window to loot, not a safe zone.
+- **The body may not be there** if corpses were wiped or the area reset.
+- **You may arrive somewhere still lethal** — fire, water, a horde bigger than
+  the radius.
+- The teleport runs about a second after the character spawns. Doing it in the
+  same frame loses to the game's own spawn placement.
 
 Skills are restored, not overwritten: a level the new character already exceeds is
 left alone. Traits, profession and inventory are **not** restored — traits are not

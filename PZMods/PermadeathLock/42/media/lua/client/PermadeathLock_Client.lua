@@ -112,6 +112,13 @@ local function onServerCommand(module, command, args)
     elseif command == "tokenSpent" then
         -- Arrives at the moment of death, so it has to be a modal.
         showNotice(getText("IGUI_PermadeathLock_TokenSpent"), nil)
+    elseif command == "openUI" then
+        if PermadeathLockUI ~= nil then PermadeathLockUI.open() end
+    elseif command == "listData" then
+        -- Only lands if the panel asked for it; ignored when it is not open.
+        if PermadeathLockUI ~= nil and PermadeathLockUI.instance ~= nil then
+            PermadeathLockUI.instance:setData(args or {})
+        end
     elseif command == "message" then
         local text = args and args.text
         if text ~= nil and text ~= "" then

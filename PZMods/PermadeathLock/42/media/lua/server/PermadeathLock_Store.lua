@@ -6,7 +6,11 @@
     Zomboid/Lua/ so they survive a restart and can be inspected by hand.
 
     One line per player:
-        username <tab> steamID <tab> timestamp <tab> reason <tab> skills <tab> locked <tab> pendingRestore
+        username <tab> steamID <tab> timestamp <tab> reason <tab> skills <tab>
+        locked <tab> pendingRestore <tab> x <tab> y <tab> z <tab> atBody
+
+    Trailing fields were added after the format shipped. Reading tolerates their
+    absence, so a death list written by an older build still loads.
 
     'skills' is a comma separated Perk:Level list, kept so an admin can revive a
     player and hand their next character the levels the dead one had.
@@ -24,7 +28,7 @@ local records = {}
 local loaded = false
 
 local FIELD_SEP = "\t"
-local HEADER = "# PermadeathLock death list - username, steamID, timestamp, reason, skills, locked, pendingRestore"
+local HEADER = "# PermadeathLock death list - username, steamID, timestamp, reason, skills, locked, pendingRestore, x, y, z, atBody"
 
 --------------------------------------------------------------------------------
 -- text helpers
@@ -150,6 +154,10 @@ local function serialise(record)
         skills,
         record.locked and "1" or "0",
         record.pendingRestore and "1" or "0",
+        record.x ~= nil and tostring(record.x) or "",
+        record.y ~= nil and tostring(record.y) or "",
+        record.z ~= nil and tostring(record.z) or "",
+        record.atBody and "1" or "0",
     }, FIELD_SEP)
 end
 
@@ -170,6 +178,12 @@ local function deserialise(line)
         -- locked unless the file says otherwise.
         locked = (fields[6] or "1") ~= "0",
         pendingRestore = (fields[7] or "0") == "1",
+        -- Where they fell. nil for anything recorded before this was tracked,
+        -- which is why every reader has to cope with not knowing.
+        x = tonumber(fields[8]),
+        y = tonumber(fields[9]),
+        z = tonumber(fields[10]),
+        atBody = (fields[11] or "0") == "1",
     }
 end
 
@@ -285,6 +299,13 @@ function Store.record(player, reason, saved)
     local ok, value = pcall(function() return player:getSteamID() end)
     if ok and value ~= nil then steamID = tostring(value) end
 
+    -- Where they died, so a revive can put the next character on the body.
+    local x, y, z
+    local gotPos = pcall(function()
+        x, y, z = player:getX(), player:getY(), player:getZ()
+    end)
+    if not gotPos then x, y, z = nil, nil, nil end
+
     local record = {
         username = username,
         steamID = steamID,
@@ -293,6 +314,10 @@ function Store.record(player, reason, saved)
         skills = snapshotSkills(player),
         locked = not saved,
         pendingRestore = saved == true,
+        x = x,
+        y = y,
+        z = z,
+        atBody = false,
     }
     records[key] = record
     Store.save()
@@ -336,8 +361,9 @@ end
 
 --- Unlock a player and queue their skills to be handed to their next character.
 ---@param username string
+---@param atBody boolean? also put that character where this one died
 ---@return table? record nil when they were not on the list
-function Store.revive(username)
+function Store.revive(username, atBody)
     ensureLoaded()
     local key = PL.key(username)
     local record = key and records[key]
@@ -345,8 +371,17 @@ function Store.revive(username)
 
     record.locked = false
     record.pendingRestore = true
+    -- Only honoured if we know where they fell.
+    record.atBody = atBody == true and record.x ~= nil
     Store.save()
     return record
+end
+
+--- True when this record knows where the player died.
+---@param record table?
+---@return boolean
+function Store.hasBody(record)
+    return record ~= nil and record.x ~= nil and record.y ~= nil
 end
 
 --- Called once the queued skills have been applied to a live character.

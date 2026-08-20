@@ -18,4 +18,7 @@ Sandbox_EN = {
 
     Sandbox_PermadeathLock_FateTokenConsume = "Fate Tokens are consumed",
     Sandbox_PermadeathLock_FateTokenConsume_tooltip = "Remove the token from the body when it saves someone. Turn off and the token stays on the corpse, so it can be looted and used again.",
+
+    Sandbox_PermadeathLock_ClearZombiesRadius = "Clear zombies on return (tiles)",
+    Sandbox_PermadeathLock_ClearZombiesRadius_tooltip = "When an admin revives someone at their body, remove loaded zombies within this many tiles of it. 0 leaves them be. Only zombies the server has loaded can be removed; others wander back in.",
 }

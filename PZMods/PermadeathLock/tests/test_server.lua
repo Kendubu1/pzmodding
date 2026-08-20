@@ -23,11 +23,44 @@ Events = setmetatable({}, { __index = function(t, name)
 end })
 
 function sendServerCommand(player, module, command, args)
-    sent[#sent + 1] = { user = player:getUsername(), command = command, text = args and args.text }
+    sent[#sent + 1] = { user = player:getUsername(), command = command, text = args and args.text, args = args }
 end
 
 function getOnlinePlayers()
     return { size = function() return #online end, get = function(_, i) return online[i + 1] end }
+end
+
+-- A cell holding zombies at fixed spots, so clearing can be checked by count.
+local zombies = {}
+local function makeZombie(x, y, z)
+    local self = { _removed = false }
+    self.getX = function() return x end
+    self.getY = function() return y end
+    self.getZ = function() return z or 0 end
+    self.removeFromWorld = function() self._removed = true end
+    self.removeFromSquare = function() end
+    return self
+end
+
+function getCell()
+    return {
+        getZombieList = function()
+            local alive = {}
+            for _, z in ipairs(zombies) do
+                if not z._removed then alive[#alive + 1] = z end
+            end
+            return {
+                size = function() return #alive end,
+                get = function(_, i) return alive[i + 1] end,
+            }
+        end,
+    }
+end
+
+local function zombiesLeft()
+    local n = 0
+    for _, z in ipairs(zombies) do if not z._removed then n = n + 1 end end
+    return n
 end
 
 local function makePerk(id)
@@ -113,10 +146,18 @@ local function makePlayer(username, opts)
         getPerkLevel = function(_, t) return held[t] or 0 end,
         LevelPerk = function(_, t) held[t] = (held[t] or 0) + 1 end,
         Kill = function() self._dead = true end,
+        getX = function() return self._x end,
+        getY = function() return self._y end,
+        getZ = function() return self._z end,
+        teleportTo = function(_, x, y, z) self._x, self._y, self._z = x, y, z; self._teleported = true end,
         getBodyDamage = function()
             return { RestoreToFullHealth = function() self._healed = true end }
         end,
     }
+    self._x = opts.x or 100
+    self._y = opts.y or 200
+    self._z = opts.z or 0
+    self._teleported = false
     self.getInventory = function() return self._container end
     self._container = makeInventory(self, opts.tokens, opts.nativeLookupBlind)
     return self
@@ -132,6 +173,19 @@ local Store = PermadeathLock.Store
 local MODULE = PermadeathLock.MODULE
 local sweep = handlers["EveryOneMinute"][1]
 local onClientCommand = handlers["OnClientCommand"][1]
+local onTick = handlers["OnTick"][1]
+
+--- Run the tick handler enough times for any queued teleport to fire.
+local function runTicks(n)
+    for _ = 1, (n or 70) do onTick() end
+end
+
+--- Capture the args of the last server command of a given name.
+local function lastArgsOf(command)
+    for i = #sent, 1, -1 do
+        if sent[i].command == command then return sent[i].args end
+    end
+end
 
 local failures = 0
 local function check(label, got, want)
@@ -359,6 +413,90 @@ sweep()
 nia._dead = true
 sweep()
 check("no token means locked out", Store.isLocked("Nia"), true)
+
+--------------------------------------------------------------------------------
+io.write("\n-- returning to the body --\n")
+
+reset()
+zombies = {}
+local owen = makePlayer("Owen", { levels = { TYPE_Aiming = 3 }, dead = true, x = 500, y = 600, z = 0 })
+online = { owen }
+sweep()
+check("death records where it happened", Store.get("Owen").x, 500)
+check("and the y", Store.get("Owen").y, 600)
+
+-- zombies near the body, and one far away that must survive
+zombies = { makeZombie(502, 601), makeZombie(505, 604), makeZombie(900, 900) }
+
+local revived = Store.revive("Owen", true)
+check("revive at body sets the flag", revived.atBody, true)
+
+local owenNew = makePlayer("Owen", { x = 1, y = 1 })
+online = { owenNew }
+sweep()                       -- restore applies, teleport is queued
+check("teleport does not fire in the same frame", owenNew._teleported, false)
+runTicks()
+check("teleported to the body", owenNew._x, 500)
+check("nearby zombies cleared", zombiesLeft(), 1)
+
+-- a plain revive leaves them wherever they spawned
+reset()
+zombies = {}
+local pia = makePlayer("Pia", { dead = true, x = 300, y = 400 })
+online = { pia }
+sweep()
+Store.revive("Pia", false)
+local piaNew = makePlayer("Pia", { x = 7, y = 8 })
+online = { piaNew }
+sweep()
+runTicks()
+check("plain revive does not teleport", piaNew._teleported, false)
+check("plain revive leaves them put", piaNew._x, 7)
+
+-- a record with no coordinates cannot go to the body
+reset()
+Store.addManual("Quinn", "added by hand")
+local quinnRecord = Store.revive("Quinn", true)
+check("no coordinates means no atBody", quinnRecord.atBody, false)
+check("hasBody is false without coordinates", Store.hasBody(Store.get("Quinn")), false)
+
+-- clearing is skippable
+reset()
+zombies = { makeZombie(501, 601) }
+SandboxVars.PermadeathLock.ClearZombiesRadius = 0
+local rex = makePlayer("Rex", { dead = true, x = 500, y = 600 })
+online = { rex }
+sweep()
+Store.revive("Rex", true)
+local rexNew = makePlayer("Rex", {})
+online = { rexNew }
+sweep()
+runTicks()
+check("radius 0 clears nothing", zombiesLeft(), 1)
+check("but still teleports", rexNew._x, 500)
+SandboxVars.PermadeathLock.ClearZombiesRadius = 15
+
+--------------------------------------------------------------------------------
+io.write("\n-- admin panel data --\n")
+
+reset()
+local sara = makePlayer("Sara", { levels = { TYPE_Aiming = 2, TYPE_Woodwork = 1 }, dead = true, x = 10, y = 20 })
+online = { sara }
+sweep()
+sent = {}
+onClientCommand(MODULE, "admin", admin, { sub = "listData" })
+local data = lastArgsOf("listData")
+check("listData answers an admin", data ~= nil, true)
+check("one row per record", #data.rows, 1)
+check("row names the player", data.rows[1].username, "Sara")
+check("row counts skills", data.rows[1].skills, 2)
+check("row knows the body is findable", data.rows[1].hasBody, true)
+check("row reports locked", data.rows[1].locked, true)
+check("payload carries the version", data.version, PermadeathLock.VERSION)
+
+sent = {}
+onClientCommand(MODULE, "admin", makePlayer("Randomer", {}), { sub = "listData" })
+check("listData refused to a non-admin", lastArgsOf("listData"), nil)
 
 --------------------------------------------------------------------------------
 io.write("\n-- disabling the mod --\n")
