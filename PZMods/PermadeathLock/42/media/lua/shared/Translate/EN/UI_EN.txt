@@ -1,0 +1,4 @@
+UI_EN = {
+    IGUI_PermadeathLock_Blocked = "You died on this server.\n\nPermadeath is enabled here, so you cannot create a new character.\n\nIf you think this is a mistake, contact an admin - they can bring you back.",
+    IGUI_PermadeathLock_Disconnecting = "Disconnecting...",
+}

@@ -1,0 +1,15 @@
+Sandbox_EN = {
+    Sandbox_PermadeathLock = "Permadeath Lock",
+
+    Sandbox_PermadeathLock_Enabled = "Enable permadeath lock",
+    Sandbox_PermadeathLock_Enabled_tooltip = "When on, a player who dies is added to the death list and cannot return with a new character. Turn off to suspend the lock without uninstalling the mod; the death list is kept.",
+
+    Sandbox_PermadeathLock_ExemptAdmins = "Exempt admins",
+    Sandbox_PermadeathLock_ExemptAdmins_tooltip = "Admins are never added to the death list and are never blocked. Useful for testing, and stops you locking yourself out of your own server.",
+
+    Sandbox_PermadeathLock_EnforceKill = "Kill clients that ignore the block",
+    Sandbox_PermadeathLock_EnforceKill_tooltip = "The block is normally enforced by asking the client to disconnect. A modified client can ignore that. With this on, a locked-out player still in the world one minute later is killed server-side instead.",
+
+    Sandbox_PermadeathLock_RestoreSkillsOnRevive = "Restore skills on revive",
+    Sandbox_PermadeathLock_RestoreSkillsOnRevive_tooltip = "When an admin revives a player, give their next character the skill levels the dead character had. Turn off to let revived players return from scratch.",
+}
