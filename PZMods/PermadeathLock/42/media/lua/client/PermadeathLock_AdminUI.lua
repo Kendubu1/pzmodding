@@ -33,6 +33,37 @@ local STATUS_HEIGHT = 22
 -- five-minute-old picture of it is worse than no panel.
 local REFRESH_FRAMES = 300
 
+-- The window sizes itself to the screen rather than to a number picked on one
+-- monitor. Five columns of text need real width, and a fixed 900px is roomy at
+-- 1280 wide and cramped at 3440. The bounds stop it becoming unreadable on a
+-- small screen or absurd on a very large one.
+local SCREEN_FRACTION_W = 0.66
+local SCREEN_FRACTION_H = 0.58
+local MIN_W, MAX_W = 720, 1500
+local MIN_H, MAX_H = 360, 950
+
+---@param value number
+---@param low number
+---@param high number
+---@return number
+local function clamp(value, low, high)
+    return math.max(low, math.min(value, high))
+end
+
+--- How big the panel should be on this screen, in pixels.
+---@return number width, number height
+local function preferredSize()
+    local screenWidth = getCore():getScreenWidth()
+    local screenHeight = getCore():getScreenHeight()
+
+    -- Clamped to the screen last, so a small screen wins over the minimum
+    -- rather than the window hanging off the edge of it.
+    local width = clamp(math.floor(screenWidth * SCREEN_FRACTION_W), MIN_W, MAX_W)
+    local height = clamp(math.floor(screenHeight * SCREEN_FRACTION_H), MIN_H, MAX_H)
+
+    return math.min(width, screenWidth - 40), math.min(height, screenHeight - 40)
+end
+
 -- Column positions as fractions of the list's width, so they hold together when
 -- the window is resized. Fixed pixel offsets assumed short text, and "under an
 -- hour ago" ran straight into the state beside it.
@@ -350,7 +381,7 @@ function PermadeathLockUI.open()
         return PermadeathLockUI.instance
     end
 
-    local width, height = 900, 480
+    local width, height = preferredSize()
     local x = (getCore():getScreenWidth() - width) / 2
     local y = (getCore():getScreenHeight() - height) / 2
 
@@ -378,6 +409,8 @@ function PermadeathLockUI:new(x, y, width, height)
     self.__index = self
     window:setTitle("Permadeath Lock")
     window:setResizable(true)
+    -- Below this the five columns start colliding. Drag it wider whenever you
+    -- like; layout() re-runs and the columns follow.
     window.minimumWidth = 640
     window.minimumHeight = 320
     return window

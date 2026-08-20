@@ -81,6 +81,8 @@ local function perksByKey()
     if perkIndex ~= nil then return perkIndex end
 
     local index = {}
+    local found = 0
+
     local perks = PerkFactory and PerkFactory.PerkList
     if perks == nil then return index end
 
@@ -88,6 +90,7 @@ local function perksByKey()
         local perk = perks:get(i)
         if perk ~= nil then
             index[tostring(perk:getId())] = perk
+            found = found + 1
             -- getName is absent on some stubs and older builds; only index it
             -- when it is really there, and never let it shadow an id.
             if perk.getName ~= nil then
@@ -101,7 +104,12 @@ local function perksByKey()
 
     -- Only cache once the perk list is actually populated. Called before
     -- PerkFactory.init() this would otherwise cache an empty table forever.
-    if next(index) ~= nil then perkIndex = index end
+    --
+    -- Counted in the loop rather than asked afterwards with next(). Kahlua, the
+    -- Lua implementation the game runs, does not provide `next` - calling it
+    -- threw on every sweep, which aborted the restore before the record was
+    -- cleared, so the player got no skills back and the crash repeated forever.
+    if found > 0 then perkIndex = index end
     return index
 end
 

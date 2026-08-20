@@ -85,7 +85,8 @@ the player is dead and the chat window is not on screen behind the death UI.
 | --- | --- |
 | Died with no token | Their fate has been decided; wait and pray for a pardon. |
 | Died with a token | The token burned away; they are not locked out. |
-| Blocked on spawn | Why they cannot play, and that an admin can lift it. Disconnects after 12s. |
+| Blocked on spawn | Why this character just died, and that an admin can lift it. |
+| Blocked on spawn, `KillOnSpawn` off | The same, then disconnects after 12s. |
 
 The two death-time notices sit *below* the middle of the screen, clear of the
 death screen's own scrolling text and above its "continue with a new character"
@@ -93,10 +94,26 @@ buttons. The block notice is centred; there is nothing behind it.
 
 The handshake is the polite path and the sweep is the authoritative one. A player
 running a modified client that never reports its death is still caught by the
-sweep within one in-game minute: they are asked to leave, and if they are still
-in the world on the next sweep their character is killed (sandbox option
-`EnforceKill`). Killing is the strongest action available — the game does not
-expose a kick to server Lua.
+sweep within one in-game minute.
+
+### What happens to a locked-out player
+
+By default (`KillOnSpawn`) their new character is **killed where it stands** and
+they stay connected. Every character they make after that dies the same way.
+
+This is deliberate. Being thrown off the server is indistinguishable from a
+crash or a bad connection, and it makes the mod much harder to work on: you lose
+the console, the chat and the world the instant anything happens. Killed, the
+player reads the notice, stays where they are, and sees a rule rather than a
+fault.
+
+Turn `KillOnSpawn` off for the older behaviour: the player is shown a notice and
+their client disconnects itself after twelve seconds, with `EnforceKill` as the
+backstop for a modified client that ignores it. Killing is the strongest action
+available either way — the game does not expose a kick to server Lua.
+
+An enforcement kill never spends a Fate Token: the player is already on the
+list, so the death is not recorded again and nothing is taken from them.
 
 Nothing the client sends is trusted. Death reports are checked against
 `player:isDead()`, and admin commands are re-checked against the sender's real
@@ -110,7 +127,8 @@ Under **Permadeath Lock** in the sandbox settings:
 | --- | --- | --- |
 | `Enabled` | on | Suspends the lock when off. The death list is kept. |
 | `ExemptAdmins` | on | Admins are never recorded or blocked. Stops you locking yourself out. |
-| `EnforceKill` | on | Kill locked-out players whose client ignored the disconnect request. |
+| `KillOnSpawn` | on | Kill a locked-out player's new character on the spot and leave them connected, instead of disconnecting them. |
+| `EnforceKill` | on | Only used when `KillOnSpawn` is off: kill locked-out players whose client ignored the disconnect request. |
 | `RestoreSkillsOnRevive` | on | Revived players get their old skill levels on their next character. |
 | `FateTokenEnabled` | on | Dying with a Fate Token spends it instead of locking you out. |
 | `FateTokenConsume` | on | The token is removed from the body when it saves someone. Off = lootable and reusable. |
@@ -148,6 +166,10 @@ than it looks.
 | Died | How long ago, for anyone on the list |
 | Skills held | How many perk levels are being kept for their next character |
 | Tokens | Fate Tokens they are carrying right now |
+
+The window sizes itself to your screen — about two thirds of its width, within
+sensible bounds — rather than to a pixel count picked on somebody else's
+monitor. It is also freely resizable, and the columns follow when you drag it.
 
 Rows sort trouble-first: locked out, then awaiting a restore, then anyone else
 listed, then everyone simply playing, alphabetically inside each group. The

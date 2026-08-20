@@ -53,13 +53,33 @@ local function tell(player, text)
     sendServerCommand(player, MODULE, "message", { text = text })
 end
 
+--- Tell a locked-out player they are locked out, and, in the default mode, kill
+--- the character they just made.
+---
+--- Killing rather than disconnecting is deliberate. Being thrown off the server
+--- is indistinguishable from a crash or a connection problem, and it makes the
+--- mod much harder to watch while testing: you lose the console, the chat and
+--- the world the moment anything happens. Killed, the player stays connected,
+--- reads the notice, and can keep making characters - each of which dies the
+--- same way, which is a rule rather than a fault.
 ---@param player IsoPlayer
 ---@param record table?
 local function sendBlocked(player, record)
+    local killOnSpawn = PL.getOption("KillOnSpawn", true) == true
+
     sendServerCommand(player, MODULE, "blocked", {
         username = player:getUsername(),
         time = record and record.time or 0,
+        -- Whether the client should show itself out. It never decides this:
+        -- the server is about to kill the character either way.
+        kill = killOnSpawn,
     })
+
+    if killOnSpawn and not player:isDead() then
+        player:Kill(player)
+        print("[PermadeathLock] " .. player:getUsername()
+            .. " is locked out; the new character was killed on spawn.")
+    end
 end
 
 ---@param username string?
@@ -260,7 +280,15 @@ local function checkPlayer(player)
 
     if record == nil or not record.locked then return end
 
-    -- Alive while locked out means they made a new character. Ask once, then act.
+    -- Alive while locked out means they made a new character.
+    if PL.getOption("KillOnSpawn", true) then
+        -- Every time, with no strike count to keep: the character dies on the
+        -- spot, and so does the next one.
+        sendBlocked(player, record)
+        return
+    end
+
+    -- Otherwise ask them to leave once, then enforce it.
     strikes[key] = (strikes[key] or 0) + 1
 
     if strikes[key] == 1 then

@@ -155,7 +155,14 @@ local function onServerCommand(module, command, args)
     if module ~= MODULE then return end
 
     if command == "blocked" then
-        showBlockNotice(getText("IGUI_PermadeathLock_Blocked"))
+        if args ~= nil and args.kill then
+            -- The server is killing this character rather than showing us the
+            -- door, so stay put: the notice sits low, over the death screen
+            -- that is about to appear.
+            showNotice(getText("IGUI_PermadeathLock_BlockedKilled"), nil, true)
+        else
+            showBlockNotice(getText("IGUI_PermadeathLock_Blocked"))
+        end
     elseif command == "tokenSpent" then
         -- Arrives at the moment of death, so it has to be a modal, and low.
         showNotice(getText("IGUI_PermadeathLock_TokenSpent"), nil, true)

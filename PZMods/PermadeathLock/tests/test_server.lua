@@ -9,9 +9,22 @@ local handlers = {}      -- captured Events.*.Add callbacks
 function isServer() return true end
 function isClient() return false end
 function getTimestamp() return 1700000000 end
-function print(...) end  -- silence the mod's console output
+function print(...) end
 
-SandboxVars = { PermadeathLock = { Enabled = true, ExemptAdmins = true, EnforceKill = true, RestoreSkillsOnRevive = true } }
+-- Kahlua, the Lua implementation Project Zomboid runs, does not provide every
+-- Lua 5.1 global. `next` in particular is missing, and a call to it threw on
+-- every sweep. Removing them here makes that class of mistake a failing test
+-- rather than a server log full of stack traces. pairs/ipairs are unaffected:
+-- Lua 5.1 implements them natively rather than through the global.
+next = nil  -- silence the mod's console output
+
+SandboxVars = { PermadeathLock = {
+    Enabled = true, ExemptAdmins = true, EnforceKill = true,
+    RestoreSkillsOnRevive = true,
+    -- The disconnect path is the one the existing checks describe, so the
+    -- default is turned off here and tested on its own below.
+    KillOnSpawn = false,
+} }
 
 Events = setmetatable({}, { __index = function(t, name)
     local slot = {
@@ -206,6 +219,8 @@ check("checkStatus blocks on spawn", lastCommandTo("Bob"), "blocked")
 
 --------------------------------------------------------------------------------
 io.write("\n-- revive --\n")
+-- Continues the Bob thread from the section above: do not put a reset() in
+-- between, or Bob has no record left to be revived from.
 
 Store.revive("Bob")
 sent = {}
@@ -267,6 +282,38 @@ local quin = makePlayer("Quin", { dead = true, tokens = 1 })
 online = { quin }
 sweep()
 check("dying with a token announces the token instead", lastCommandTo("Quin"), "tokenSpent")
+
+--------------------------------------------------------------------------------
+io.write("\n-- killing on spawn instead of disconnecting --\n")
+
+reset()
+SandboxVars.PermadeathLock.KillOnSpawn = true
+local uma = makePlayer("Uma", { dead = true })
+online = { uma }
+sweep()
+check("Uma is locked out", Store.isLocked("Uma"), true)
+
+sent = {}
+local umaNew = makePlayer("Uma", {})
+online = { umaNew }
+sweep()
+check("the new character is killed at once", umaNew._dead, true)
+check("and told why", lastCommandTo("Uma"), "blocked")
+check("the notice says not to disconnect", sent[#sent].args.kill, true)
+
+-- and the character after that, with no strike count to run out
+local umaAgain = makePlayer("Uma", {})
+online = { umaAgain }
+sweep()
+check("so is the one after it", umaAgain._dead, true)
+
+-- being killed by the block must not spend a Fate Token they happen to hold
+local umaToken = makePlayer("Uma", { tokens = 1 })
+online = { umaToken }
+sweep()
+check("an enforcement kill does not eat a token", #umaToken._items, 1)
+check("and does not unlock them", Store.isLocked("Uma"), true)
+SandboxVars.PermadeathLock.KillOnSpawn = false
 
 --------------------------------------------------------------------------------
 io.write("\n-- admin command authorisation --\n")

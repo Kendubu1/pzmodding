@@ -6,6 +6,13 @@ function isServer() return true end
 function isClient() return false end
 function getTimestamp() return 1700000000 end
 
+-- Kahlua, the Lua implementation Project Zomboid runs, does not provide every
+-- Lua 5.1 global. `next` in particular is missing, and a call to it threw on
+-- every sweep. Removing them here makes that class of mistake a failing test
+-- rather than a server log full of stack traces. pairs/ipairs are unaffected:
+-- Lua 5.1 implements them natively rather than through the global.
+next = nil
+
 SandboxVars = { PermadeathLock = { Enabled = true, ExemptAdmins = true, EnforceKill = true, RestoreSkillsOnRevive = true } }
 
 Events = setmetatable({}, { __index = function(t, k)

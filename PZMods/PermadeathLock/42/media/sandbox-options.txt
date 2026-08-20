@@ -48,3 +48,11 @@ option PermadeathLock.FateTokenConsume
     translation = PermadeathLock_FateTokenConsume,
 }
 
+
+option PermadeathLock.KillOnSpawn
+{
+    type = boolean,
+    default = true,
+    page = PermadeathLock,
+    translation = PermadeathLock_KillOnSpawn,
+}
