@@ -176,8 +176,10 @@ local onClientCommand = handlers["OnClientCommand"][1]
 local onTick = handlers["OnTick"][1]
 
 --- Run the tick handler enough times for any queued teleport to fire.
+--- Comfortably past the mod's delay, so raising that does not silently break
+--- these checks into passing for the wrong reason.
 local function runTicks(n)
-    for _ = 1, (n or 70) do onTick() end
+    for _ = 1, (n or 200) do onTick() end
 end
 
 --- Capture the args of the last server command of a given name.

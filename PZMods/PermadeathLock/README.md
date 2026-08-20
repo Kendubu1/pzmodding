@@ -208,6 +208,32 @@ table.insert(ProceduralDistributions.list["MedicalClinicMisc"].items, 0.5)
 
 The number is a weight, not a percentage — keep it low.
 
+## Compatibility
+
+Nothing here replaces a vanilla system. The mod adds one item, hooks events
+additively, and wraps `ISChat.onCommandEntered` — passing anything that is not
+`/permadeath` or `/pd` straight to whatever was there before, so other chat mods
+keep working whichever load order they end up in.
+
+### This Is Your Life
+
+Compatible. It states that it does not modify death, respawning, skills/XP,
+traits or chat commands, which is the whole surface this mod uses. Two
+interactions are worth knowing about rather than being surprised by:
+
+- **Revive at body overrides the hometown spawn.** It places the new character
+  in their chosen town; a revive-at-body then moves them to their corpse a
+  moment later. That is the point of the feature, but it does mean the two
+  disagree and this one wins. A plain `revive` leaves their spawn alone.
+- **A locked-out player still goes through character creation before the block
+  lands.** The postcards, the newspaper, the DMV screen, then a notice telling
+  them they cannot play. Unavoidable for now: the game gives server Lua no
+  event for a player connecting, so the earliest we hear about anyone is when
+  they spawn.
+
+Restored skills do not fight its town XP bonuses. Levels are only ever raised
+toward the recorded value, never lowered, so whichever is higher stands.
+
 ## The death list
 
 Stored at `Zomboid/Lua/PermadeathLock_deaths.txt`, one tab-separated record per

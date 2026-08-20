@@ -220,6 +220,13 @@ end
 -- Teleports queued to run a moment after the restore. Doing it in the same
 -- frame as the spawn loses the race: the game is still placing the new
 -- character, and its position wins.
+--
+-- The wait is generous on purpose. Character-creation mods run their own
+-- placement and spawn scripts - This Is Your Life drops you in a chosen
+-- hometown and plays an opening scene - and moving someone mid-script is a good
+-- way to break it. Landing after all of that is worth a second and a half.
+local TELEPORT_DELAY_TICKS = 90
+
 ---@type table[]
 local pendingTeleports = {}
 
@@ -288,7 +295,7 @@ local function applyRestore(player, record)
         pendingTeleports[#pendingTeleports + 1] = {
             username = record.username,
             record = record,
-            ticks = 60,
+            ticks = TELEPORT_DELAY_TICKS,
         }
     end
 
