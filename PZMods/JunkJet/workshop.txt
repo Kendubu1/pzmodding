@@ -1,0 +1,6 @@
+version=1
+id=3005797817
+title=Fallout 4 Junk Jet
+tags=Weapons;Items;Build 41;Build 42
+visibility=public
+description=Unleash the marvel of a vault dweller's ingenuity with the Junk Jet Mod for Project Zomboid, where any scavenged junk item becomes a potent projectile, transforming your scavenging prowess into a source of unlimited ammunition.

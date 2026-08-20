@@ -1,0 +1,71 @@
+module JunkJet
+{
+    imports
+    {
+        Base,JunkJet
+    }
+
+    /*
+        Build 42 crafting. The Build 41 `recipe` block is gone; B42 uses
+        `craftRecipe` with inputs/outputs. Format verified against a shipping
+        B42 mod (VanillaAppliancesExtended), not guessed.
+
+        NOT yet verified in game, flagged so they get checked rather than
+        trusted:
+          - `needToBeLearn` - B41 used NeedToBeLearn:True with the magazine's
+            TeachedRecipes. The B42 spelling is unconfirmed.
+          - `category` values - B41's "Weapons" may not be a B42 category.
+          - BlowTorch as a drainable: B41 asked for 90 units. How B42 counts
+            drainable use in a recipe is unconfirmed.
+
+        MetalPipe is deliberately Base.Pipe here: B42 renamed it.
+
+        The long junk list below is temporary. The planned ammo rework makes
+        every carryable item valid ammo and deletes this entirely.
+    */
+
+    craftRecipe MakeJunkJetAmmo
+    {
+        timedAction = Making,
+        time = 10,
+        category = Weapons,
+        needToBeLearn = true,
+        inputs
+        {
+            item 1 [Base.Money;Base.Bell;Base.Button;Base.CatToy;Base.ChessBlack;Base.ChessWhite;Base.Cologne;Base.Crayons;Base.CreditCard;Base.DogChew;Base.KnittingNeedles;Base.Leash;Base.Perfume;Base.Pinecone;Base.RubberBand;Base.ToiletPaper;Base.ToyCar;Base.WaterDish;Base.Bricktoys;Base.Frame;Base.Rubberducky;Base.Rubberducky2;Base.Doll;Base.Cork;Base.Corkscrew;Base.Toothbrush;Base.Toothpaste;Base.CardDeck;Base.Comb;Base.Dice;Base.Cube;Base.Locket;Base.Razor;Base.ToyBear;Base.Wallet;Base.Wallet2;Base.Wallet3;Base.Wallet4;Base.Yoyo;Base.BeerCanEmpty;Base.PopEmpty;Base.Pop2Empty;Base.Pop3Empty;Base.Camera;Base.CameraDisposable;Base.CameraExpensive;Base.CameraFilm;Base.Chopsticks;Base.Plate;Base.PlateBlue;Base.PlateOrange;Base.PlateFancy;Base.PaperNapkins;Base.Straw;Base.PlasticTray;Base.FountainCup;Base.CuttingBoardPlastic;Base.CuttingBoardWooden;Base.GamePieceBlack;Base.GamePieceRed;Base.GamePieceWhite;Base.CheckerBoard;Base.BackgammonBoard;Base.PokerChips;Base.Stapler;Base.HolePuncher;Base.Belt;Base.KatePic;Base.JamesPic;Base.HankPic;Base.MariannePic;Base.ChrisPic;Base.CortmanPic;Base.BobPic;Base.CaseyPic;Base.Cigarettes;Base.Baseball;Base.Basketball;Base.Dart;Base.Football;Base.GolfBall;Base.SoccerBall;Base.TennisBall;Base.Football2;Base.PoolBall] mode:destroy,
+        }
+        outputs
+        {
+            item 1 JunkJet.JunkJet_Ammo,
+        }
+    }
+
+    craftRecipe MakeJunkJet
+    {
+        timedAction = Making,
+        time = 3000,
+        category = Weapons,
+        needToBeLearn = true,
+        SkillRequired = MetalWelding:1,
+        xpAward = MetalWelding:25,
+        inputs
+        {
+            item 5 [Base.SmallSheetMetal] mode:destroy,
+            item 4 [Base.SheetMetal] mode:destroy,
+            item 8 [Base.Pipe;Base.LeadPipe] mode:destroy,
+            item 15 [Base.Screws] mode:destroy,
+            item 15 [Base.Nails] mode:destroy,
+            item 1 [Base.Wire] mode:destroy,
+            item 1 [Base.CarBattery1] mode:destroy,
+            item 90 [Base.BlowTorch] mode:destroy,
+            item 1 [Base.WeldingMask] mode:keep,
+            item 1 tags[base:hammer] mode:keep,
+            item 1 tags[base:saw] mode:keep,
+            item 1 tags[base:screwdriver] mode:keep,
+        }
+        outputs
+        {
+            item 1 JunkJet.JunkJet_Weapon,
+        }
+    }
+}
