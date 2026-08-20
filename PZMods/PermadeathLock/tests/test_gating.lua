@@ -44,8 +44,9 @@ function getFileWriter() return nil end
 
 local base = "PZMods/PermadeathLock/42/media/lua/"
 dofile(base .. "shared/PermadeathLock_Shared.lua")
-dofile(base .. "server/PermadeathLock_Store.lua")
+-- Alphabetical, as the game loads them: Server before Store.
 dofile(base .. "server/PermadeathLock_Server.lua")
+dofile(base .. "server/PermadeathLock_Store.lua")
 dofile(base .. "client/PermadeathLock_Client.lua")
 dofile(base .. "client/PermadeathLock_Commands.lua")
 

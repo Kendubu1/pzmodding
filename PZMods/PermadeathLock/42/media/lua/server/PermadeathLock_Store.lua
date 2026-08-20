@@ -15,7 +15,8 @@
 if not PermadeathLock.isServerSide() then return end
 
 local PL = PermadeathLock
-PL.Store = PL.Store or {}
+-- Created in PermadeathLock_Shared.lua so that Server.lua, which the game loads
+-- first, captures the same table. See the note there.
 local Store = PL.Store
 
 ---@type table<string, table>

@@ -9,7 +9,7 @@
 PermadeathLock = PermadeathLock or {}
 local PL = PermadeathLock
 
-PL.VERSION = "1.0.0"
+PL.VERSION = "1.0.1"
 
 -- Module name used by sendClientCommand / sendServerCommand.
 PL.MODULE = "PermadeathLock"
@@ -17,6 +17,14 @@ PL.MODULE = "PermadeathLock"
 -- Death list, written to Zomboid/Lua/ on the server. Plain text so an admin can
 -- read or edit it with the server down, then use /permadeath reload.
 PL.DEATH_FILE = "PermadeathLock_deaths.txt"
+
+-- The death list's table is created here, not in PermadeathLock_Store.lua, and
+-- this matters. The game loads a folder's Lua files alphabetically, so
+-- PermadeathLock_Server.lua runs BEFORE PermadeathLock_Store.lua. Anything doing
+-- `local Store = PL.Store` at load time in Server.lua would capture nil forever
+-- and blow up on the first sweep. Creating the table in shared - which loads
+-- before both - means every file captures the same table whatever the order.
+PL.Store = PL.Store or {}
 
 -- The Fate Token. Dying while carrying one spends it instead of locking you out.
 PL.FATE_TOKEN = "Base.FateToken"
