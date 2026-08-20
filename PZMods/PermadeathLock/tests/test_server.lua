@@ -42,6 +42,55 @@ local function makeZombie(x, y, z)
     return self
 end
 
+-- Grid squares, keyed "x,y,z", each able to hold dead bodies and receive items
+-- dropped on the floor.
+local squares = {}
+
+local function squareKey(x, y, z) return x .. "," .. y .. "," .. (z or 0) end
+
+--- A corpse with a container of items.
+local function makeBody(isZombie, itemCount)
+    local items = {}
+    for i = 1, (itemCount or 0) do items[i] = { name = "item" .. i } end
+    local self = { _removed = false, _items = items }
+    self.isZombie = function() return isZombie == true end
+    self.removeFromWorld = function() self._removed = true end
+    self.removeFromSquare = function() end
+    self.getContainer = function()
+        return {
+            getItems = function()
+                return { size = function() return #items end, get = function(_, i) return items[i + 1] end }
+            end,
+            clear = function() for i = #items, 1, -1 do items[i] = nil end end,
+        }
+    end
+    return self
+end
+
+--- Put a body on a square, creating the square if needed.
+local function placeBody(x, y, z, body)
+    local key = squareKey(x, y, z)
+    local square = squares[key]
+    if square == nil then
+        local bodies, dropped = {}, {}
+        square = {
+            _bodies = bodies,
+            _dropped = dropped,
+            getDeadBodys = function()
+                local live = {}
+                for _, b in ipairs(bodies) do
+                    if not b._removed then live[#live + 1] = b end
+                end
+                return { size = function() return #live end, get = function(_, i) return live[i + 1] end }
+            end,
+            AddWorldInventoryItem = function(_, item) dropped[#dropped + 1] = item end,
+        }
+        squares[key] = square
+    end
+    table.insert(square._bodies, body)
+    return square
+end
+
 function getCell()
     return {
         getZombieList = function()
@@ -54,6 +103,7 @@ function getCell()
                 get = function(_, i) return alive[i + 1] end,
             }
         end,
+        getGridSquare = function(_, x, y, z) return squares[squareKey(x, y, z)] end,
     }
 end
 
@@ -153,7 +203,28 @@ local function makePlayer(username, opts)
         getBodyDamage = function()
             return { RestoreToFullHealth = function() self._healed = true end }
         end,
+        getDescriptor = function()
+            return {
+                getForename = function() return self._forename end,
+                getSurname = function() return self._surname end,
+                setForename = function(_, v) self._forename = v end,
+                setSurname = function(_, v) self._surname = v end,
+            }
+        end,
+        getHumanVisual = function()
+            return {
+                getLastStandString = function() return self._look end,
+                loadLastStandString = function(_, s) self._look = s; return true end,
+            }
+        end,
+        resetModelNextFrame = function() self._modelReset = true end,
     }
+    self._forename = opts.forename or "Nobody"
+    self._surname = opts.surname or "Nameless"
+    -- Deliberately contains a tab: the real blob is opaque and the file format
+    -- is tab-separated, so escaping has to survive a round trip.
+    self._look = opts.look or "hair=3\tskin=1"
+    self._modelReset = false
     self._x = opts.x or 100
     self._y = opts.y or 200
     self._z = opts.z or 0
@@ -206,7 +277,7 @@ local function lastCommandTo(user)
 end
 
 local function reset()
-    files, sent, online = {}, {}, {}
+    files, sent, online, squares = {}, {}, {}, {}
     Store.load()
     Store.clear()
 end
@@ -477,6 +548,88 @@ runTicks()
 check("radius 0 clears nothing", zombiesLeft(), 1)
 check("but still teleports", rexNew._x, 500)
 SandboxVars.PermadeathLock.ClearZombiesRadius = 15
+
+--------------------------------------------------------------------------------
+io.write("\n-- coming back as the same person --\n")
+
+reset()
+local tom = makePlayer("Tom", {
+    dead = true, x = 700, y = 800,
+    forename = "John", surname = "Smith", look = "hair=7\tskin=2",
+})
+online = { tom }
+sweep()
+check("name captured at death", Store.get("Tom").forename, "John")
+check("surname captured", Store.get("Tom").surname, "Smith")
+check("appearance captured", Store.get("Tom").look, "hair=7\tskin=2")
+
+-- the appearance blob contains a tab; the file is tab separated
+Store.load()
+check("appearance survives the file round trip", Store.get("Tom").look, "hair=7\tskin=2")
+check("name survives the file round trip", Store.get("Tom").forename, "John")
+
+Store.revive("Tom", false)
+local tomNew = makePlayer("Tom", { forename = "Someone", surname = "Else", look = "blank" })
+online = { tomNew }
+sweep()
+check("new character takes the old name", tomNew._forename, "John")
+check("and the old surname", tomNew._surname, "Smith")
+check("and the old face", tomNew._look, "hair=7\tskin=2")
+check("model redrawn", tomNew._modelReset, true)
+
+-- identity restore can be turned off
+reset()
+SandboxVars.PermadeathLock.RestoreIdentity = false
+local una = makePlayer("Una", { dead = true, forename = "Old", look = "oldface" })
+online = { una }
+sweep()
+Store.revive("Una", false)
+local unaNew = makePlayer("Una", { forename = "New", look = "newface" })
+online = { unaNew }
+sweep()
+check("identity left alone when disabled", unaNew._forename, "New")
+check("face left alone when disabled", unaNew._look, "newface")
+SandboxVars.PermadeathLock.RestoreIdentity = true
+
+--------------------------------------------------------------------------------
+io.write("\n-- clearing your own body --\n")
+
+reset()
+zombies = {}
+local vic = makePlayer("Vic", { dead = true, x = 900, y = 950 })
+online = { vic }
+sweep()
+local corpse = makeBody(false, 3)
+local square = placeBody(900, 950, 0, corpse)
+local zombieCorpse = makeBody(true, 1)
+placeBody(900, 950, 0, zombieCorpse)
+
+Store.revive("Vic", true)
+local vicNew = makePlayer("Vic", {})
+online = { vicNew }
+sweep()
+runTicks()
+check("own corpse removed", corpse._removed, true)
+check("zombie corpse left alone", zombieCorpse._removed, false)
+check("its belongings dropped on the floor", #square._dropped, 3)
+check("and the body emptied", #corpse._items, 0)
+
+-- leaving the corpse is a choice
+reset()
+SandboxVars.PermadeathLock.RemoveCorpseOnReturn = false
+local wes = makePlayer("Wes", { dead = true, x = 10, y = 10 })
+online = { wes }
+sweep()
+local wesCorpse = makeBody(false, 2)
+placeBody(10, 10, 0, wesCorpse)
+Store.revive("Wes", true)
+local wesNew = makePlayer("Wes", {})
+online = { wesNew }
+sweep()
+runTicks()
+check("corpse kept when disabled", wesCorpse._removed, false)
+check("belongings stay on it", #wesCorpse._items, 2)
+SandboxVars.PermadeathLock.RemoveCorpseOnReturn = true
 
 --------------------------------------------------------------------------------
 io.write("\n-- admin panel data --\n")

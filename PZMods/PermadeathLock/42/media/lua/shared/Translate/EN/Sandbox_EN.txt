@@ -21,4 +21,9 @@ Sandbox_EN = {
 
     Sandbox_PermadeathLock_ClearZombiesRadius = "Clear zombies on return (tiles)",
     Sandbox_PermadeathLock_ClearZombiesRadius_tooltip = "When an admin revives someone at their body, remove loaded zombies within this many tiles of it. 0 leaves them be. Only zombies the server has loaded can be removed; others wander back in.",
+
+    Sandbox_PermadeathLock_RestoreIdentity = "Come back as the same person",
+    Sandbox_PermadeathLock_RemoveCorpseOnReturn = "Clear the body on return",
+    Sandbox_PermadeathLock_RestoreIdentity_tooltip = "A restored player keeps the name and face of the character who died, so a campaign keeps its protagonist. The character still died; this is continuity, not resurrection.",
+    Sandbox_PermadeathLock_RemoveCorpseOnReturn_tooltip = "When someone is revived at their body, remove the corpse and leave what it carried on the ground. Turn off and they wake next to their own body and loot themselves.",
 }

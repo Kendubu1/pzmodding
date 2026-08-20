@@ -57,3 +57,19 @@ option PermadeathLock.ClearZombiesRadius
     page = PermadeathLock,
     translation = PermadeathLock_ClearZombiesRadius,
 }
+
+option PermadeathLock.RestoreIdentity
+{
+    type = boolean,
+    default = true,
+    page = PermadeathLock,
+    translation = PermadeathLock_RestoreIdentity,
+}
+
+option PermadeathLock.RemoveCorpseOnReturn
+{
+    type = boolean,
+    default = true,
+    page = PermadeathLock,
+    translation = PermadeathLock_RemoveCorpseOnReturn,
+}

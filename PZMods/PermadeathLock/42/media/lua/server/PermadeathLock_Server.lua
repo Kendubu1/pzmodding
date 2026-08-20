@@ -264,6 +264,95 @@ local function clearZombiesAround(x, y, z, radius)
     return removed
 end
 
+--------------------------------------------------------------------------------
+-- being the same person again
+--------------------------------------------------------------------------------
+
+--- Stamp the dead character's name and face onto the one now being played.
+--- The character still died - this is continuity of identity, not resurrection -
+--- but it is what keeps a campaign's protagonist the same person across lives.
+---@param player IsoPlayer
+---@param record table
+---@return boolean applied
+local function restoreIdentity(player, record)
+    if not PL.getOption("RestoreIdentity", true) then return false end
+    if not Store.hasIdentity(record) then return false end
+
+    local applied = false
+
+    pcall(function()
+        local desc = player:getDescriptor()
+        if desc == nil then return end
+        if record.forename ~= nil then desc:setForename(record.forename) applied = true end
+        if record.surname ~= nil then desc:setSurname(record.surname) applied = true end
+    end)
+
+    if record.look ~= nil then
+        pcall(function()
+            local visual = player:getHumanVisual()
+            if visual == nil then return end
+            if visual:loadLastStandString(record.look) then applied = true end
+        end)
+        -- Redrawn next frame: the model is mid-render right now.
+        pcall(function() player:resetModelNextFrame() end)
+    end
+
+    return applied
+end
+
+--- Clear away the body they are standing on, leaving what it carried on the
+--- floor. Without this the fiction breaks immediately: you wake up wearing your
+--- own face, next to your own corpse, and loot yourself.
+---@param x number
+---@param y number
+---@param z number
+---@param username string
+---@return boolean removed
+---@return integer itemsDropped
+local function clearOwnCorpse(x, y, z, username)
+    if not PL.getOption("RemoveCorpseOnReturn", true) then return false, 0 end
+
+    local cell = getCell()
+    if cell == nil then return false, 0 end
+
+    local dropped = 0
+    -- The body lands on or beside the death square, not always exactly on it.
+    for dx = -1, 1 do
+        for dy = -1, 1 do
+            local square = cell:getGridSquare(x + dx, y + dy, z)
+            if square ~= nil then
+                local bodies = square:getDeadBodys()
+                if bodies ~= nil then
+                    for i = bodies:size() - 1, 0, -1 do
+                        local body = bodies:get(i)
+                        -- Only ours: zombie corpses and other players stay put.
+                        if body ~= nil and not body:isZombie() then
+                            local container = body:getContainer()
+                            if container ~= nil then
+                                local items = container:getItems()
+                                for n = 0, items:size() - 1 do
+                                    local item = items:get(n)
+                                    if item ~= nil then
+                                        square:AddWorldInventoryItem(item, 0, 0, 0)
+                                        dropped = dropped + 1
+                                    end
+                                end
+                                container:clear()
+                            end
+                            body:removeFromWorld()
+                            body:removeFromSquare()
+                            print("[PermadeathLock] Cleared " .. username
+                                .. "'s body; " .. dropped .. " item(s) left on the ground.")
+                            return true, dropped
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return false, dropped
+end
+
 --- Put a player where the record says they died, and clear the welcome party.
 ---@param player IsoPlayer
 ---@param record table
@@ -275,9 +364,18 @@ local function placeAtBody(player, record)
 
     local radius = tonumber(PL.getOption("ClearZombiesRadius", 15)) or 0
     local removed = clearZombiesAround(x, y, z, radius)
+    local cleared, dropped = clearOwnCorpse(x, y, z, record.username)
 
-    tell(player, "You wake where you fell." ..
-        (removed > 0 and (" " .. removed .. " zombie(s) cleared from around your body.") or ""))
+    local message = "You wake where you fell."
+    if cleared then
+        message = message .. (dropped > 0
+            and (" Your belongings are on the ground beside you.")
+            or " There is no sign you were ever gone.")
+    end
+    if removed > 0 then
+        message = message .. " " .. removed .. " zombie(s) cleared."
+    end
+    tell(player, message)
     print(string.format("[PermadeathLock] Returned %s to (%d, %d, %d); %d zombie(s) cleared.",
         record.username, x, y, z, removed))
 end
@@ -302,6 +400,8 @@ local function applyRestore(player, record)
     Store.finishRestore(record.username)
     strikes[PL.key(record.username)] = nil
 
+    local sameName = restoreIdentity(player, record)
+
     local source = "An admin brought you back."
     if record.reason == PL.REASON_TOKEN then
         source = "Your Fate Token paid for this life."
@@ -312,7 +412,8 @@ local function applyRestore(player, record)
     else
         tell(player, source .. " Try to stay alive this time.")
     end
-    print("[PermadeathLock] Restored " .. record.username .. " (" .. raised .. " skills).")
+    print("[PermadeathLock] Restored " .. record.username .. " (" .. raised .. " skills"
+        .. (sameName and ", identity restored" or "") .. ").")
 end
 
 --------------------------------------------------------------------------------

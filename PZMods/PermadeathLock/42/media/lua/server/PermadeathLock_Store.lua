@@ -7,7 +7,8 @@
 
     One line per player:
         username <tab> steamID <tab> timestamp <tab> reason <tab> skills <tab>
-        locked <tab> pendingRestore <tab> x <tab> y <tab> z <tab> atBody
+        locked <tab> pendingRestore <tab> x <tab> y <tab> z <tab> atBody <tab>
+        forename <tab> surname <tab> look
 
     Trailing fields were added after the format shipped. Reading tolerates their
     absence, so a death list written by an older build still loads.
@@ -50,6 +51,33 @@ local function split(str, sep)
         out[#out + 1] = string.sub(str, start, index - 1)
         start = index + #sep
     end
+end
+
+--- The appearance blob is opaque and produced by the game, so it may well
+--- contain the field separator. Escaped rather than stripped: unlike a reason
+--- string, mangling it would produce a face that is subtly wrong.
+---@param value string?
+---@return string
+local function escapeBlob(value)
+    if value == nil or value == "" then return "" end
+    local text = tostring(value)
+    text = text:gsub("%%", "%%25")
+    text = text:gsub("\t", "%%09")
+    text = text:gsub("\r", "%%0D")
+    text = text:gsub("\n", "%%0A")
+    return text
+end
+
+---@param value string?
+---@return string?
+local function unescapeBlob(value)
+    if value == nil or value == "" then return nil end
+    local text = tostring(value)
+    text = text:gsub("%%09", "\t")
+    text = text:gsub("%%0D", "\r")
+    text = text:gsub("%%0A", "\n")
+    text = text:gsub("%%25", "%%")
+    return text
 end
 
 --- Strip anything that would break the one-record-per-line format.
@@ -158,6 +186,9 @@ local function serialise(record)
         record.y ~= nil and tostring(record.y) or "",
         record.z ~= nil and tostring(record.z) or "",
         record.atBody and "1" or "0",
+        clean(record.forename),
+        clean(record.surname),
+        escapeBlob(record.look),
     }, FIELD_SEP)
 end
 
@@ -184,6 +215,10 @@ local function deserialise(line)
         y = tonumber(fields[9]),
         z = tonumber(fields[10]),
         atBody = (fields[11] or "0") == "1",
+        -- Who they were. Restored so a campaign keeps its protagonist.
+        forename = fields[12] ~= "" and fields[12] or nil,
+        surname = fields[13] ~= "" and fields[13] or nil,
+        look = unescapeBlob(fields[14]),
     }
 end
 
@@ -306,6 +341,19 @@ function Store.record(player, reason, saved)
     end)
     if not gotPos then x, y, z = nil, nil, nil end
 
+    -- Name and appearance, so the next character can be the same person.
+    local forename, surname, look
+    pcall(function()
+        local desc = player:getDescriptor()
+        if desc ~= nil then
+            forename, surname = desc:getForename(), desc:getSurname()
+        end
+    end)
+    pcall(function()
+        local visual = player:getHumanVisual()
+        if visual ~= nil then look = visual:getLastStandString() end
+    end)
+
     local record = {
         username = username,
         steamID = steamID,
@@ -318,6 +366,9 @@ function Store.record(player, reason, saved)
         y = y,
         z = z,
         atBody = false,
+        forename = forename,
+        surname = surname,
+        look = look,
     }
     records[key] = record
     Store.save()
@@ -375,6 +426,13 @@ function Store.revive(username, atBody)
     record.atBody = atBody == true and record.x ~= nil
     Store.save()
     return record
+end
+
+--- True when this record knows who the player was.
+---@param record table?
+---@return boolean
+function Store.hasIdentity(record)
+    return record ~= nil and (record.look ~= nil or record.forename ~= nil)
 end
 
 --- True when this record knows where the player died.

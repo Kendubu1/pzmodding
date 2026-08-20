@@ -234,6 +234,39 @@ interactions are worth knowing about rather than being surprised by:
 Restored skills do not fight its town XP bonuses. Levels are only ever raised
 toward the recorded value, never lowered, so whichever is higher stands.
 
+## Coming back as the same person
+
+A restored character takes the **name and face** of the one who died, alongside
+the skills. For a campaign that is the point: the death book stays coherent and
+a story branch keeps its protagonist instead of having to be written off.
+
+Be clear about what this is. The character still died — nothing in the Lua API
+un-kills anyone. What returns is a new character wearing the same identity. In
+play the difference is invisible; on paper it matters, so it is worth saying.
+
+The identity carries **forward**, not back to day one: each death snapshots who
+they were at that moment, so the token returns the current version of them, day
+fifty included.
+
+The appearance is captured with `HumanVisual:getLastStandString()`, an opaque
+blob the game produces. It is escaped before being written, because the death
+list is tab separated and the blob may well contain a tab — mangling it would
+give someone a subtly wrong face rather than an obvious error. How much it
+covers beyond body, hair and beard is not something offline tests can answer.
+
+### Your own corpse
+
+Revive-at-body would otherwise drop you next to your own body, wearing your own
+face, to loot yourself. So on return the corpse is removed and everything it
+carried is left on the ground where it fell: you wake where you died, your
+belongings beside you, no second body to explain.
+
+Only your own body — zombie corpses and other players are left alone — and only
+the one at the death square, found by searching the eight squares around it
+since bodies do not always land exactly where the character stood.
+
+Turn off `RemoveCorpseOnReturn` if you would rather have the horror.
+
 ## The death list
 
 Stored at `Zomboid/Lua/PermadeathLock_deaths.txt`, one tab-separated record per
