@@ -13,7 +13,13 @@ Run from the **repository root**:
 ```bash
 lua5.1 PZMods/PermadeathLock/tests/test_store.lua
 lua5.1 PZMods/PermadeathLock/tests/test_server.lua
+sh      PZMods/PermadeathLock/tests/test_gating.sh
 ```
+
+`test_gating.sh` loads the mod once per game mode (dedicated, co-op host, client,
+single player) and checks which halves come alive against the expected matrix.
+It is the guard against the mod silently doing nothing in a mode it should
+support.
 
 Any Lua 5.1 interpreter works (`apt install lua5.1`). Both exit non-zero on
 failure. A syntax check over the mod is worth running too:

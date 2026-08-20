@@ -1,8 +1,9 @@
 --[[
     Permadeath Lock - the death list.
 
-    Server side only. Records live in memory and are mirrored to a tab separated
-    file in Zomboid/Lua/ so they survive a restart and can be inspected by hand.
+    Runs wherever the server lives: a dedicated server, or the host of a co-op
+    game. Records live in memory and are mirrored to a tab separated file in
+    Zomboid/Lua/ so they survive a restart and can be inspected by hand.
 
     One line per player:
         username <tab> steamID <tab> timestamp <tab> reason <tab> skills <tab> locked <tab> pendingRestore
@@ -11,7 +12,7 @@
     player and hand their next character the levels the dead one had.
 ]]
 
-if not isServer() then return end
+if not PermadeathLock.isServerSide() then return end
 
 local PL = PermadeathLock
 PL.Store = PL.Store or {}

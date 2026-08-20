@@ -1,24 +1,29 @@
 # Permadeath Lock
 
-Dedicated-server permadeath for Project Zomboid **Build 42**. When a player dies they
-go on a death list and cannot come back with a new character. Admins can pardon
+Permadeath for Project Zomboid **Build 42** multiplayer — dedicated servers and
+co-op Host games alike. When a player dies they go on a death list and cannot
+come back with a new character. Admins can pardon
 someone (fresh start) or revive them (new character, old skills), and players
 carrying a **Fate Token** buy back one death without needing an admin at all.
 
 ## Install
 
-Copy the `PermadeathLock` folder into the server's mod directory, then add it to
-`servertest.ini`:
+Copy the `PermadeathLock` folder into `Zomboid/mods/`, so that
+`Zomboid/mods/PermadeathLock/42/mod.info` exists. Nesting it one level too deep is
+the most common install mistake.
+
+**Hosting from the game:** enable it in the mod list when you set up the world,
+the same as any other mod.
+
+**Dedicated server:** add it to `servertest.ini`:
 
 ```ini
 Mods=PermadeathLock
 WorkshopItems=
 ```
 
-Clients connecting to the server download it automatically if it is a Workshop
-item; if you are running it as a local mod, every player needs the same folder in
-their `Zomboid/mods/`. Restart the server after installing — mods are not
-hot-loadable.
+Every player needs the same folder in their own `Zomboid/mods/` unless it is a
+Workshop item. Restart after installing — mods are not hot-loadable.
 
 ### Folder layout
 
@@ -38,6 +43,22 @@ Build 42 only loads files from the version folder matching the running build, an
 `mod.info` lives *inside* that folder. To also ship a Build 41 version, add a
 sibling `41/` folder with its own `mod.info`, and move anything identical between
 the two into `common/media/`.
+
+## Where it runs
+
+| Mode | Enforced? |
+| --- | --- |
+| Dedicated server | Yes |
+| Co-op **Host** game | Yes - the host runs the server in-process |
+| Single player | No, by design - loads and does nothing |
+
+A Host game is not a dedicated server: `isServer()` is false there, and for the
+host `isClient()` is false too. The mod therefore gates on `isCoopHost()` as well,
+so the host gets both halves - they are the server *and* a player.
+
+**If you are hosting, you are almost certainly an admin, and `ExemptAdmins`
+defaults to on** - your deaths will be ignored until you turn it off in the
+sandbox settings. That looks identical to the mod being broken.
 
 ## How enforcement works
 
@@ -162,9 +183,10 @@ identification only — matching is always by username.
 
 ## Testing it
 
-1. Start the server with `ExemptAdmins` **off** (otherwise you will never trigger
-   it as an admin).
-2. Join, then `/kill` yourself or take a bite.
+1. Start with `ExemptAdmins` **off** (otherwise you will never trigger it as an
+   admin, and hosts are always admins).
+2. Join, then get yourself killed — there is no vanilla `/kill` command, so use
+   `/createhorde 30` with godmode off, or the debug menu.
 3. Check the console for `[PermadeathLock] <name> died ... and is locked out`, and
    that your name appears in the death list file.
 4. Reconnect and make a new character — you should get the notice and be
@@ -180,8 +202,8 @@ Server-side messages are prefixed `[PermadeathLock]` in the console log.
 
 ## Known limits
 
-- Dedicated servers only. The logic is gated on `isServer()`, so single-player and
-  a co-op host are unaffected.
+- Dedicated servers and **co-op Host games**. Single player is deliberately left
+  alone: the mod loads and does nothing.
 - Identity is the username. A player with a second account is a different person
   as far as this mod is concerned.
 - The sweep runs once per in-game minute, so a locked-out player may be in the

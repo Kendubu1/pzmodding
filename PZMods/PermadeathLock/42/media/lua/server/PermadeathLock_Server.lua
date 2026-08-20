@@ -1,6 +1,9 @@
 --[[
     Permadeath Lock - server enforcement and admin commands.
 
+    Runs on a dedicated server, and on the host of a co-op game (who runs the
+    server in-process). Single player is left alone.
+
     Two paths record and enforce a death, because neither is sufficient alone:
 
       * The client reports its own death and asks for its status when it spawns.
@@ -16,7 +19,7 @@
     is the strongest action available to server Lua.
 ]]
 
-if not isServer() then return end
+if not PermadeathLock.isServerSide() then return end
 
 local PL = PermadeathLock
 local Store = PL.Store

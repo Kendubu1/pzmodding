@@ -7,7 +7,7 @@
     no privilege by itself.
 ]]
 
-if not isClient() then return end
+if not PermadeathLock.isClientSide() then return end
 
 local PL = PermadeathLock
 

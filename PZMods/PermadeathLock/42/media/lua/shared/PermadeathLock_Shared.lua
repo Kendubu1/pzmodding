@@ -25,6 +25,29 @@ PL.FATE_TOKEN = "Base.FateToken"
 -- the player what saved them.
 PL.REASON_TOKEN = "spent a Fate Token"
 
+--- Co-op host detection, guarded in case the global is missing on some builds.
+---@return boolean
+local function coopHost()
+    if isCoopHost == nil then return false end
+    local ok, value = pcall(isCoopHost)
+    return ok and value == true
+end
+
+--- Where the authoritative logic runs: a dedicated server, or the host of a
+--- co-op game, who runs the server in-process. False in single player, which
+--- the mod deliberately leaves alone.
+---@return boolean
+function PL.isServerSide()
+    return isServer() or coopHost()
+end
+
+--- Where the player-facing logic runs: a connected client, or the co-op host,
+--- who is both the server and a player.
+---@return boolean
+function PL.isClientSide()
+    return isClient() or coopHost()
+end
+
 --- Read a sandbox option, falling back to a default if the options failed to load.
 ---@param name string
 ---@param default any

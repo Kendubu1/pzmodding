@@ -1,6 +1,9 @@
 --[[
     Permadeath Lock - client side.
 
+    Runs for a connected client, and for a co-op host, who is both the server and
+    a player and so needs both halves.
+
     Reports this player's death to the server, asks for its status on spawn, and
     handles being told to leave. Nothing here is trusted by the server: it exists
     so a locked-out player gets an explanation instead of dying to an invisible
@@ -8,7 +11,7 @@
     later when the server sweep next runs.
 ]]
 
-if not isClient() then return end
+if not PermadeathLock.isClientSide() then return end
 
 local PL = PermadeathLock
 local MODULE = PL.MODULE
