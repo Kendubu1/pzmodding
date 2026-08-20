@@ -147,6 +147,11 @@ shield. Your corpse and everything on it still stay where they fell.
 One token is spent per death. Carrying three does not make you immortal three
 times over in a single death — but the other two are still on the body.
 
+It shows in the inventory under its own **Fate** category. That category is the
+mod's, not a vanilla one: naming a vanilla category Build 42 has since dropped
+makes the inventory print the raw translation key (`IGUI_ItemCat_Misc`) instead
+of a name. Shipping our own key in `IGUI_EN.txt` cannot go stale that way.
+
 ### Handing them out
 
 Nothing spawns them by default; that is a deliberate balance decision left to you.

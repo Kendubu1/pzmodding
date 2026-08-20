@@ -6,10 +6,15 @@ module Base
         collects the skills the dead one had.
 
         Build 42 item syntax - ItemType replaces Build 41's Type.
+
+        DisplayCategory is the mod's own category, not a vanilla one, and its
+        label ships in IGUI_EN.txt. Naming a vanilla category that Build 42 has
+        since dropped shows the raw key in the inventory instead of a name -
+        "Misc" rendered as IGUI_ItemCat_Misc.
     */
     item FateToken
     {
-        DisplayCategory = Misc,
+        DisplayCategory = Fate,
         ItemType = base:normal,
         DisplayName = Fate Token,
         Icon = FateToken,

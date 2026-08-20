@@ -44,13 +44,26 @@ local function onDialogClosed()
     leaveServer()
 end
 
---- Centred modal. Used rather than chat because both notices land while the
---- player is dead, and the chat window is not on screen behind the death UI.
+--- A modal, not a chat line: both notices land while the player is dead, and
+--- the chat window is not on screen behind the death UI.
+---
+--- Placed off the centre line by default. The death screen runs its own
+--- scrolling text straight down the middle, and a centred dialog lands on top
+--- of it with both fighting to be read.
 ---@param text string
 ---@param onClose function?
-local function showNotice(text, onClose)
-    local width, height = 520, 220
-    local x = (getCore():getScreenWidth() - width) / 2
+---@param centred boolean? true to sit in the middle of the screen
+local function showNotice(text, onClose, centred)
+    local width, height = 440, 200
+    local screenWidth = getCore():getScreenWidth()
+
+    local x
+    if centred then
+        x = (screenWidth - width) / 2
+    else
+        -- A margin in from the left, but never off a narrow screen.
+        x = math.min(64, math.max(0, (screenWidth - width) / 2))
+    end
     local y = (getCore():getScreenHeight() - height) / 2
 
     local modal = ISModalDialog:new(x, y, width, height, text, false, nil, onClose)
@@ -63,7 +76,9 @@ local function showBlockNotice(text)
     if booting then return end
     booting = true
 
-    showNotice(text, onDialogClosed)
+    -- Centred: this one is a disconnect warning, and there is no death screen
+    -- behind it to compete with.
+    showNotice(text, onDialogClosed, true)
 
     -- Backstop: leave even if the notice is never dismissed.
     Events.OnTick.Add(bootTick)

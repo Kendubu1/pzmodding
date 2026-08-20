@@ -1,5 +1,4 @@
 UI_EN = {
-    IGUI_PermadeathLock_Blocked = "You died on this server.\n\nPermadeath is enabled here, so you cannot create a new character.\n\nIf you think this is a mistake, contact an admin - they can bring you back.",
-    IGUI_PermadeathLock_TokenSpent = "Your Fate Token burns away.\n\nIt paid for this death - you are NOT locked out. Reconnect and make a new character; the skills this one earned come with you.\n\nYour body and everything on it stay where they fell.",
-    IGUI_PermadeathLock_Disconnecting = "Disconnecting...",
+	IGUI_PermadeathLock_Blocked = "You died on this server. Permadeath is enabled here, so you cannot create a new character. If you think this is a mistake, contact an admin - they can bring you back.",
+	IGUI_PermadeathLock_TokenSpent = "Your Fate Token burns away. You are NOT locked out - reconnect and make a new character, and the skills this one earned come with you. Your body and everything on it stay where they fell.",
 }
