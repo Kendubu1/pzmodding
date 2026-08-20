@@ -65,6 +65,7 @@ local function callVanish(zombie)
     zombie:removeFromSquare()
 end
 local function callGetFloor(sq) return sq:getFloor() end
+local function callGetVehicles(cell) return cell:getVehicles() end
 
 --- Take one object off a square. transmitRemoveItemFromSquare is the removal
 --- that reaches the other players; RemoveTileObject is the local fallback for
@@ -377,8 +378,58 @@ local function fireOddsPer10k(radius)
     return math.min(10000, (maxFires / area) * 10000 * eagerness)
 end
 
+-- Chance a vehicle that survived the blast is left burning, by tier.
+local VEHICLE_FIRE = { flatten = 100, heavy = 85, light = 35 }
+
+--- Do as much to one vehicle as the build will allow.
+---
+--- Ruining the parts alone is close to invisible: the car will not start and the
+--- tyres are flat, but it still sits there looking like a car, which reads as the
+--- mod having done nothing. So inside the fireball the vehicle is taken out of
+--- the world outright, and outside it the fire is what sells the damage.
+---
+--- Every call is wrapped on its own, per vehicle. A shared guard here would mean
+--- one awkward car disabling the whole feature for the rest of the session.
+---@param vehicle BaseVehicle
+---@param tier string
+---@param cell IsoCell
+---@param vx number
+---@param vy number
+---@return boolean removed, boolean wrecked, boolean burning
+local function ruinVehicle(vehicle, tier, cell, vx, vy)
+    if tier == "flatten" then
+        local gone = pcall(function() vehicle:permanentlyRemove() end)
+        if gone then return true, false, false end
+        -- Fall through and wreck it instead.
+    end
+
+    local wrecked = pcall(function()
+        for index = 0, vehicle:getPartCount() - 1 do
+            local part = vehicle:getPartByIndex(index)
+            if part ~= nil then
+                pcall(function() part:setCondition(0) end)
+            end
+        end
+    end)
+
+    local burning = false
+    if ZombRand(100) < (VEHICLE_FIRE[tier] or 0) then
+        local square = nil
+        pcall(function() square = vehicle:getSquare() end)
+        if square == nil then
+            square = cell:getGridSquare(math.floor(vx), math.floor(vy), 0)
+        end
+        if square ~= nil then burning = ignite(square) == true end
+    end
+
+    return false, wrecked, burning
+end
+
 --- Ruin the vehicles caught in the blast. Cheap enough to do in one pass: there
 --- are tens of vehicles in a cell, not thousands.
+---
+--- Walks the list backwards, because removing a vehicle mutates the list it came
+--- from and a forward loop would skip the car behind every one it deleted.
 ---@param zone table
 local function wreckVehicles(zone)
     if NS.getOption("DestroyVehicles", true) ~= true then return end
@@ -386,26 +437,37 @@ local function wreckVehicles(zone)
     local cell = getCell()
     if cell == nil then return end
 
-    local vehicles, ok = NS.try("IsoCell:getVehicles", function(c) return c:getVehicles() end, cell)
-    if not ok or vehicles == nil then return end
+    local vehicles, ok = NS.try("IsoCell:getVehicles", callGetVehicles, cell)
+    if not ok or vehicles == nil then
+        print("[NukeStrike] vehicles: this build will not hand over the vehicle list, none touched")
+        return
+    end
 
-    for i = 0, vehicles:size() - 1 do
+    local total = vehicles:size()
+    local found, removed, wrecked, burning = 0, 0, 0, 0
+
+    for i = total - 1, 0, -1 do
         local vehicle = vehicles:get(i)
         if vehicle ~= nil then
-            local vx, vy = vehicle:getX(), vehicle:getY()
-            if NS.dist(vx, vy, zone.x, zone.y) <= zone.r then
-                NS.try("BaseVehicle parts", function(v)
-                    for part = 0, v:getPartCount() - 1 do
-                        local p = v:getPartByIndex(part)
-                        if p ~= nil then p:setCondition(0) end
-                    end
-                end, vehicle)
-
-                local sq = cell:getGridSquare(math.floor(vx), math.floor(vy), 0)
-                if sq ~= nil then ignite(sq) end
+            local okPosition, vx, vy = pcall(function() return vehicle:getX(), vehicle:getY() end)
+            if okPosition and vx ~= nil then
+                local tier = NS.tier(NS.dist(vx, vy, zone.x, zone.y), zone.r)
+                if tier ~= nil then
+                    found = found + 1
+                    local wasRemoved, wasWrecked, wasBurning = ruinVehicle(vehicle, tier, cell, vx, vy)
+                    if wasRemoved then removed = removed + 1 end
+                    if wasWrecked then wrecked = wrecked + 1 end
+                    if wasBurning then burning = burning + 1 end
+                end
             end
         end
     end
+
+    -- Said out loud every strike. "It did nothing to the cars" is impossible to
+    -- diagnose without knowing whether it found none or found six and failed.
+    print(string.format(
+        "[NukeStrike] vehicles: %d of %d loaded were in the blast - %d removed, %d wrecked, %d set alight",
+        found, total, removed, wrecked, burning))
 end
 
 --- Start levelling a strike that has just landed.

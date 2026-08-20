@@ -79,9 +79,45 @@ for x = 100, 115 do
     end
 end
 
+--------------------------------------------------------------------------------
+-- a car park
+--------------------------------------------------------------------------------
+
+local parked = {}
+
+--- A car. `broken` makes getPartCount raise, standing in for the one awkward
+--- vehicle that a shared error guard used to let take the whole feature down.
+local function makeVehicle(x, y, broken, unremovable)
+    local vehicle = { x = x, y = y, removed = false, ruined = 0 }
+
+    function vehicle:getX() return x end
+    function vehicle:getY() return y end
+    function vehicle:getSquare() return world[x .. "," .. y .. ",0"] end
+
+    function vehicle:getPartCount()
+        if broken then error("no parts on this build") end
+        return 3
+    end
+
+    function vehicle:getPartByIndex()
+        return { setCondition = function() vehicle.ruined = vehicle.ruined + 1 end }
+    end
+
+    function vehicle:permanentlyRemove()
+        if unremovable then error("permanentlyRemove is not a thing here") end
+        vehicle.removed = true
+        for i, held in ipairs(parked) do
+            if held == vehicle then table.remove(parked, i) return end
+        end
+    end
+
+    parked[#parked + 1] = vehicle
+    return vehicle
+end
+
 stubs.cell = {
     getGridSquare = function(_, x, y, z) return world[x .. "," .. y .. "," .. z] end,
-    getVehicles = function() return javaList({}) end,
+    getVehicles = function() return javaList(parked) end,
 }
 
 function instanceof(obj, class)
@@ -155,6 +191,10 @@ check("and its zombie", outside.killed, 0)
 
 isTrue("ground zero is scorched", burned["105,105"] == true)
 
+local fires = 0
+for _ in pairs(ignited) do fires = fires + 1 end
+isTrue("one strike stays inside its fire budget", fires <= sandbox.MaxFires)
+
 --------------------------------------------------------------------------------
 -- what was in memory, and what was not
 --------------------------------------------------------------------------------
@@ -195,11 +235,59 @@ check("ground outside a crater is left alone", #Blast.jobs, 0)
 check("and keeps everything", #far.structure.items, 3)
 
 --------------------------------------------------------------------------------
--- fires stay inside their budget
+-- vehicles
 --------------------------------------------------------------------------------
 
-local fires = 0
-for _ in pairs(ignited) do fires = fires + 1 end
-isTrue("the fire count stays under the cap", fires <= sandbox.MaxFires)
+-- A second strike, with all three tiers in play this time so each ring's
+-- treatment of a car can be told apart.
+sandbox.FlattenPercent = 20
+sandbox.HeavyPercent = 60
+sandbox.DestroyVehicles = true
+
+local atZero = makeVehicle(105, 115)            -- dead centre: fireball
+local nearby = makeVehicle(112, 115)            -- 7 out of 20: heavy
+local outer = makeVehicle(105, 132)             -- 17 out of 20: light
+local wellClear = makeVehicle(105, 190)         -- 75 out: nowhere near it
+
+-- The regression: one car whose parts cannot be read used to mark the guard dead
+-- and silently spare every car after it.
+local awkward = makeVehicle(113, 115, true)
+local alsoNearby = makeVehicle(114, 115)
+
+local carPark = Zones.add(105, 115, 20, 30, 72, 0, "test")
+Blast.detonate(carPark, nil)
+runToCompletion()
+
+isTrue("a car in the fireball is taken out of the world", atZero.removed)
+check("a car in the blast wave is not deleted", nearby.removed, false)
+isTrue("but every one of its parts is ruined", nearby.ruined >= 3)
+isTrue("a car at the edge is wrecked too", outer.ruined >= 3)
+check("a car well clear is untouched", wellClear.ruined, 0)
+check("and still there", wellClear.removed, false)
+
+isTrue("a car the build cannot read is skipped, not fatal", awkward.ruined == 0)
+isTrue("and the car behind it is still wrecked", alsoNearby.ruined >= 3)
+
+-- Deleting a vehicle mutates the list being walked. A forward loop would step
+-- over whatever moved into the gap.
+check("removing cars does not make the loop skip others",
+    (atZero.removed and alsoNearby.ruined >= 3), true)
+
+-- Falling back when the engine will not delete a vehicle.
+local stubborn = makeVehicle(105, 300, false, true)
+local stubbornZone = Zones.add(105, 300, 20, 30, 72, 0, "test")
+Blast.detonate(stubbornZone, nil)
+runToCompletion()
+check("a car that will not delete is not lost", stubborn.removed, false)
+isTrue("it gets wrecked instead", stubborn.ruined >= 3)
+
+-- And the switch turns it all off.
+local spared = makeVehicle(105, 400)
+sandbox.DestroyVehicles = false
+Blast.detonate(Zones.add(105, 400, 20, 30, 72, 0, "test"), nil)
+runToCompletion()
+check("the sandbox switch spares them", spared.ruined, 0)
+check("entirely", spared.removed, false)
+sandbox.DestroyVehicles = true
 
 stubs.finish("test_blast")

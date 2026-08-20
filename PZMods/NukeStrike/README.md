@@ -101,10 +101,16 @@ on both axes; Muldraugh is around 10600, 9600 and West Point around 11700, 6800.
 
    The ground floor tile is always left behind, so the ruins are walkable rather
    than a hole in the world.
-5. **The fires.** Capped (250 by default) and spread across the whole blast
+5. **The cars.** A vehicle inside the fireball is taken out of the world
+   outright; further out its parts are all ruined — dead engine, flat tyres,
+   smashed windows — and it is very likely left burning. Ruining the parts alone
+   is close to invisible, which is why the fireball deletes and the outer rings
+   burn. Every strike prints a line to `console.txt` saying how many vehicles it
+   found and what it did to them, so "it did nothing to the cars" is answerable.
+6. **The fires.** Capped (250 by default) and spread across the whole blast
    rather than clustered at the middle, then they spread on their own. This is
    the setting to turn down first if the server chugs after a strike.
-6. **The haze.** For 72 in-game hours a cloud half again as wide as the blast
+7. **The haze.** For 72 in-game hours a cloud half again as wide as the blast
    sits over the area. Standing in it costs you health, makes you sick and drains
    your endurance, worst at the middle. A gas mask or respirator halves it; a
    hazmat suit blocks most of it; both together still let a little through.
