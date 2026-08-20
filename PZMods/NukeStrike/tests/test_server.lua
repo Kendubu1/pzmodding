@@ -278,6 +278,58 @@ check("the haze expires", admin.damage, 0)
 stubs.hours = 0
 
 --------------------------------------------------------------------------------
+-- bandits in the fallout
+--------------------------------------------------------------------------------
+
+-- The Bandits mod builds its NPCs out of IsoZombie, flagged with a "Bandit"
+-- variable and carrying a Lua brain in mod data. Either mark identifies one.
+local function makeZombie(x, y, marker)
+    local zombie = { dead = false, data = {} }
+    if marker == "brain" then zombie.data.brain = { id = 1 } end
+
+    function zombie:getX() return x end
+    function zombie:getY() return y end
+    function zombie:getVariableBoolean(name) return marker == "flag" and name == "Bandit" end
+    function zombie:getModData() return zombie.data end
+    function zombie:Kill() zombie.dead = true end
+    return zombie
+end
+
+local flagged = makeZombie(10500, 9500, "flag")     -- a bandit, by variable
+local brained = makeZombie(10500, 9500, "brain")    -- a bandit, by brain
+local walker = makeZombie(10500, 9500, nil)         -- just a zombie
+local distant = makeZombie(20000, 9500, "flag")     -- a bandit, nowhere near it
+
+local horde = { flagged, brained, walker, distant }
+stubs.cell = { getZombieList = function() return javaList(horde) end }
+
+Zones.clear()
+typed(admin, "10500 9500")
+fireEvent("EveryTenMinutes")
+
+isTrue("a flagged bandit breathes it in", (flagged.data.nukeExposure or 0) > 0)
+isTrue("so does one identified by its brain", (brained.data.nukeExposure or 0) > 0)
+check("a plain zombie does not", walker.data.nukeExposure, nil)
+check("nor does a bandit outside the cloud", distant.data.nukeExposure, nil)
+check("nobody dies on the first breath", flagged.dead, false)
+
+-- Exposure accumulates, and kills at the point a player would have died.
+for _ = 1, 20 do fireEvent("EveryTenMinutes") end
+isTrue("standing in it long enough kills a bandit", flagged.dead)
+check("and still leaves the zombies alone", walker.dead, false)
+
+-- The switch turns it off.
+local spared = makeZombie(10500, 9500, "flag")
+horde = { spared }
+SandboxVars.NukeStrike.HazeKillsBandits = false
+fireEvent("EveryTenMinutes")
+check("the sandbox switch spares them", spared.data.nukeExposure, nil)
+SandboxVars.NukeStrike.HazeKillsBandits = true
+
+stubs.cell = nil
+Zones.clear()
+
+--------------------------------------------------------------------------------
 -- status
 --------------------------------------------------------------------------------
 

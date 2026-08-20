@@ -114,14 +114,26 @@ on both axes; Muldraugh is around 10600, 9600 and West Point around 11700, 6800.
    sits over the area. Standing in it costs you health, makes you sick and drains
    your endurance, worst at the middle. A gas mask or respirator halves it; a
    hazmat suit blocks most of it; both together still let a little through.
+   Bandits caught in it die at the same rate a player would; zombies ignore it.
 
 Everything is tunable in the sandbox options under **Nuke Strike**.
 
 ### Bandits and NPCs
 
-Bandits, and the NPCs from **Week One**, are `IsoZombie` under the skin. They are
-caught by the same pass that kills the zombies, with no special handling, and a
-strike will clear a bandit camp exactly as thoroughly as it clears a horde.
+Bandits, and the NPCs from **Week One**, are `IsoZombie` under the skin — the
+same class, flagged with a `Bandit` variable and given a Lua brain in their mod
+data. The blast kills them through the same pass that kills the zombies, with no
+special handling, so a strike clears a bandit camp exactly as thoroughly as it
+clears a horde.
+
+The **haze** does tell them apart, because it has to. Bandits are living people,
+so standing in fallout kills them at the same rate it kills a player — exposure
+accumulates in their mod data and they drop at the point a player breathing the
+same air would have. Zombies are left alone: they are already dead, and killing
+every one that wanders into a three-day cloud would quietly clear the map. With
+no Bandits mod installed this finds nothing and costs one variable read per
+loaded zombie every ten in-game minutes. Sandbox option **Fallout kills
+bandits**.
 
 ## Two things worth knowing before you use it
 

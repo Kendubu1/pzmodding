@@ -40,6 +40,9 @@ Sandbox_EN = {
     Sandbox_NukeStrike_HazeDamage = "Haze damage per ten minutes",
     Sandbox_NukeStrike_HazeDamage_tooltip = "Damage taken at the centre of the cloud every ten in-game minutes, falling off towards the edge. A gas mask or respirator halves it and a hazmat suit blocks most of it.",
 
+    Sandbox_NukeStrike_HazeKillsBandits = "Fallout kills bandits",
+    Sandbox_NukeStrike_HazeKillsBandits_tooltip = "Bandits and other NPCs built on the Bandits mod are living people, so standing in the fallout kills them at the same rate it would kill a player. Zombies are left alone - they are already dead, and killing every one that wanders into a three-day cloud would quietly clear the map.",
+
     Sandbox_NukeStrike_WarningSeconds = "Warning countdown (real seconds)",
     Sandbox_NukeStrike_WarningSeconds_tooltip = "Sirens sound for this long before the strike lands, so people have a chance to run. /nuke now skips it.",
 

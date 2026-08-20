@@ -227,6 +227,71 @@ local function breatheHaze(player, strength)
     NS.toPlayer(player, "hazeHit", { strength = strength })
 end
 
+--------------------------------------------------------------------------------
+-- bandits in the fallout
+--------------------------------------------------------------------------------
+
+local function callZombieList(cell) return cell:getZombieList() end
+local function callBanditFlag(zombie) return zombie:getVariableBoolean("Bandit") end
+local function callModData(zombie) return zombie:getModData() end
+local function callKillZombie(zombie) return zombie:Kill(nil) end
+
+--- Whether this zombie is really a person.
+---
+--- The Bandits mod builds its NPCs out of IsoZombie: the same class, flagged
+--- with a "Bandit" variable and given a Lua brain in its mod data. Either mark
+--- is enough, and a plain zombie has neither - so with no Bandits mod installed
+--- this quietly finds nothing and costs one variable read per zombie.
+---@param zombie IsoZombie
+---@return boolean
+local function isBandit(zombie)
+    local flagged = NS.try("IsoZombie:getVariableBoolean", callBanditFlag, zombie)
+    if flagged == true then return true end
+
+    local data = NS.try("IsoZombie:getModData", callModData, zombie)
+    return data ~= nil and data.brain ~= nil
+end
+
+--- Fallout does not care that a bandit has no lungs to speak for it.
+---
+--- Zombies are left alone - they are already dead, and killing every zombie that
+--- wanders into a three-day cloud would quietly clear the map. Bandits are
+--- living people, so they get the same exposure a player does, at the same pace:
+--- damage accumulates in their mod data and kills them at the point a player
+--- standing in the same air would have died.
+---@param now number world hours
+local function banditsBreathe(now)
+    if NS.getOption("HazeKillsBandits", true) ~= true then return end
+
+    local cell = getCell()
+    if cell == nil then return end
+
+    local zombies, ok = NS.try("IsoCell:getZombieList", callZombieList, cell)
+    if not ok or zombies == nil then return end
+
+    local perTick = NS.getOption("HazeDamage", 6.0)
+    if perTick <= 0 then return end
+
+    for i = zombies:size() - 1, 0, -1 do
+        local zombie = zombies:get(i)
+        if zombie ~= nil then
+            local okPosition, x, y = pcall(function() return zombie:getX(), zombie:getY() end)
+            if okPosition and x ~= nil then
+                local strength = Zones.hazeAt(x, y, now)
+                if strength > 0 and isBandit(zombie) then
+                    local data = NS.try("IsoZombie:getModData", callModData, zombie)
+                    if data ~= nil then
+                        data.nukeExposure = (data.nukeExposure or 0) + strength * perTick
+                        if data.nukeExposure >= 100 then
+                            NS.try("IsoZombie:Kill(nil)", callKillZombie, zombie)
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
 --- The fallout tick. Expires nothing on its own - a zone's haze is a deadline,
 --- not a countdown - it just applies the air to whoever is standing in it.
 local function falloutTick()
@@ -241,6 +306,7 @@ local function falloutTick()
         end
     end
 
+    banditsBreathe(now)
     pushZones()
 end
 

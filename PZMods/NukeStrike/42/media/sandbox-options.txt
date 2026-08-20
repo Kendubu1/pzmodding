@@ -149,3 +149,11 @@ option NukeStrike.AnnounceGlobally
     page = NukeStrike,
     translation = NukeStrike_AnnounceGlobally,
 }
+
+option NukeStrike.HazeKillsBandits
+{
+    type = boolean,
+    default = true,
+    page = NukeStrike,
+    translation = NukeStrike_HazeKillsBandits,
+}
