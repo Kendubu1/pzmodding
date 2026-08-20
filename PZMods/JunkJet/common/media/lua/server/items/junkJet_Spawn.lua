@@ -4,12 +4,14 @@
 
 require 'Items/ProceduralDistributions'
 require 'Items/Distributions'
+-- SuburbsDistributions is used below for the postbox and was never required.
+require 'Items/SuburbsDistributions'
 
 
-table.insert(ProceduralDistributions.list["GarageTools"],"JunkJet.JunkJet_Weapon");
-table.insert(ProceduralDistributions.list["GarageTools"],10);
-table.insert(ProceduralDistributions.list["GarageTools"],"JunkJet.JunkJet_Mag");
-table.insert(ProceduralDistributions.list["GarageTools"],10);
+table.insert(ProceduralDistributions.list["GarageTools"].items, "JunkJet.JunkJet_Weapon");
+table.insert(ProceduralDistributions.list["GarageTools"].items, 10);
+table.insert(ProceduralDistributions.list["GarageTools"].items, "JunkJet.JunkJet_Mag");
+table.insert(ProceduralDistributions.list["GarageTools"].items, 10);
 
 table.insert(ProceduralDistributions["list"]["PoliceStorageGuns"].items, "JunkJet.JunkJet_Weapon");
 table.insert(ProceduralDistributions["list"]["PoliceStorageGuns"].items, 10);
