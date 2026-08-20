@@ -1,0 +1,30 @@
+module JunkJet
+{
+    imports
+    {
+        Base
+    }
+
+    /*
+        Repairing the Junk Jet. Asked for twice on the Workshop, and until now
+        impossible: with ConditionMax = 10 and no fixing entry, the gun degraded
+        and then broke for good.
+
+        Syntax matches the working Build 41 firearm mods it was modelled on
+        (Potato Launcher, Braven's Nailguns). Build 42 is understood to still
+        read fixing blocks for firearms - see the note in 42's item script about
+        the hasMetal tag, which is B42's own route to the same thing.
+
+        Materials mirror how the thing is built: a proper weld restores most of
+        it, sheet metal patches it, duct tape is the desperate option.
+    */
+    fixing Fix JunkJet_Weapon
+    {
+        Require : JunkJet_Weapon,
+        ConditionModifier : 2,
+
+        Fixer : BlowTorch=2; MetalWelding=1,
+        Fixer : SheetMetal=1; MetalWelding=2,
+        Fixer : DuctTape=3,
+    }
+}

@@ -91,7 +91,14 @@ module JunkJet
         UnequipSound = SawnOffJS2000ShotgunUnEquip,
         InsertAmmoSound = JS2000ShotgunInsertAmmo,
         ImpactSound = null,
-        Tags = JunkJet,
+        /*
+            hasMetal is B42's own repair route: its metal repair recipe keys off
+            this tag, so the gun behaves like any vanilla metal weapon. The
+            fixing block in common/ covers B41 and, as far as could be
+            established, B42 as well. Whichever of the two actually fires in
+            game, the other is harmless - delete the loser once it is known.
+        */
+        Tags = JunkJet;hasMetal,
     }
 
     item JunkJet_Ammo

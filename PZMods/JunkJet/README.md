@@ -25,6 +25,9 @@ matters because the mod is in use on a Build 41 multiplayer server.
 | `*/media/scripts/junkJet_recipe.txt` | B42 replaced `recipe` blocks with `craftRecipe` |
 | `41/media/lua/server/junkJet_reload.lua` | Defines `Recipe.OnCreate.junkJetAmmoLoad`. That namespace is B41's crafting system and does not exist in B42, so loading it there would error |
 
+`common/media/scripts/junkJet_fixing.txt` is shared: the fixing syntax is the
+same on both builds as far as could be established.
+
 Everything else — textures, models, sounds, translations, distributions, sandbox
 options — is shared.
 
@@ -51,6 +54,26 @@ repository, so it could not be patched in a way that survives a reinstall.
 
 `mod.info` and `workshop.txt` are now written by hand and checked in.
 
+## Repairing it
+
+Asked for twice on the Workshop, and until now impossible: `ConditionMax = 10`
+with no fixing entry meant the gun degraded and then broke permanently.
+
+| Fixer | Skill | Notes |
+| --- | --- | --- |
+| Blow torch ×2 | Metalworking 1 | A proper weld, the intended repair |
+| Sheet metal ×1 | Metalworking 2 | Patching it up |
+| Duct tape ×3 | none | The desperate option |
+
+`ConditionModifier : 2`, matching how the thing is welded together in the first
+place.
+
+**Two routes, deliberately.** The `fixing` block covers Build 41 and, as far as
+could be established, Build 42. Separately the Build 42 item carries the
+`hasMetal` tag, which is what B42's own metal repair recipe keys off. If both
+work you get two ways to repair it, which is harmless; once it is known which
+one actually fires, delete the other.
+
 ## Not yet verified in game
 
 The Build 42 conversion is complete but untested. These are the parts that were
@@ -61,6 +84,8 @@ and they are commented in the script files too:
 - `category = Weapons` — B41's category names may not survive into B42
 - `item 90 [Base.BlowTorch]` — how B42 counts drainable use in a recipe
 - `Base.Pipe` — B42 renamed `MetalPipe`, applied here but unconfirmed for this recipe
+- Whether B42 reads `fixing` blocks at all, and whether `hasMetal` is spelled
+  that way now that 42.13 moved item tags to an enum
 
 ## Fixed on the way through
 
