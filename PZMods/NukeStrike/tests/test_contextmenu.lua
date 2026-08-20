@@ -110,4 +110,50 @@ check("and the sirens still run", plain.args.immediate, false)
 check("the second option rolls for it", click(menu.options[2]).args.roll, true)
 check("the third skips the warning", click(menu.options[3]).args.immediate, true)
 
+--------------------------------------------------------------------------------
+-- when the menu system itself misbehaves
+--
+-- Right-click is shared ground. A handler that throws part-way through, or that
+-- leaves a parent option pointing at a submenu that never arrived, takes the
+-- context menu out for EVERY mod. These check that this one cannot.
+--------------------------------------------------------------------------------
+
+--- Build against a context whose submenu creation fails.
+local function buildWithBrokenSubmenu()
+    local realGetNew = ISContextMenu.getNew
+    ISContextMenu.getNew = function() return nil end
+    local context = stubs.newContextMenu()
+    local ok, err = pcall(fill, 0, context, ground(1, 2), false)
+    ISContextMenu.getNew = realGetNew
+    return ok, err, context
+end
+
+local ok, err, context = buildWithBrokenSubmenu()
+isTrue("a submenu that cannot be created does not throw", ok)
+if not ok then print("   error was: " .. tostring(err)) end
+for _, option in ipairs(context.options) do
+    if option.name == "Nuke Strike" then
+        isTrue("and the option it left behind is disabled, not dangling",
+            option.sub == nil and option.notAvailable == true)
+    end
+end
+
+--- Build against a context that throws the moment it is touched.
+local function buildWithBrokenContext()
+    local context = stubs.newContextMenu()
+    context.addOption = function() error("the menu system said no") end
+    return pcall(fill, 0, context, ground(3, 4), false)
+end
+
+isTrue("a context that throws does not take the handler with it",
+    (buildWithBrokenContext()))
+
+-- NS.try gives up on a call after it fails once, so the damage is bounded to
+-- the first right-click rather than repeating for every one after it.
+isTrue("and the mod stops trying after that", NS.isDead("world context menu"))
+
+local afterFailure = stubs.newContextMenu()
+fill(0, afterFailure, ground(5, 6), false)
+check("so later menus are left completely alone", #afterFailure.options, 0)
+
 stubs.finish("test_contextmenu")
