@@ -105,11 +105,16 @@ scanForToken = function(container, depth)
         local item = items:get(i)
         if item ~= nil then
             if item:getFullType() == PL.FATE_TOKEN then return item end
-            -- Only container items answer getInventory; the rest throw.
-            local ok, nested = pcall(function() return item:getInventory() end)
-            if ok and nested ~= nil then
-                local found = scanForToken(nested, depth + 1)
-                if found ~= nil then return found end
+            -- Ask before descending. Calling getInventory on a plain item raises,
+            -- and a pcall around it is NOT quiet: Kahlua prints the stack trace
+            -- even when the error is caught, which floods the server log once
+            -- per item per sweep.
+            if item:IsInventoryContainer() then
+                local nested = item:getInventory()
+                if nested ~= nil then
+                    local found = scanForToken(nested, depth + 1)
+                    if found ~= nil then return found end
+                end
             end
         end
     end

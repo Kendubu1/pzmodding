@@ -87,7 +87,10 @@ local function makeInventory(owner, tokens, nativeLookupBlind)
         items[#items + 1] = {
             getFullType = function() return "Base.FateToken" end,
             getContainer = function() return container end,
-            getInventory = function() error("not a container") end,
+            -- Raises if touched: the mod must ask IsInventoryContainer first,
+            -- because in Kahlua even a caught error is printed to the log.
+            IsInventoryContainer = function() return false end,
+            getInventory = function() error("getInventory called on a plain item") end,
         }
     end
     owner._items = items
