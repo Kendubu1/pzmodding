@@ -1,0 +1,6 @@
+name=Nuke Strike
+id=NukeStrike
+authors=kendubu1
+description=Call a nuclear strike on any map coordinate. Levels buildings, torches the ground, kills everything caught in the blast, and leaves a toxic haze behind for three days. Admin commands: /nuke <x> <y>, /nuke roll, /nuke status.
+poster=poster.png
+modversion=1.0.0

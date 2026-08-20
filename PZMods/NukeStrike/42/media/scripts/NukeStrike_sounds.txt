@@ -1,0 +1,47 @@
+module Base
+{
+	imports
+	{
+		Base
+	}
+
+	/* The three sounds the mod plays. Replace the .wav files in media/sound/ with
+	   your own and keep the file names, or point NS.SOUND_* in
+	   media/lua/shared/NukeStrike_Shared.lua at another mod's sound event. */
+
+	sound NukeStrikeBlast
+	{
+		category = Object,
+		clip
+		{
+			file = media/sound/NukeStrikeBlast.wav,
+			distanceMin = 0,
+			distanceMax = 500,
+			volume = 1.0,
+		}
+	}
+
+	sound NukeStrikeRumble
+	{
+		category = Object,
+		clip
+		{
+			file = media/sound/NukeStrikeRumble.wav,
+			distanceMin = 0,
+			distanceMax = 900,
+			volume = 0.9,
+		}
+	}
+
+	sound NukeStrikeSiren
+	{
+		category = Object,
+		clip
+		{
+			file = media/sound/NukeStrikeSiren.wav,
+			distanceMin = 0,
+			distanceMax = 400,
+			volume = 0.8,
+		}
+	}
+}

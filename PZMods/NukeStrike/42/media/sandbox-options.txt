@@ -1,0 +1,151 @@
+VERSION = 1,
+
+option NukeStrike.Enabled
+{
+    type = boolean,
+    default = true,
+    page = NukeStrike,
+    translation = NukeStrike_Enabled,
+}
+
+option NukeStrike.AdminOnly
+{
+    type = boolean,
+    default = true,
+    page = NukeStrike,
+    translation = NukeStrike_AdminOnly,
+}
+
+option NukeStrike.BlastRadius
+{
+    type = integer,
+    min = 5,
+    max = 400,
+    default = 200,
+    page = NukeStrike,
+    translation = NukeStrike_BlastRadius,
+}
+
+option NukeStrike.FlattenPercent
+{
+    type = integer,
+    min = 0,
+    max = 100,
+    default = 40,
+    page = NukeStrike,
+    translation = NukeStrike_FlattenPercent,
+}
+
+option NukeStrike.HeavyPercent
+{
+    type = integer,
+    min = 0,
+    max = 100,
+    default = 75,
+    page = NukeStrike,
+    translation = NukeStrike_HeavyPercent,
+}
+
+option NukeStrike.KillPlayers
+{
+    type = boolean,
+    default = true,
+    page = NukeStrike,
+    translation = NukeStrike_KillPlayers,
+}
+
+option NukeStrike.DestroyVehicles
+{
+    type = boolean,
+    default = true,
+    page = NukeStrike,
+    translation = NukeStrike_DestroyVehicles,
+}
+
+option NukeStrike.FireChance
+{
+    type = integer,
+    min = 0,
+    max = 100,
+    default = 55,
+    page = NukeStrike,
+    translation = NukeStrike_FireChance,
+}
+
+option NukeStrike.MaxFires
+{
+    type = integer,
+    min = 0,
+    max = 2000,
+    default = 250,
+    page = NukeStrike,
+    translation = NukeStrike_MaxFires,
+}
+
+option NukeStrike.MaxFloors
+{
+    type = integer,
+    min = 1,
+    max = 16,
+    default = 8,
+    page = NukeStrike,
+    translation = NukeStrike_MaxFloors,
+}
+
+option NukeStrike.HazeHours
+{
+    type = integer,
+    min = 0,
+    max = 720,
+    default = 72,
+    page = NukeStrike,
+    translation = NukeStrike_HazeHours,
+}
+
+option NukeStrike.HazeRadiusPercent
+{
+    type = integer,
+    min = 0,
+    max = 400,
+    default = 150,
+    page = NukeStrike,
+    translation = NukeStrike_HazeRadiusPercent,
+}
+
+option NukeStrike.HazeDamage
+{
+    type = double,
+    min = 0.0,
+    max = 100.0,
+    default = 6.0,
+    page = NukeStrike,
+    translation = NukeStrike_HazeDamage,
+}
+
+option NukeStrike.WarningSeconds
+{
+    type = integer,
+    min = 0,
+    max = 600,
+    default = 30,
+    page = NukeStrike,
+    translation = NukeStrike_WarningSeconds,
+}
+
+option NukeStrike.SquaresPerTick
+{
+    type = integer,
+    min = 10,
+    max = 2000,
+    default = 250,
+    page = NukeStrike,
+    translation = NukeStrike_SquaresPerTick,
+}
+
+option NukeStrike.AnnounceGlobally
+{
+    type = boolean,
+    default = true,
+    page = NukeStrike,
+    translation = NukeStrike_AnnounceGlobally,
+}

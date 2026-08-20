@@ -1,0 +1,51 @@
+Sandbox_EN = {
+    Sandbox_NukeStrike = "Nuke Strike",
+
+    Sandbox_NukeStrike_Enabled = "Enable Nuke Strike",
+    Sandbox_NukeStrike_Enabled_tooltip = "When off the /nuke commands refuse to fire and no new haze is created. Craters and haze that already exist are kept.",
+
+    Sandbox_NukeStrike_AdminOnly = "Admins only",
+    Sandbox_NukeStrike_AdminOnly_tooltip = "Only players with admin access can call a strike. Turn off and anyone can type /nuke, which is a choice you make once.",
+
+    Sandbox_NukeStrike_BlastRadius = "Blast radius (tiles)",
+    Sandbox_NukeStrike_BlastRadius_tooltip = "How far the destruction reaches from ground zero. 200 is roughly six city blocks in every direction. A single strike can override this: /nuke 10500 9500 80.",
+
+    Sandbox_NukeStrike_FlattenPercent = "Total destruction (% of radius)",
+    Sandbox_NukeStrike_FlattenPercent_tooltip = "The inner part of the blast, as a percentage of the radius. Nothing above ground level survives here: walls, furniture, trees and upper floors all go, and everything alive dies.",
+
+    Sandbox_NukeStrike_HeavyPercent = "Heavy damage (% of radius)",
+    Sandbox_NukeStrike_HeavyPercent_tooltip = "Where the blast wave stops. Between the total destruction ring and this one most structures collapse and fires are common. Beyond it, out to the full radius, damage is scattered: windows out, roofs stripped, the odd fire.",
+
+    Sandbox_NukeStrike_KillPlayers = "Kill players in the blast",
+    Sandbox_NukeStrike_KillPlayers_tooltip = "Players caught inside the radius die. Turn off to have a strike level the map without killing anyone, which is useful while you are testing where the thing lands.",
+
+    Sandbox_NukeStrike_DestroyVehicles = "Wreck vehicles",
+    Sandbox_NukeStrike_DestroyVehicles_tooltip = "Vehicles inside the radius have their parts ruined and are set alight.",
+
+    Sandbox_NukeStrike_FireChance = "Fire chance",
+    Sandbox_NukeStrike_FireChance_tooltip = "How readily the blast sets ground alight, before distance falloff. Fires spread on their own and are expensive to simulate, so the total is capped separately below.",
+
+    Sandbox_NukeStrike_MaxFires = "Maximum fires per strike",
+    Sandbox_NukeStrike_MaxFires_tooltip = "A hard cap on how many separate fires one strike starts. They spread from there. Raising this a long way will hurt the server's frame rate for as long as the burn lasts.",
+
+    Sandbox_NukeStrike_MaxFloors = "Floors levelled",
+    Sandbox_NukeStrike_MaxFloors_tooltip = "How many storeys above ground get taken off a building. The ground floor tile itself is always left behind, so the ruins are walkable rather than a hole in the world.",
+
+    Sandbox_NukeStrike_HazeHours = "Toxic haze duration (in-game hours)",
+    Sandbox_NukeStrike_HazeHours_tooltip = "How long the fallout lingers after the blast. 72 is three days. Set to 0 for no haze at all.",
+
+    Sandbox_NukeStrike_HazeRadiusPercent = "Haze radius (% of blast radius)",
+    Sandbox_NukeStrike_HazeRadiusPercent_tooltip = "The cloud drifts further than the blast reached. 150% of a 200 tile strike puts poisoned air 300 tiles out.",
+
+    Sandbox_NukeStrike_HazeDamage = "Haze damage per ten minutes",
+    Sandbox_NukeStrike_HazeDamage_tooltip = "Damage taken at the centre of the cloud every ten in-game minutes, falling off towards the edge. A gas mask or respirator halves it and a hazmat suit blocks most of it.",
+
+    Sandbox_NukeStrike_WarningSeconds = "Warning countdown (real seconds)",
+    Sandbox_NukeStrike_WarningSeconds_tooltip = "Sirens sound for this long before the strike lands, so people have a chance to run. /nuke now skips it.",
+
+    Sandbox_NukeStrike_SquaresPerTick = "Squares processed per tick",
+    Sandbox_NukeStrike_SquaresPerTick_tooltip = "How much of the blast is resolved each frame. A 200 tile strike is over a hundred thousand tiles; doing them all at once would lock the server up, so they are worked through as an expanding wave. Lower this if the strike causes a stutter.",
+
+    Sandbox_NukeStrike_AnnounceGlobally = "Announce strikes to everyone",
+    Sandbox_NukeStrike_AnnounceGlobally_tooltip = "Every player is told a strike has been called and where it landed. Turn off and only the people close enough to see it will know.",
+}

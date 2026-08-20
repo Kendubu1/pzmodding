@@ -1,0 +1,5 @@
+UI_EN = {
+	IGUI_NukeStrike_Haze = "TOXIC HAZE",
+	IGUI_NukeStrike_HazeHint = "Get out of the fallout, or cover up.",
+	IGUI_NukeStrike_Incoming = "INCOMING",
+}
