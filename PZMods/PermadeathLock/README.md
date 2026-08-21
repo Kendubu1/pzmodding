@@ -171,6 +171,12 @@ The window sizes itself to your screen — about two thirds of its width, within
 sensible bounds — rather than to a pixel count picked on somebody else's
 monitor. It is also freely resizable, and the columns follow when you drag it.
 
+Its bands are laid out from both edges inward: the status line and column titles
+down from the title bar, the buttons up from the bottom, and the list takes what
+is left between them. Sizing the list first and letting the buttons fall where
+that put them is what pushed the bottom row off the frame in 1.4.0, underneath
+the resize strip. `tests/test_layout.lua` now measures all of it.
+
 Rows sort trouble-first: locked out, then awaiting a restore, then anyone else
 listed, then everyone simply playing, alphabetically inside each group. The
 roster refreshes itself every few seconds while the window is open, and keeps

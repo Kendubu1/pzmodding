@@ -25,8 +25,13 @@ PermadeathLockUI.instance = nil
 local ROW_HEIGHT = 22
 local PAD = 10
 local BUTTON_HEIGHT = 24
-local HEADER_HEIGHT = 16
-local STATUS_HEIGHT = 22
+local HEADER_HEIGHT = 18
+local STATUS_HEIGHT = 20
+
+-- ISCollapsableWindow lays a resize strip along the whole bottom edge of the
+-- frame and a grab handle in the corner. Anything placed flush to the bottom
+-- ends up underneath them. The margin has to clear both, with room to spare.
+local BOTTOM_MARGIN = 18
 
 -- Frames between automatic refreshes while the window is open. The roster is
 -- live data - who is online, who is holding what - and a panel showing a
@@ -147,13 +152,28 @@ end
 function PermadeathLockUI:layout()
     if self.list == nil then return end
 
-    local top = self:titleBarHeight() + PAD
-    local listTop = top + STATUS_HEIGHT + HEADER_HEIGHT
-    local listHeight = math.max(ROW_HEIGHT * 2,
-        self.height - listTop - (BUTTON_HEIGHT * 2) - (PAD * 3))
+    -- Top down: title bar, a gap, the status line, a gap, the column titles,
+    -- then the list. Each band gets its own space instead of sharing one
+    -- number, which is how the status line and the column titles ended up
+    -- almost touching.
+    local statusY = self:titleBarHeight() + PAD
+    local headerY = statusY + STATUS_HEIGHT + PAD
+    local listTop = headerY + HEADER_HEIGHT
+
+    -- Bottom up: the buttons anchor to the bottom of the frame and the list
+    -- takes whatever is left between them, rather than the list being sized
+    -- first and the buttons landing wherever that leaves them. That ordering
+    -- is what pushed the second row two pixels past the bottom edge in 1.4.0,
+    -- underneath the resize strip.
+    local secondRow = self.height - BOTTOM_MARGIN - BUTTON_HEIGHT
+    local firstRow = secondRow - BUTTON_HEIGHT - PAD
+    local listHeight = math.max(ROW_HEIGHT * 2, firstRow - PAD - listTop)
 
     self.status:setX(PAD)
-    self.status:setY(top)
+    self.status:setY(statusY)
+
+    -- Remembered for prerender, which draws the column titles.
+    self.headerY = headerY
 
     self.list:setX(PAD)
     self.list:setY(listTop)
@@ -164,8 +184,6 @@ function PermadeathLockUI:layout()
     -- of the second row rather than next to Refresh, so a misclick on "refresh
     -- the list" cannot land on "wipe the list".
     local slotWidth = (self.width - (PAD * 5)) / 4
-    local firstRow = listTop + listHeight + PAD
-    local secondRow = firstRow + BUTTON_HEIGHT + PAD
 
     local function place(button, column, y)
         button:setX(PAD + (column - 1) * (slotWidth + PAD))
@@ -208,7 +226,7 @@ function PermadeathLockUI:prerender()
     local list = self.list
     if list == nil then return end
 
-    local y = list:getY() - HEADER_HEIGHT
+    local y = self.headerY or (list:getY() - HEADER_HEIGHT)
     for _, column in ipairs(COLUMNS) do
         self:drawText(column.title,
             list:getX() + columnX(list:getWidth(), column.key),
