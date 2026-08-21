@@ -8,7 +8,10 @@ local handlers = {}      -- captured Events.*.Add callbacks
 
 function isServer() return true end
 function isClient() return false end
-function getTimestamp() return 1700000000 end
+local now = 1700000000
+function getTimestamp() return now end
+--- Advance the server's real-time clock, for the kill backstop's deadline.
+local function advance(seconds) now = now + seconds end
 function print(...) end
 
 -- Kahlua, the Lua implementation Project Zomboid runs, does not provide every
@@ -293,26 +296,76 @@ online = { uma }
 sweep()
 check("Uma is locked out", Store.isLocked("Uma"), true)
 
+-- REGRESSION: the kill used to happen inside the spawn handshake, while the
+-- character was still loading into the world. That is what left people looking
+-- at a black screen they never came back from. Nothing may die here.
 sent = {}
 local umaNew = makePlayer("Uma", {})
 online = { umaNew }
-sweep()
-check("the new character is killed at once", umaNew._dead, true)
-check("and told why", lastCommandTo("Uma"), "blocked")
-check("the notice says not to disconnect", sent[#sent].args.kill, true)
+onClientCommand(MODULE, "checkStatus", umaNew, {})
+check("the spawn handshake does not kill", umaNew._dead, false)
+check("it tells them instead", lastCommandTo("Uma"), "blocked")
+check("and says the character is forfeit", sent[#sent].args.kill, true)
 
--- and the character after that, with no strike count to run out
-local umaAgain = makePlayer("Uma", {})
-online = { umaAgain }
+-- the client finishes loading, asks again, and is told to go ahead
+sent = {}
+onClientCommand(MODULE, "blockConfirmed", umaNew, {})
+check("the confirmed block is answered", lastCommandTo("Uma"), "killNow")
+check("but the server does not kill it itself", umaNew._dead, false)
+
+-- REGRESSION: a pardon during the client's grace period must call it off.
+-- Killing anyway is a bug the player experiences as the pardon not working.
+reset()
+local vic = makePlayer("Vic", { dead = true })
+online = { vic }
 sweep()
-check("so is the one after it", umaAgain._dead, true)
+local vicNew = makePlayer("Vic", {})
+-- Its own admin: the shared one is not declared until the section below, and a
+-- nil sender is dropped by the command handler, so the pardon would never run.
+local graceAdmin = makePlayer("Admin", { admin = true })
+online = { vicNew, graceAdmin }
+onClientCommand(MODULE, "checkStatus", vicNew, {})
+onClientCommand(MODULE, "admin", graceAdmin, { sub = "pardon", target = "Vic" })
+check("the pardon landed", Store.get("Vic"), nil)
+sent = {}
+onClientCommand(MODULE, "blockConfirmed", vicNew, {})
+check("a pardon mid-grace calls the kill off", lastCommandTo("Vic"), nil)
+check("and they stay alive", vicNew._dead, false)
+
+-- a client that never goes through with it is killed from here, but only well
+-- after the deadline
+reset()
+local wren = makePlayer("Wren", { dead = true })
+online = { wren }
+sweep()
+local wrenNew = makePlayer("Wren", {})
+online = { wrenNew }
+sweep()
+check("the sweep tells them first", wrenNew._dead, false)
+advance(5)
+sweep()
+check("and does not kill inside the grace period", wrenNew._dead, false)
+advance(20)
+sweep()
+check("but does once the deadline passes", wrenNew._dead, true)
+
+-- each new character starts the count over rather than being killed instantly
+local wrenAgain = makePlayer("Wren", {})
+online = { wrenAgain }
+sweep()
+check("the next character gets its own grace", wrenAgain._dead, false)
+advance(30)
+sweep()
+check("and is killed once that runs out too", wrenAgain._dead, true)
 
 -- being killed by the block must not spend a Fate Token they happen to hold
-local umaToken = makePlayer("Uma", { tokens = 1 })
+local umaToken = makePlayer("Wren", { tokens = 1 })
 online = { umaToken }
 sweep()
+advance(30)
+sweep()
 check("an enforcement kill does not eat a token", #umaToken._items, 1)
-check("and does not unlock them", Store.isLocked("Uma"), true)
+check("and does not unlock them", Store.isLocked("Wren"), true)
 SandboxVars.PermadeathLock.KillOnSpawn = false
 
 --------------------------------------------------------------------------------

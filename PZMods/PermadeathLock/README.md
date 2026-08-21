@@ -107,6 +107,24 @@ the console, the chat and the world the instant anything happens. Killed, the
 player reads the notice, stays where they are, and sees a rule rather than a
 fault.
 
+**The kill is not immediate, and must not be.** It runs four seconds after they
+spawn, carried out by their own client:
+
+1. The spawn handshake finds them locked and sends the notice. It does *not*
+   kill anything — `OnCreatePlayer` fires while the character is still loading
+   into the world, and killing at that instant leaves the client with no valid
+   camera target and a **black screen it does not recover from**.
+2. Four seconds later, the client asks the server whether the block still
+   stands. A pardon in that window calls the kill off entirely.
+3. If it does still stand, the client kills its own character. That side owns
+   and simulates it; a kill applied to a remote player from the server is the
+   same class of desync that made items pushed into a remote inventory
+   unreliable.
+4. If a client never goes through with it, the server kills them fifteen real
+   seconds after the notice. That deadline is in real seconds, not sweeps —
+   a sweep is one *in-game* minute and how long that lasts depends on the
+   server's day length.
+
 Turn `KillOnSpawn` off for the older behaviour: the player is shown a notice and
 their client disconnects itself after twelve seconds, with `EnforceKill` as the
 backstop for a modified client that ignores it. Killing is the strongest action
