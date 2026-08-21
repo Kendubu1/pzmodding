@@ -73,14 +73,22 @@ end
 
 local Overlay = ISUIElement:derive("NukeStrikeOverlay")
 
+--- One pixel, in the corner, deliberately.
+---
+--- An element's size is its hit box. The UI manager hands a click to whatever
+--- element is under the cursor, so a full screen element swallows every click on
+--- the world behind it - and setConsumeMouseEvents(false), which is supposed to
+--- stop exactly that, does not. It does not even fail: it succeeds, and the
+--- element carries on eating clicks. That is why right-click worked fine until a
+--- nuke went off and then stopped for as long as the fog was up.
+---
+--- drawRect and drawTextCentre are not clipped to the element's bounds, so a one
+--- pixel element can still paint the whole screen. The picture is exactly the
+--- same; there is simply nothing left to click on.
 function Overlay:new()
-    local o = ISUIElement:new(0, 0, getCore():getScreenWidth(), getCore():getScreenHeight())
+    local o = ISUIElement:new(0, 0, 1, 1)
     setmetatable(o, self)
     self.__index = self
-    o.anchorLeft = true
-    o.anchorRight = true
-    o.anchorTop = true
-    o.anchorBottom = true
     return o
 end
 
@@ -117,50 +125,28 @@ end
 ---@type table?
 local overlay = nil
 
--- nil until we have found out whether this build lets us make a full screen
--- element click-through; false means it does not and we never try again.
----@type boolean?
-local clickThrough = nil
-
---- Put the overlay on screen, if it is safe to.
+--- Put the overlay on screen.
 ---
---- A full screen element sitting in the UI manager swallows every mouse event
---- behind it, which takes right-click away from the whole game. Two rules keep
---- that from happening:
----
----   * It is made click-through BEFORE it goes on screen, not after. There is no
----     window where it is live and still eating clicks.
----   * If the build has no way to make it click-through, it is never added at
----     all and the visuals are given up. Losing the green tint is a disappointment;
----     losing the mouse is a broken game.
----
---- It is also only on screen while there is something to draw. Nothing is
---- happening most of the time, and an element that is not there cannot misbehave.
+--- It is only ever up while there is something to draw. Nothing is happening
+--- most of the time, and an element that is not there cannot misbehave at all -
+--- which is the second half of keeping the mouse working, the first being the
+--- one pixel size above.
 ---@return boolean showing
 local function ensureOverlay()
     if overlay ~= nil then return true end
-    if clickThrough == false then return false end
 
     local element = Overlay:new()
     element:initialise()
     element:instantiate()
 
+    -- Belt and braces on top of the size. None of these are load-bearing any
+    -- more; the element is a single pixel whether they work or not.
     NS.try("ISUIElement:setAlwaysOnTop", function() element:setAlwaysOnTop(false) end)
     NS.try("ISUIElement:setCapture", function() element:setCapture(false) end)
-
-    local _, ok = NS.try("UIElement:setConsumeMouseEvents", function()
+    NS.try("UIElement:setConsumeMouseEvents", function()
         element.javaObject:setConsumeMouseEvents(false)
     end)
 
-    if not ok then
-        clickThrough = false
-        print("[NukeStrike] this build will not let the screen overlay pass mouse clicks "
-            .. "through, so the flash and the haze tint are switched off. Everything else "
-            .. "works - this only costs you the visuals, and it keeps your right-click.")
-        return false
-    end
-
-    clickThrough = true
     element:addToUIManager()
     overlay = element
     return true

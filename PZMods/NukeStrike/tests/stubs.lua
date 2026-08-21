@@ -103,6 +103,7 @@ function stubs.install(flags)
             function element:addToUIManager()
                 element.added = true
                 stubs.ui.onScreen = stubs.ui.onScreen + 1
+                stubs.ui.last = element
             end
 
             function element:removeFromUIManager()

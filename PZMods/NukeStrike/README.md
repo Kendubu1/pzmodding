@@ -180,18 +180,23 @@ and a full-screen element sitting in the game's UI manager swallows every mouse
 event behind it. Get that wrong and the player loses right-click on *everything*
 — doors, corpses, inventory — not just on this mod.
 
-Two rules keep it honest, and both are covered by `tests/test_client.lua`:
+The guarantee is its **size**, not a flag. An element's size is its hit box, and
+the UI manager hands a click to whatever element sits under the cursor.
+`setConsumeMouseEvents(false)` is supposed to prevent that and does not — it
+does not even fail, it succeeds and the element carries on eating clicks, which
+is why right-click worked fine until a nuke went off and then stopped for as long
+as the fog was up.
 
-* It is made click-through **before** it goes on screen, never after, so there is
-  no window where it is live and still eating clicks.
-* If a build has no way to make it click-through, it is **never added at all**
-  and the visuals are given up. The flash and the tint are worth having; they are
-  not worth a broken mouse. Look for a `[NukeStrike]` line in `console.txt`
-  saying so.
+So the element is **one pixel, in the corner**. `drawRect` and `drawTextCentre`
+are not clipped to an element's bounds, so a single pixel still paints the whole
+screen: the picture is identical and there is nothing left to click on. The
+`setConsumeMouseEvents` call is still made, but nothing depends on it now.
 
 It is also only on screen while it has something to say — a flash, a countdown,
 or fallout you are actually standing in. The rest of the time there is no element
-at all, which is the strongest guarantee available that it is not in the way.
+at all.
+
+`tests/test_client.lua` asserts the pixel, which is the line that matters.
 
 ## Sounds
 
