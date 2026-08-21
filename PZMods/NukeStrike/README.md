@@ -96,18 +96,18 @@ on both axes; Muldraugh is around 10600, 9600 and West Point around 11700, 6800.
    | Ring | What is left |
    | --- | --- |
    | Inner 40% | Nothing above the ground. Walls, furniture, trees, upper storeys. Everything alive is gone; zombies are deleted rather than killed, because thousands of corpses is a frame rate problem, not a feature. |
-   
+   | Out to 75% | Most structures collapse, fires are common, almost everything alive dies. |
+   | Out to 100% | Windows out, roofs stripped, scattered fires, about half of what is alive. |
+
+   The ground floor tile is always left behind, so the ruins are walkable rather
+   than a hole in the world.
+
    Everything alive is found by asking the **cell** for its zombie list, not by
    walking squares. A square offers `getMovingObjects`, `getStaticMovingObjects`,
    `getZombie` and `getZombieCount`, and guessing which of them a given zombie is
    reachable through is what once let a spawned horde stand in the middle of a
    fireball completely untouched. Every strike prints what it caught to
    `console.txt`.
-   | Out to 75% | Most structures collapse, fires are common, almost everything alive dies. |
-   | Out to 100% | Windows out, roofs stripped, scattered fires, about half of what is alive. |
-
-   The ground floor tile is always left behind, so the ruins are walkable rather
-   than a hole in the world.
 5. **The cars.** There is no "explode this car" call in Project Zomboid —
    `BaseVehicle` has no explode method at all — so a wrecked car is built out of
    four separate things, and leaving any one of them out makes a strike look
