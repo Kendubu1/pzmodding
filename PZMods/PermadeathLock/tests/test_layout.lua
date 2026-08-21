@@ -28,6 +28,16 @@ function sendClientCommand() end
 
 UIFont = { Small = "small" }
 
+-- The height of a line of UIFont.Small. The game's UI Scaling setting moves
+-- this, and every band in the panel is supposed to be sized from it, so the
+-- whole matrix below is run at several values. At 2x scale a panel built
+-- around fixed pixel constants has its status line, column titles and first
+-- row drawn on top of each other and its bottom buttons cut off by the frame.
+local TEXT_HEIGHT = 14
+function getTextManager()
+    return { getFontHeight = function() return TEXT_HEIGHT end }
+end
+
 --------------------------------------------------------------------------------
 -- the smallest ISUIElement that the panel can be laid out against
 --------------------------------------------------------------------------------
@@ -101,8 +111,8 @@ function ISCollapsableWindow:new(x, y, width, height)
     return window
 end
 
--- The real one is max(16, FONT_HGT_SMALL + 1).
-function ISCollapsableWindow:titleBarHeight() return 18 end
+-- The real one is max(16, FONT_HGT_SMALL + 1), so it scales too.
+function ISCollapsableWindow:titleBarHeight() return math.max(16, TEXT_HEIGHT + 1) end
 function ISCollapsableWindow:createChildren() end
 function ISCollapsableWindow:initialise() self:createChildren() end
 function ISCollapsableWindow:instantiate() end
@@ -178,8 +188,26 @@ local function checkLayout(width, height)
         list.x >= 0 and list.x + list.width <= width,
         string.format("list spans %d..%d of %d", list.x, list.x + list.width, width))
     check(label .. ": the list has room for rows",
-        list.height >= 44,
-        "list height " .. list.height)
+        list.height >= list.itemheight * 2,
+        "list height " .. list.height .. ", rows are " .. tostring(list.itemheight))
+
+    -- The bands must be tall enough for the text inside them. This is the whole
+    -- point: at a large UI scale, glyphs drawn in a band shorter than they are
+    -- spill into whatever is above and below.
+    check(label .. ": the status band holds its text",
+        status.height >= TEXT_HEIGHT,
+        "band " .. status.height .. ", text " .. TEXT_HEIGHT)
+    check(label .. ": a list row holds its text",
+        (list.itemheight or 0) >= TEXT_HEIGHT,
+        "row " .. tostring(list.itemheight) .. ", text " .. TEXT_HEIGHT)
+    check(label .. ": a button holds its text",
+        first.height >= TEXT_HEIGHT,
+        "button " .. first.height .. ", text " .. TEXT_HEIGHT)
+    if window.headerY ~= nil then
+        check(label .. ": the column titles hold their text",
+            list.y - window.headerY >= TEXT_HEIGHT,
+            "band " .. (list.y - window.headerY) .. ", text " .. TEXT_HEIGHT)
+    end
 
     -- Buttons must not overlap each other along a row.
     local row = { window.pardonBtn, window.reviveBtn, window.giveBtn, window.takeBtn }
@@ -192,14 +220,31 @@ local function checkLayout(width, height)
     return window
 end
 
-io.write("-- freshly opened, at a range of window sizes --\n")
-checkLayout(640, 320)     -- the enforced minimum
-checkLayout(900, 480)
-checkLayout(1268, 626)    -- what a 1920x1080 screen gets
-checkLayout(1500, 950)    -- the enforced maximum
+--- The whole matrix at one UI scale, starting from the size the panel picks
+--- for itself so the defaults are covered as well as the extremes.
+---@param textHeight integer
+local function checkScale(textHeight)
+    TEXT_HEIGHT = textHeight
+    io.write(string.format("\n-- UI text %dpx --\n", textHeight))
 
+    local window = PermadeathLockUI.open()
+    checkLayout(window.width, window.height)
+    PermadeathLockUI.instance = nil
+
+    checkLayout(window.minimumWidth or 640, window.minimumHeight or 320)
+    checkLayout(1500, 950)
+end
+
+io.write("-- freshly opened, at a range of UI scales --\n")
+checkScale(12)   -- smallest sensible
+checkScale(14)   -- 1x
+checkScale(20)
+checkScale(28)   -- roughly 2x, which is what broke it
+checkScale(40)
+
+TEXT_HEIGHT = 28
 io.write("\n-- after being dragged to a new size --\n")
-local dragged = checkLayout(900, 480)
+local dragged = checkLayout(900, 700)
 dragged.width, dragged.height = 1400, 900
 dragged:onResize()
 check("dragged: the list follows the frame",

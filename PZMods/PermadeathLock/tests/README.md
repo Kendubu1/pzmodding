@@ -23,13 +23,19 @@ lua5.1 PZMods/PermadeathLock/tests/test_layout.lua
 sh      PZMods/PermadeathLock/tests/test_gating.sh
 ```
 
-`test_layout.lua` builds the admin panel against stubbed UI classes at several
-window sizes and checks that no band lands on another: the status line clears
-the title bar, the column titles clear the status line, the list clears the
-titles, the buttons clear the list, and the bottom row clears the resize strip
-`ISCollapsableWindow` draws along the frame's edge. In 1.4.0 the second row of
-buttons was placed two pixels *past* the bottom of the window at every size,
-underneath that strip — which no syntax check can see.
+`test_layout.lua` builds the admin panel against stubbed UI classes and checks
+that no band lands on another: the status line clears the title bar, the column
+titles clear the status line, the list clears the titles, the buttons clear the
+list, and the bottom row clears the resize strip `ISCollapsableWindow` draws
+along the frame's edge. It also checks each band is at least as tall as the text
+inside it.
+
+It runs the whole matrix at **five font heights**, because the game's UI Scaling
+setting moves them all. That is what the panel's geometry has got wrong twice:
+in 1.4.0 the bottom button row sat two pixels past the frame at every size, and
+through 1.6.0 every band was a fixed pixel count, so at 2x the status line, the
+column titles and the first row drew on top of each other. Neither is visible
+from reading the code and neither shows up in a syntax check.
 
 `test_gating.sh` loads the mod once per game mode (dedicated, co-op host, client,
 single player) and checks which halves come alive against the expected matrix.

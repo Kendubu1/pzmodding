@@ -175,7 +175,15 @@ Its bands are laid out from both edges inward: the status line and column titles
 down from the title bar, the buttons up from the bottom, and the list takes what
 is left between them. Sizing the list first and letting the buttons fall where
 that put them is what pushed the bottom row off the frame in 1.4.0, underneath
-the resize strip. `tests/test_layout.lua` now measures all of it.
+the resize strip.
+
+Every band's height comes from `getTextManager():getFontHeight(UIFont.Small)`,
+never from a pixel count. **The UI Scaling setting changes the size of every
+glyph on screen**, so a 20px status band holding 28px text bleeds into the
+column titles, which bleed into the first row, while the bottom row of buttons
+has its labels clipped by the frame — all three of which happened at 2x.
+`tests/test_layout.lua` builds the panel at five text heights and checks that
+every band is at least as tall as the text inside it.
 
 Rows sort trouble-first: locked out, then awaiting a restore, then anyone else
 listed, then everyone simply playing, alphabetically inside each group. The

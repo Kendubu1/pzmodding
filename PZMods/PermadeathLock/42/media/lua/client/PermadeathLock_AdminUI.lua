@@ -22,16 +22,62 @@ local PL = PermadeathLock
 PermadeathLockUI = ISCollapsableWindow:derive("PermadeathLockUI")
 PermadeathLockUI.instance = nil
 
-local ROW_HEIGHT = 22
-local PAD = 10
-local BUTTON_HEIGHT = 24
-local HEADER_HEIGHT = 18
-local STATUS_HEIGHT = 20
+-- Every band in this window is sized from the height of the font the game is
+-- actually drawing with, never from a pixel count.
+--
+-- The UI Scaling setting changes the size of every glyph on screen. Constants
+-- that look right at 1x collapse at 2x: a 20px status band holding 28px text
+-- bleeds into the column titles, those bleed into the first row, and the bottom
+-- row of buttons has its labels cut off by the frame. All three happened.
+local FALLBACK_TEXT_HEIGHT = 14
 
--- ISCollapsableWindow lays a resize strip along the whole bottom edge of the
--- frame and a grab handle in the corner. Anything placed flush to the bottom
--- ends up underneath them. The margin has to clear both, with room to spare.
-local BOTTOM_MARGIN = 18
+---@return integer
+local function textHeight()
+    if getTextManager == nil then return FALLBACK_TEXT_HEIGHT end
+    local manager = getTextManager()
+    if manager == nil then return FALLBACK_TEXT_HEIGHT end
+
+    local height = manager:getFontHeight(UIFont.Small)
+    if height == nil or height <= 0 then return FALLBACK_TEXT_HEIGHT end
+    return height
+end
+
+-- Recomputed only when the font height changes, so prerender is not allocating
+-- a table every frame, and a UI Scaling change mid-session is still picked up.
+local cachedMetrics = nil
+
+--- Band heights for the font currently in use.
+---@return table
+local function metrics()
+    local text = textHeight()
+    if cachedMetrics ~= nil and cachedMetrics.text == text then
+        return cachedMetrics
+    end
+
+    cachedMetrics = {
+        text = text,
+        pad = math.max(10, math.floor(text * 0.7)),
+        row = text + 8,
+        status = text + 6,
+        header = text + 6,
+        button = text + 14,
+        -- ISCollapsableWindow lays a resize strip along the whole bottom edge
+        -- of the frame and a grab handle in the corner. Anything placed flush
+        -- to the bottom ends up underneath them.
+        bottom = math.max(18, text + 6),
+    }
+    return cachedMetrics
+end
+
+--- The smallest the window can usefully be at the current font: every band at
+--- its natural height, with room for three rows of list.
+---@return number width, number height
+local function minimumSize()
+    local m = metrics()
+    local height = (m.text + 2) + m.pad + m.status + m.pad + m.header
+        + (m.row * 3) + m.pad + (m.button * 2) + m.pad + m.bottom
+    return math.max(640, m.text * 46), height
+end
 
 -- Frames between automatic refreshes while the window is open. The roster is
 -- live data - who is online, who is holding what - and a panel showing a
@@ -44,15 +90,17 @@ local REFRESH_FRAMES = 300
 -- small screen or absurd on a very large one.
 local SCREEN_FRACTION_W = 0.66
 local SCREEN_FRACTION_H = 0.58
-local MIN_W, MAX_W = 720, 1500
-local MIN_H, MAX_H = 360, 950
+local MAX_W, MAX_H = 1500, 950
 
+--- Clamp, with the low bound winning. The minimums scale with the font, so at a
+--- large UI scale they can exceed the fixed maximums; a window too small to
+--- read is a worse outcome than one bigger than intended.
 ---@param value number
 ---@param low number
 ---@param high number
 ---@return number
 local function clamp(value, low, high)
-    return math.max(low, math.min(value, high))
+    return math.max(low, math.min(value, math.max(low, high)))
 end
 
 --- How big the panel should be on this screen, in pixels.
@@ -63,8 +111,9 @@ local function preferredSize()
 
     -- Clamped to the screen last, so a small screen wins over the minimum
     -- rather than the window hanging off the edge of it.
-    local width = clamp(math.floor(screenWidth * SCREEN_FRACTION_W), MIN_W, MAX_W)
-    local height = clamp(math.floor(screenHeight * SCREEN_FRACTION_H), MIN_H, MAX_H)
+    local minWidth, minHeight = minimumSize()
+    local width = clamp(math.floor(screenWidth * SCREEN_FRACTION_W), minWidth, MAX_W)
+    local height = clamp(math.floor(screenHeight * SCREEN_FRACTION_H), minHeight, MAX_H)
 
     return math.min(width, screenWidth - 40), math.min(height, screenHeight - 40)
 end
@@ -111,14 +160,15 @@ end
 function PermadeathLockUI:createChildren()
     ISCollapsableWindow.createChildren(self)
 
-    self.status = ISLabel:new(PAD, 0, 18, "Loading...", 1, 1, 1, 1, UIFont.Small, true)
+    -- Placeholder geometry throughout: layout() sets the real numbers, and is
+    -- the only place that knows them.
+    self.status = ISLabel:new(0, 0, metrics().status, "Loading...", 1, 1, 1, 1, UIFont.Small, true)
     self.status:initialise()
     self:addChild(self.status)
 
-    self.list = ISScrollingListBox:new(PAD, 0, 10, 10)
+    self.list = ISScrollingListBox:new(0, 0, 10, 10)
     self.list:initialise()
     self.list:instantiate()
-    self.list.itemheight = ROW_HEIGHT
     self.list.font = UIFont.Small
     self.list.drawBorder = true
     self.list.doDrawItem = PermadeathLockUI.drawRow
@@ -138,7 +188,7 @@ end
 ---@param handler string
 ---@return ISButton
 function PermadeathLockUI:makeButton(label, handler)
-    local button = ISButton:new(0, 0, 10, BUTTON_HEIGHT, label, self, PermadeathLockUI[handler])
+    local button = ISButton:new(0, 0, 10, metrics().button, label, self, PermadeathLockUI[handler])
     button:initialise()
     button:instantiate()
     button.borderColor = { r = 0.4, g = 0.4, b = 0.4, a = 1 }
@@ -152,43 +202,49 @@ end
 function PermadeathLockUI:layout()
     if self.list == nil then return end
 
+    local m = metrics()
+
     -- Top down: title bar, a gap, the status line, a gap, the column titles,
-    -- then the list. Each band gets its own space instead of sharing one
-    -- number, which is how the status line and the column titles ended up
-    -- almost touching.
-    local statusY = self:titleBarHeight() + PAD
-    local headerY = statusY + STATUS_HEIGHT + PAD
-    local listTop = headerY + HEADER_HEIGHT
+    -- then the list. Each band gets its own space, tall enough for the text it
+    -- holds, instead of sharing one number that only fits at one UI scale.
+    local statusY = self:titleBarHeight() + m.pad
+    local headerY = statusY + m.status + m.pad
+    local listTop = headerY + m.header
 
     -- Bottom up: the buttons anchor to the bottom of the frame and the list
     -- takes whatever is left between them, rather than the list being sized
     -- first and the buttons landing wherever that leaves them. That ordering
     -- is what pushed the second row two pixels past the bottom edge in 1.4.0,
     -- underneath the resize strip.
-    local secondRow = self.height - BOTTOM_MARGIN - BUTTON_HEIGHT
-    local firstRow = secondRow - BUTTON_HEIGHT - PAD
-    local listHeight = math.max(ROW_HEIGHT * 2, firstRow - PAD - listTop)
+    local secondRow = self.height - m.bottom - m.button
+    local firstRow = secondRow - m.button - m.pad
+    local listHeight = math.max(m.row * 2, firstRow - m.pad - listTop)
 
-    self.status:setX(PAD)
+    self.status:setX(m.pad)
     self.status:setY(statusY)
+    self.status:setHeight(m.status)
 
     -- Remembered for prerender, which draws the column titles.
     self.headerY = headerY
 
-    self.list:setX(PAD)
+    self.list:setX(m.pad)
     self.list:setY(listTop)
-    self.list:setWidth(self.width - (PAD * 2))
+    self.list:setWidth(self.width - (m.pad * 2))
     self.list:setHeight(listHeight)
+    self.list.itemheight = m.row
+    -- drawRow runs with the list as self, so it reads the text height from here.
+    self.list.textHeight = m.text
 
     -- Four columns of buttons. The destructive one sits alone in the far corner
     -- of the second row rather than next to Refresh, so a misclick on "refresh
     -- the list" cannot land on "wipe the list".
-    local slotWidth = (self.width - (PAD * 5)) / 4
+    local slotWidth = (self.width - (m.pad * 5)) / 4
 
     local function place(button, column, y)
-        button:setX(PAD + (column - 1) * (slotWidth + PAD))
+        button:setX(m.pad + (column - 1) * (slotWidth + m.pad))
         button:setY(y)
         button:setWidth(slotWidth)
+        button:setHeight(m.button)
     end
 
     place(self.pardonBtn, 1, firstRow)
@@ -226,7 +282,7 @@ function PermadeathLockUI:prerender()
     local list = self.list
     if list == nil then return end
 
-    local y = self.headerY or (list:getY() - HEADER_HEIGHT)
+    local y = self.headerY or (list:getY() - metrics().header)
     for _, column in ipairs(COLUMNS) do
         self:drawText(column.title,
             list:getX() + columnX(list:getWidth(), column.key),
@@ -276,12 +332,16 @@ function PermadeathLockUI:drawRow(y, item, alt)
     local tokens = row.online and tostring(row.tokens or 0) or "-"
     local carrying = (row.tokens or 0) > 0
 
+    -- Centred in the row rather than a fixed three pixels down, which only
+    -- looked right while the row height was a fixed number too.
     local width = self:getWidth()
-    self:drawText(name, columnX(width, "name"), y + 3, 1, 1, 1, 1, self.font)
-    self:drawText(state, columnX(width, "state"), y + 3, r, g, b, 1, self.font)
-    self:drawText(row.age or "", columnX(width, "age"), y + 3, 0.7, 0.7, 0.7, 1, self.font)
-    self:drawText(skills, columnX(width, "skills"), y + 3, 0.7, 0.7, 0.7, 1, self.font)
-    self:drawText(tokens, columnX(width, "tokens"), y + 3,
+    local textY = y + math.floor((self.itemheight - (self.textHeight or 14)) / 2)
+
+    self:drawText(name, columnX(width, "name"), textY, 1, 1, 1, 1, self.font)
+    self:drawText(state, columnX(width, "state"), textY, r, g, b, 1, self.font)
+    self:drawText(row.age or "", columnX(width, "age"), textY, 0.7, 0.7, 0.7, 1, self.font)
+    self:drawText(skills, columnX(width, "skills"), textY, 0.7, 0.7, 0.7, 1, self.font)
+    self:drawText(tokens, columnX(width, "tokens"), textY,
         carrying and 0.95 or 0.7, carrying and 0.85 or 0.7, carrying and 0.45 or 0.7, 1, self.font)
 
     return y + self.itemheight
@@ -427,9 +487,9 @@ function PermadeathLockUI:new(x, y, width, height)
     self.__index = self
     window:setTitle("Permadeath Lock")
     window:setResizable(true)
-    -- Below this the five columns start colliding. Drag it wider whenever you
-    -- like; layout() re-runs and the columns follow.
-    window.minimumWidth = 640
-    window.minimumHeight = 320
+    -- Below this the five columns start colliding and the bands stop fitting.
+    -- Both scale with the font. Drag it larger whenever you like; layout()
+    -- re-runs and everything follows.
+    window.minimumWidth, window.minimumHeight = minimumSize()
     return window
 end
