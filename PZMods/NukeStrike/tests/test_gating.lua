@@ -28,9 +28,13 @@ local registered = stubs.registered
 
 -- The authoritative half is live if it took the commands and is watching for
 -- ground loading inside a crater; the player-facing half if it took the server's
--- messages and hooked the spawn handshake.
+-- messages and put its entry on the right-click menu.
+--
+-- OnCreatePlayer used to stand in for the client half. It was only ever there to
+-- ask the server for the haze zones, and the overlay that needed them is gone.
 local serverLive = registered["OnClientCommand"] ~= nil and registered["LoadGridsquare"] ~= nil
-local clientLive = registered["OnServerCommand"] ~= nil and registered["OnCreatePlayer"] ~= nil
+local clientLive = registered["OnServerCommand"] ~= nil
+    and registered["OnFillWorldObjectContextMenu"] ~= nil
 
 stubs.realPrint(string.format("%s server=%s client=%s",
     mode, tostring(serverLive), tostring(clientLive)))

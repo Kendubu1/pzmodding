@@ -85,12 +85,10 @@ on both axes; Muldraugh is around 10600, 9600 and West Point around 11700, 6800.
 1. **The sirens.** Everyone is told a strike is inbound and where. A countdown
    runs on screen for thirty seconds by default, which is enough time to drive
    out if you are quick, and not enough if you stop for your bag.
-2. **The flash.** The screen whites out for anyone in line of sight, hardest for
-   whoever was closest.
-3. **The sound, late.** The bang lags the light in proportion to distance — four
+2. **The sound, late.** The bang lags the light in proportion to distance — four
    seconds at two hundred tiles, and a low rumble instead of a crack for anyone
    far enough out that they only hear the weather change.
-4. **The blast.** It spreads outwards from ground zero as a wave rather than all
+3. **The blast.** It spreads outwards from ground zero as a wave rather than all
    at once, and the wave is what the destruction rides on:
 
    | Ring | What is left |
@@ -108,7 +106,7 @@ on both axes; Muldraugh is around 10600, 9600 and West Point around 11700, 6800.
    reachable through is what once let a spawned horde stand in the middle of a
    fireball completely untouched. Every strike prints what it caught to
    `console.txt`.
-5. **The cars.** There is no "explode this car" call in Project Zomboid —
+4. **The cars.** There is no "explode this car" call in Project Zomboid —
    `BaseVehicle` has no explode method at all — so a wrecked car is built out of
    four separate things, and leaving any one of them out makes a strike look
    like it missed:
@@ -127,12 +125,13 @@ on both axes; Muldraugh is around 10600, 9600 and West Point around 11700, 6800.
 
    Every strike prints a line to `console.txt` saying how many vehicles it found
    and what it did to them, so "it did nothing to the cars" is answerable.
-6. **The fires.** Capped (250 by default) and spread across the whole blast
+5. **The fires.** Capped (250 by default) and spread across the whole blast
    rather than clustered at the middle, then they spread on their own. This is
    the setting to turn down first if the server chugs after a strike.
-7. **The haze.** For 72 in-game hours a cloud half again as wide as the blast
+6. **The haze.** For 72 in-game hours a cloud half again as wide as the blast
    sits over the area. Standing in it costs you health, makes you sick and drains
-   your endurance, worst at the middle. A gas mask or respirator halves it; a
+   your endurance, worst at the middle. Your character coughs and says so; there
+   is no tint over the screen. A gas mask or respirator halves it; a
    hazmat suit blocks most of it; both together still let a little through.
    Bandits caught in it die at the same rate a player would; zombies ignore it.
 
@@ -173,30 +172,35 @@ takes several seconds of real time to finish sweeping. Lower **Squares processed
 per tick** if a strike stutters your server, and lower **Maximum fires** if the
 minutes afterwards do.
 
-## The screen overlay
+## There is no screen overlay
 
-The white flash and the green haze tint are drawn by a full-screen UI element,
-and a full-screen element sitting in the game's UI manager swallows every mouse
-event behind it. Get that wrong and the player loses right-click on *everything*
-— doors, corpses, inventory — not just on this mod.
+There was one — fog tint, white flash, countdown — and it cost the player their
+right-click for as long as the fog was up. It is gone, and this section exists so
+nobody adds it back without knowing what it costs.
 
-The guarantee is its **size**, not a flag. An element's size is its hit box, and
-the UI manager hands a click to whatever element sits under the cursor.
-`setConsumeMouseEvents(false)` is supposed to prevent that and does not — it
-does not even fail, it succeeds and the element carries on eating clicks, which
-is why right-click worked fine until a nuke went off and then stopped for as long
-as the fog was up.
+A UI element's **size is its hit box**. The UI manager hands a click to whatever
+element sits under the cursor, so a full-screen element swallows every click on
+the world behind it — doors, corpses, inventory, everything, not just this mod.
+`setConsumeMouseEvents(false)` is supposed to prevent exactly that and **does
+not**: it does not even fail, it succeeds and the element carries on eating
+clicks. Any fix built around catching that call failing therefore never runs.
 
-So the element is **one pixel, in the corner**. `drawRect` and `drawTextCentre`
-are not clipped to an element's bounds, so a single pixel still paints the whole
-screen: the picture is identical and there is nothing left to click on. The
-`setConsumeMouseEvents` call is still made, but nothing depends on it now.
+Shrinking the element to a single pixel does work (`drawRect` is not clipped to
+an element's bounds, so one pixel can still paint the whole screen). But a
+cosmetic tint is not worth a mouse, so the element is deleted rather than
+shrunk — deleting cannot fail.
 
-It is also only on screen while it has something to say — a flash, a countdown,
-or fallout you are actually standing in. The rest of the time there is no element
-at all.
+Everything the client says now goes through sound and text, neither of which can
+take input away:
 
-`tests/test_client.lua` asserts the pixel, which is the line that matters.
+* **The blast** — heard, with the bang lagging the light in proportion to
+  distance. A crack up close, a low rumble from over the horizon.
+* **The countdown** — announced in chat by the server.
+* **The fallout** — your character coughs and floating text appears over their
+  head. The damage itself is unchanged; only the green tint is gone.
+
+`tests/test_client.lua` asserts that nothing is ever added to the UI manager,
+whatever happens.
 
 ## Sounds
 

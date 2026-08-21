@@ -1,26 +1,44 @@
--- The screen overlay, and the rule that matters most about it: it must never
--- take the player's mouse away.
+-- The client half, and the one rule it has: it must never put anything on the
+-- screen.
 --
--- An element's SIZE is its hit box, and the UI manager hands a click to whatever
--- element is under the cursor. A full screen element therefore swallows every
--- click on the world behind it. setConsumeMouseEvents(false) is supposed to
--- prevent that and does not - it succeeds and the element goes on eating clicks
--- anyway, which is why right-click broke only while the fog was up.
+-- There used to be a full screen overlay drawing fog, a flash and a countdown,
+-- and it cost the player their right-click for as long as the fog was up. An
+-- element's SIZE is its hit box and the UI manager hands a click to whatever
+-- element is under the cursor, so a full screen element swallows every click on
+-- the world behind it. setConsumeMouseEvents(false) is supposed to prevent that
+-- and does not - it does not even fail, it succeeds and the element carries on
+-- eating clicks.
 --
--- So the guarantee is the size: one pixel, in the corner. drawRect is not
--- clipped to the element's bounds, so it still paints the whole screen.
+-- Shrinking it to one pixel would have worked. Deleting it cannot fail, and a
+-- cosmetic tint was never worth a mouse. So this test holds the line: whatever
+-- happens, nothing is added to the UI manager.
 --
 --     lua5.1 PZMods/NukeStrike/tests/test_client.lua
 
 local stubs = dofile("PZMods/NukeStrike/tests/stubs.lua")
 stubs.install({ server = false, client = true, coop = false })
 
+local said = {}
 stubs.player = {
     getX = function() return 10500 end,
     getY = function() return 9500 end,
     getCurrentSquare = function() return nil end,
-    Say = function() end,
+    Say = function(_, text) said[#said + 1] = text end,
 }
+
+local halos = {}
+HaloTextHelper = {
+    addTextWithArrow = function(_, text) halos[#halos + 1] = text end,
+    getColorRed = function() return 0 end,
+}
+
+local played = {}
+function getSoundManager()
+    return {
+        PlayWorldSound = function() return nil end,
+        PlaySound = function(_, name) played[#played + 1] = name end,
+    }
+end
 
 function sendClientCommand() end
 
@@ -32,96 +50,84 @@ local check, isTrue = stubs.check, stubs.checkTrue
 
 local receive = NS.localReceive
 local tick = stubs.registered["OnTick"][1]
-local onCreatePlayer = stubs.registered["OnCreatePlayer"][1]
 
 local function ticks(n)
     for _ = 1, n do tick() end
 end
 
 --------------------------------------------------------------------------------
--- nothing on screen when nothing is happening
+-- nothing is ever drawn
 --------------------------------------------------------------------------------
 
-check("nothing is on screen at load", stubs.ui.onScreen, 0)
-
-onCreatePlayer(0, stubs.player)
-ticks(5)
-check("spawning does not put anything on screen", stubs.ui.onScreen, 0)
-
--- The zone list arriving is not by itself a reason to draw: the clouds may all
--- be on the far side of the map.
-receive("zones", { zones = { { x = 1, y = 1, hazeR = 50, hazeUntil = 72, hazeHours = 72 } } })
-ticks(60)
-check("a distant cloud draws nothing", stubs.ui.onScreen, 0)
-
---------------------------------------------------------------------------------
--- on screen only while there is something to draw
---------------------------------------------------------------------------------
+check("nothing on screen at load", stubs.ui.onScreen, 0)
 
 receive("detonate", { x = 10500, y = 9500, r = 200, hazeR = 300 })
-tick()
-check("a detonation puts it on screen", stubs.ui.onScreen, 1)
+ticks(60)
+check("a detonation on top of you draws nothing", stubs.ui.onScreen, 0)
 
--- THE regression. Everything else in this file is secondary to this line: an
--- element wider than a pixel is an element that can take the mouse away.
-check("and it is one pixel wide, not screen wide", stubs.ui.last.width, 1)
-check("and one pixel tall", stubs.ui.last.height, 1)
-
--- The flash decays over about a second, and then it should leave.
-ticks(200)
-check("and it leaves when the flash has faded", stubs.ui.onScreen, 0)
-
--- A countdown brings it back, and takes it away again when it runs out.
 receive("warn", { x = 10500, y = 9500, r = 200, seconds = 30 })
+ticks(60)
+check("an inbound strike draws nothing", stubs.ui.onScreen, 0)
+
+for _ = 1, 20 do
+    receive("hazeHit", { strength = 1 })
+    ticks(60)
+end
+check("standing in the fallout draws nothing", stubs.ui.onScreen, 0)
+
+check("and no overlay class is left behind", rawget(_G, "NukeStrikeOverlay"), nil)
+
+--------------------------------------------------------------------------------
+-- what it does instead
+--------------------------------------------------------------------------------
+
+-- The bang lags the light in proportion to distance, so a strike a long way off
+-- is not heard on the frame it lands.
+played = {}
+receive("detonate", { x = 10500, y = 9500, r = 200, hazeR = 300 })
 tick()
-check("an inbound strike puts it back", stubs.ui.onScreen, 1)
-ticks(120)
-check("and it stays up for the whole countdown", stubs.ui.onScreen, 1)
+check("a strike on top of you is heard at once", #played, 1)
 
-stubs.millis = stubs.millis + 31000
-ticks(5)
-check("and it goes when the countdown is done", stubs.ui.onScreen, 0)
+played = {}
+receive("detonate", { x = 10500 + 400, y = 9500, r = 200, hazeR = 300 })
+tick()
+check("one four hundred tiles away is not", #played, 0)
+ticks(8 * 60)
+check("but it arrives", #played, 1)
+check("as a rumble, not a crack", played[1], NS.SOUND_RUMBLE)
 
--- Standing in fallout keeps it up for as long as the fallout lasts.
-receive("zones", { zones = { { x = 10500, y = 9500, hazeR = 300, hazeUntil = 72, hazeHours = 72 } } })
-ticks(30)
-check("standing in the haze puts it up", stubs.ui.onScreen, 1)
-ticks(300)
-check("and it stays up while you are in it", stubs.ui.onScreen, 1)
+played = {}
+receive("detonate", { x = 40000, y = 40000, r = 200, hazeR = 300 })
+ticks(8 * 60)
+check("one on the far side of the map is never heard", #played, 0)
 
--- Walking out of the cloud clears it.
-receive("zones", { zones = {} })
-ticks(200)
-check("walking out of it clears the screen", stubs.ui.onScreen, 0)
+-- Fallout speaks through the character, not the screen.
+said, halos = {}, {}
+receive("hazeHit", { strength = 1 })
+isTrue("breathing it makes you cough", #said > 0)
+isTrue("and says so over your head", #halos > 0)
+
+-- And does not nag on every message.
+said = {}
+for _ = 1, 10 do receive("hazeHit", { strength = 1 }) end
+check("but not once per message", #said, 0)
+
+ticks(31 * 60)
+said = {}
+receive("hazeHit", { strength = 1 })
+isTrue("it comes back after a while", #said > 0)
 
 --------------------------------------------------------------------------------
--- the build without setConsumeMouseEvents
---
--- This used to mean giving up on the visuals entirely, because the overlay was
--- full screen and that call was the only thing standing between it and the
--- player's mouse. Now that the element is a single pixel, the call is belt and
--- braces and its absence costs nothing: the fog is still drawn, and the mouse is
--- still fine.
+-- chat still works
 --------------------------------------------------------------------------------
 
-local fresh = dofile("PZMods/NukeStrike/tests/stubs.lua")
-fresh.install({ server = false, client = true, coop = false })
-fresh.consumeMouseEventsWorks = false
-fresh.player = stubs.player
-function sendClientCommand() end
+local messages = {}
+function processGeneralMessage(text) messages[#messages + 1] = text end
 
-NukeStrike = nil
-dofile("PZMods/NukeStrike/42/media/lua/shared/NukeStrike_Shared.lua")
-dofile("PZMods/NukeStrike/42/media/lua/client/NukeStrike_Client.lua")
+receive("message", { text = "A nuclear device has detonated." })
+check("server messages reach the chat", #messages, 1)
 
-local receiveAgain = NukeStrike.localReceive
-local tickAgain = fresh.registered["OnTick"][1]
-
-receiveAgain("detonate", { x = 10500, y = 9500, r = 200, hazeR = 300 })
-for _ = 1, 10 do tickAgain() end
-
-check("the fog is still drawn without that call", fresh.ui.onScreen, 1)
-check("and the element is still one pixel", fresh.ui.last.width, 1)
-check("in both directions", fresh.ui.last.height, 1)
+receive("message", { text = "" })
+check("and empty ones do not", #messages, 1)
 
 stubs.finish("test_client")

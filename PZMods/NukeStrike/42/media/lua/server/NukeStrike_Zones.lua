@@ -34,8 +34,8 @@ local data = nil
 --- Note what is deliberately NOT here: ModData.transmit(). That pushes the whole
 --- table to every client, and this one grows a bucket entry for each ten-by-ten
 --- patch of levelled ground - thousands of them after a couple of strikes.
---- Clients do not need any of it. They are sent a small snapshot of the live
---- haze instead, by NukeStrike_Server.lua.
+--- Clients have no use for any of it either: the fallout is applied server-side
+--- and nothing is drawn from it.
 ---@return table
 local function store()
     if data == nil then
@@ -193,28 +193,6 @@ end
 --------------------------------------------------------------------------------
 -- reporting
 --------------------------------------------------------------------------------
-
---- What the clients need to draw the haze: one small record per zone. Zones
---- whose haze has cleared are left out - the client has no use for a crater.
----@param now number
----@return table[]
-function Zones.snapshot(now)
-    local out = {}
-
-    for _, zone in ipairs(store().zones) do
-        if (zone.hazeUntil or 0) > now and (zone.hazeR or 0) > 0 then
-            out[#out + 1] = {
-                x = zone.x,
-                y = zone.y,
-                hazeR = zone.hazeR,
-                hazeUntil = zone.hazeUntil,
-                hazeHours = zone.hazeHours or 0,
-            }
-        end
-    end
-
-    return out
-end
 
 --- Human-readable lines for /nuke status.
 ---@param now number

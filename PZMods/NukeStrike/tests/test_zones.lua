@@ -81,8 +81,6 @@ check("but not the patch next door", Zones.bucketClaimed(zone, 10510, 9500), fal
 -- reporting
 --------------------------------------------------------------------------------
 
-check("a snapshot has one entry per live cloud", #Zones.snapshot(0), 2)
-check("and none once they clear", #Zones.snapshot(100), 0)
 check("the report covers every strike", #Zones.report(0), 2)
 isTrue("the report names the caller", string.find(Zones.report(0)[1], "kendubu1", 1, true) ~= nil)
 isTrue("the report says when the haze has gone",

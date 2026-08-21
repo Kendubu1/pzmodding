@@ -71,11 +71,6 @@ local function announce(text, caller)
     end
 end
 
---- Tell every client which haze zones exist, so they can draw the air.
-local function pushZones()
-    NS.broadcast("zones", { zones = Zones.snapshot(NS.worldHours()) })
-end
-
 --------------------------------------------------------------------------------
 -- detonation
 --------------------------------------------------------------------------------
@@ -103,7 +98,6 @@ local function fire(player, x, y, radius)
         x, y, radius, hazeHours), player)
 
     Blast.detonate(zone, player)
-    pushZones()
 
     print(string.format("[NukeStrike] detonation at %d,%d radius %d called by %s",
         x, y, radius, nameOf(player)))
@@ -307,7 +301,6 @@ local function falloutTick()
     end
 
     banditsBreathe(now)
-    pushZones()
 end
 
 --------------------------------------------------------------------------------
@@ -369,11 +362,6 @@ end
 function Server.handle(player, sub, args)
     args = args or {}
 
-    if sub == "sync" then
-        NS.toPlayer(player, "zones", { zones = Zones.snapshot(NS.worldHours()) })
-        return
-    end
-
     if sub == "status" then
         local now = NS.worldHours()
         local lines = Zones.report(now)
@@ -421,7 +409,6 @@ function Server.handle(player, sub, args)
 
     if sub == "clear" then
         local dropped = Zones.clear()
-        pushZones()
         NS.tell(player, string.format(
             "Cleared %d strike record(s). The haze is gone and no more ground will be levelled. "
             .. "Anything already destroyed stays destroyed.", dropped))
