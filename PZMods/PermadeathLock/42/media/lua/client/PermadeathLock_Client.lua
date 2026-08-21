@@ -20,13 +20,16 @@ local MODULE = PL.MODULE
 local BOOT_SECONDS = 12
 local TICKS_PER_SECOND = 60
 
--- Seconds between being told the character is forfeit and it dying.
+-- Seconds to let a new character finish loading before the server does anything
+-- to it - kill it, or hand it back a dead character's skills.
 --
 -- Not zero, and this matters. OnCreatePlayer fires while the character is still
--- loading into the world; killing at that instant leaves the client with no
--- valid camera target and a black screen it does not recover from. Waiting also
--- gives an admin a few seconds to pardon someone mid-spawn without it landing
--- on a character that has already been killed.
+-- loading into the world. Acting at that instant leaves the client with no
+-- valid camera target and a black screen it does not recover from; it happened
+-- with the kill, and it happened again with a restore applying a whole
+-- character's worth of perk levels in one go. Waiting also gives an admin a few
+-- seconds to pardon someone mid-spawn without it landing on a character that
+-- has already been killed.
 local GRACE_SECONDS = 4
 
 local booting = false
@@ -58,7 +61,7 @@ local function onDialogClosed()
 end
 
 --------------------------------------------------------------------------------
--- being killed on spawn
+-- letting the world load before the server acts
 --------------------------------------------------------------------------------
 
 graceTick = function()
@@ -72,13 +75,13 @@ graceTick = function()
     local player = getPlayer()
     if player == nil or player:isDead() then return end
 
-    -- Ask again instead of acting on what we were told four seconds ago. The
-    -- server re-reads the death list and only answers if the block still
-    -- stands, so a pardon in the meantime quietly calls this off.
-    sendClientCommand(player, MODULE, "blockConfirmed", {})
+    -- The server re-reads the death list at this point and decides what is
+    -- owed: a kill, a restore, or nothing at all because an admin pardoned them
+    -- while the world was loading.
+    sendClientCommand(player, MODULE, "spawnSettled", {})
 end
 
---- Start the countdown to this character's death.
+--- Start the countdown to whatever the server has waiting for this character.
 local function beginGrace()
     if awaitingKill then return end
     awaitingKill = true
@@ -167,6 +170,17 @@ local function onServerCommand(module, command, args)
             beginGrace()
         else
             showBlockNotice(getText("IGUI_PermadeathLock_Blocked"))
+        end
+    elseif command == "settle" then
+        -- Something is owed to this character - the skills of the one that
+        -- died. Tell the server once the world has finished loading around us.
+        beginGrace()
+    elseif command == "notice" then
+        -- Server-composed text, shown on screen rather than only in chat.
+        -- Centred: by the time this arrives the death screen is long gone.
+        local text = args and args.text
+        if text ~= nil and text ~= "" then
+            showNotice(text, nil, false)
         end
     elseif command == "killNow" then
         -- Done here rather than from the server. A player's own machine owns

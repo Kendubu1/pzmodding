@@ -219,6 +219,7 @@ sent = {}
 local bobAgain = makePlayer("Bob", {})
 onClientCommand(MODULE, "checkStatus", bobAgain, {})
 check("checkStatus blocks on spawn", lastCommandTo("Bob"), "blocked")
+check("but does not touch the character", bobAgain._dead, false)
 
 --------------------------------------------------------------------------------
 io.write("\n-- revive --\n")
@@ -228,10 +229,29 @@ io.write("\n-- revive --\n")
 Store.revive("Bob")
 sent = {}
 local bobRevived = makePlayer("Bob", {})
+
+-- REGRESSION: the restore used to be applied right here, inside the spawn
+-- handshake. OnCreatePlayer fires while the character is still loading into the
+-- world, and handing it a whole character's worth of perk levels at that
+-- instant is the same unsafe moment that black-screened people when the kill
+-- was done here. The handshake now only asks the client to say when it has
+-- settled.
 onClientCommand(MODULE, "checkStatus", bobRevived, {})
-check("revived player is not blocked", lastCommandTo("Bob"), "message")
-check("revived player gets their skills", bobRevived._levels.TYPE_Woodwork, 5)
+check("the handshake only asks them to settle", lastCommandTo("Bob"), "settle")
+check("no skills applied mid-spawn", bobRevived._levels.TYPE_Woodwork, nil)
+check("and the record is still owed", Store.get("Bob") ~= nil, true)
+
+sent = {}
+onClientCommand(MODULE, "spawnSettled", bobRevived, {})
+check("settling applies the skills", bobRevived._levels.TYPE_Woodwork, 5)
 check("record cleared after restore", Store.get("Bob"), nil)
+check("and they are told on screen, not just in chat", lastCommandTo("Bob"), "message")
+
+local sawNotice = false
+for _, entry in ipairs(sent) do
+    if entry.user == "Bob" and entry.command == "notice" then sawNotice = true end
+end
+check("a notice is put on their screen", sawNotice, true)
 
 -- regression: an exempt admin must still receive a queued restore
 reset()
@@ -251,6 +271,7 @@ Store.record(cara, "test")
 Store.revive("Cara")
 local caraDead = makePlayer("Cara", { dead = true })
 onClientCommand(MODULE, "checkStatus", caraDead, {})
+onClientCommand(MODULE, "spawnSettled", caraDead, {})
 check("restore not spent on a dead character", Store.get("Cara") ~= nil, true)
 check("restore still pending", Store.get("Cara").pendingRestore, true)
 
@@ -268,6 +289,46 @@ check("restore applied", deeNew._levels.TYPE_Woodwork, 2)
 deeNew._dead = true
 sweep()
 check("second death re-locks them", Store.isLocked("Dee"), true)
+
+--------------------------------------------------------------------------------
+io.write("\n-- spending a token and coming back --\n")
+
+-- The whole path a player actually walks: alive with a token, dead, new
+-- character, skills back. Reported as "I respawn after using a fate token and
+-- suddenly die, with no prompt about the token".
+reset()
+local nate = makePlayer("Nate", { levels = { TYPE_Woodwork = 6, TYPE_Aiming = 3 }, tokens = 1 })
+online = { nate }
+sweep()                                    -- seen alive, carrying it
+nate._dead = true
+sent = {}
+sweep()                                    -- dies
+check("the token is spent, not the player", Store.isLocked("Nate"), false)
+check("and they are told at the moment of death", lastCommandTo("Nate"), "tokenSpent")
+
+local nateNew = makePlayer("Nate", {})
+online = { nateNew }
+sent = {}
+onClientCommand(MODULE, "checkStatus", nateNew, {})
+check("the new character is not touched on spawn", lastCommandTo("Nate"), "settle")
+check("no skills applied yet", nateNew._levels.TYPE_Woodwork, nil)
+check("and nothing has killed them", nateNew._dead, false)
+
+sent = {}
+onClientCommand(MODULE, "spawnSettled", nateNew, {})
+check("settling hands back the skills", nateNew._levels.TYPE_Woodwork, 6)
+check("all of them", nateNew._levels.TYPE_Aiming, 3)
+check("they are off the list afterwards", Store.get("Nate"), nil)
+check("and still alive", nateNew._dead, false)
+
+local toldOnScreen = false
+for _, entry in ipairs(sent) do
+    if entry.user == "Nate" and entry.command == "notice"
+        and entry.args ~= nil and string.find(entry.args.text or "", "Fate Token") then
+        toldOnScreen = true
+    end
+end
+check("the notice names the token that paid for it", toldOnScreen, true)
 
 --------------------------------------------------------------------------------
 io.write("\n-- the notice sent at the moment of death --\n")
@@ -309,7 +370,7 @@ check("and says the character is forfeit", sent[#sent].args.kill, true)
 
 -- the client finishes loading, asks again, and is told to go ahead
 sent = {}
-onClientCommand(MODULE, "blockConfirmed", umaNew, {})
+onClientCommand(MODULE, "spawnSettled", umaNew, {})
 check("the confirmed block is answered", lastCommandTo("Uma"), "killNow")
 check("but the server does not kill it itself", umaNew._dead, false)
 
@@ -328,7 +389,7 @@ onClientCommand(MODULE, "checkStatus", vicNew, {})
 onClientCommand(MODULE, "admin", graceAdmin, { sub = "pardon", target = "Vic" })
 check("the pardon landed", Store.get("Vic"), nil)
 sent = {}
-onClientCommand(MODULE, "blockConfirmed", vicNew, {})
+onClientCommand(MODULE, "spawnSettled", vicNew, {})
 check("a pardon mid-grace calls the kill off", lastCommandTo("Vic"), nil)
 check("and they stay alive", vicNew._dead, false)
 
