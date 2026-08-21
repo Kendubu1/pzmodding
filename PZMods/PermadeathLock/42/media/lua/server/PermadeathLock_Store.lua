@@ -159,6 +159,29 @@ local function deserialiseSkills(text)
     return skills
 end
 
+--- Put one perk at a level.
+---
+--- setPerkLevelDebug does it in a single call. The alternative - LevelPerk once
+--- per level - runs the whole level-up cascade every time: XP maths, the sound,
+--- the on-screen flash, a character-screen refresh. A restore is a dozen perks
+--- at once, so that is easily forty of those cascades inside one frame on a
+--- character that has just been handed its old life back. Kept as the fallback
+--- for a build that does not expose the direct setter.
+---@param player IsoPlayer
+---@param perkType any
+---@param current integer
+---@param level integer
+local function setPerkLevel(player, perkType, current, level)
+    if player.setPerkLevelDebug ~= nil then
+        player:setPerkLevelDebug(perkType, level)
+        return
+    end
+
+    for _ = current + 1, level do
+        player:LevelPerk(perkType)
+    end
+end
+
 --- Give a character the levels from a snapshot. Levels already held are kept,
 --- so this never demotes anyone.
 ---
@@ -183,8 +206,8 @@ function Store.applySkills(player, skills)
         else
             local perkType = perk:getType()
             local current = player:getPerkLevel(perkType) or 0
-            for _ = current + 1, level do
-                player:LevelPerk(perkType)
+            if current < level then
+                setPerkLevel(player, perkType, current, level)
             end
             restored = restored + 1
         end

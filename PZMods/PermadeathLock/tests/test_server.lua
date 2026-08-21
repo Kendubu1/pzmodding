@@ -585,34 +585,60 @@ local tara = makePlayer("Tara", {})
 local tokenAdmin = makePlayer("Admin", { admin = true })
 online = { tara, tokenAdmin }
 
+-- REGRESSION: the grant used to be relayed to the target's client to carry out.
+-- In Build 42 the server never saw the result: the count reported to the admin
+-- was 0, and - the part that actually mattered - the death check reads this
+-- same inventory, so a token handed out through the panel saved nobody. Players
+-- died carrying three of them and were locked out.
 sent = {}
 onClientCommand(MODULE, "admin", tokenAdmin, { sub = "give", target = "tara" })
-check("the target's client is asked to add it", lastCommandTo("Tara"), "giveToken")
-check("nothing is pushed into the inventory from here", #tara._items, 0)
+check("the token is really in their inventory", #tara._items, 1)
+check("the admin is told, and gets a fresh roster", lastCommandTo("Admin"), "listData")
 
--- the client does it and reports back
 onClientCommand(MODULE, "admin", tokenAdmin, { sub = "give", target = "tara" })
-tara._container:AddItem("Base.FateToken")
+check("a second one stacks up", #tara._items, 2)
+
+-- and the count the admin is shown is the real one
+local told = nil
+for i = #sent, 1, -1 do
+    if sent[i].user == "Admin" and sent[i].text ~= nil then told = sent[i].text break end
+end
+check("the count reported is not zero", told ~= nil and string.find(told, "carry 2") ~= nil, true)
+
+-- the death check must honour a token handed out this way, immediately
+tara._dead = true
+sweep()
+check("dying with a granted token does not lock them out", Store.isLocked("Tara"), false)
+check("and the granted token is what was spent", #tara._items, 1)
+
+-- taking one back
+reset()
+local ursa = makePlayer("Ursa", { tokens = 2 })
+online = { ursa, tokenAdmin }
+onClientCommand(MODULE, "admin", tokenAdmin, { sub = "take", target = "Ursa" })
+check("take removes one", #ursa._items, 1)
+onClientCommand(MODULE, "admin", tokenAdmin, { sub = "take", target = "Ursa" })
+check("and then the last one", #ursa._items, 0)
 sent = {}
-onClientCommand(MODULE, "tokenResult", tara, { action = "give", ok = true })
-check("the admin who asked is told", lastCommandTo("Admin"), "listData")
-check("and the fresh roster reaches them", sent[#sent].args.rows ~= nil, true)
+onClientCommand(MODULE, "admin", tokenAdmin, { sub = "take", target = "Ursa" })
+check("taking from empty hands is refused", lastCommandTo("Admin"), "message")
+
+-- REGRESSION: taking the last token must not leave the death check thinking
+-- they still have one from an earlier sweep.
+ursa._dead = true
+sweep()
+check("a revoked token does not still save them", Store.isLocked("Ursa"), true)
 
 -- a non-admin cannot hand themselves one
+reset()
 sent = {}
 local greedy = makePlayer("Greedy", {})
 online = { greedy }
 onClientCommand(MODULE, "admin", greedy, { sub = "give", target = "Greedy" })
 check("a non-admin is refused", lastCommandTo("Greedy"), "message")
+check("and gets nothing", #greedy._items, 0)
 
--- and an unsolicited result is ignored rather than spraying panels
-reset()
-online = { tara, tokenAdmin }
-sent = {}
-onClientCommand(MODULE, "tokenResult", tara, { action = "give", ok = true })
-check("an unasked-for result is dropped", #sent, 0)
-
--- taking one back from someone offline is refused, not silently lost
+-- an offline target is refused, not silently lost
 reset()
 online = { tokenAdmin }
 sent = {}

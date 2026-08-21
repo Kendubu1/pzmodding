@@ -3,4 +3,4 @@ id=PermadeathLock
 authors=kendubu1
 description=Dedicated-server permadeath. Once a player dies, they cannot come back with a new character. Admins can pardon players or clear the death list with /permadeath commands.
 poster=poster.png
-modversion=1.7.1
+modversion=1.8.0

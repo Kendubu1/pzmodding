@@ -136,44 +136,6 @@ local function showBlockNotice(text)
 end
 
 --------------------------------------------------------------------------------
--- fate tokens handed out by an admin
---------------------------------------------------------------------------------
-
---- Add or remove one Fate Token on this player, and tell the server it is done.
----
---- The server asks rather than doing it itself: a player's inventory belongs to
---- their own machine, and items pushed in or pulled out server-side do not sync
---- back reliably. Whether it worked is re-checked server-side afterwards, so
---- there is nothing to gain by lying here.
----@param give boolean
-local function changeToken(give)
-    local player = getPlayer()
-    if player == nil then return end
-
-    local inventory = player:getInventory()
-    local ok = false
-
-    if give then
-        if inventory ~= nil then
-            ok = inventory:AddItem(PL.FATE_TOKEN) ~= nil
-        end
-        if ok then
-            processGeneralMessage("An admin handed you a Fate Token. Die carrying it and it burns away in your place.")
-        end
-    else
-        local token = PL.findToken(player)
-        local container = token and token:getContainer()
-        if container ~= nil then
-            container:Remove(token)
-            ok = true
-            processGeneralMessage("An admin took back one of your Fate Tokens.")
-        end
-    end
-
-    sendClientCommand(player, MODULE, "tokenResult", { action = give and "give" or "take", ok = ok })
-end
-
---------------------------------------------------------------------------------
 -- events
 --------------------------------------------------------------------------------
 
@@ -224,10 +186,6 @@ local function onServerCommand(module, command, args)
         -- has closed. Says so now instead of leaving them to discover it by
         -- being thrown off the server on their next character.
         showNotice(getText("IGUI_PermadeathLock_FateSealed"), nil, true)
-    elseif command == "giveToken" then
-        changeToken(true)
-    elseif command == "takeToken" then
-        changeToken(false)
     elseif command == "openUI" then
         if PermadeathLockUI ~= nil then PermadeathLockUI.open() end
     elseif command == "listData" then

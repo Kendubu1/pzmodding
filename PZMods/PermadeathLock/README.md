@@ -217,6 +217,9 @@ roster refreshes itself every few seconds while the window is open, and keeps
 your selection across a refresh so a row cannot slide out from under a click.
 
 Select a row and use **Pardon**, **Revive**, **Give token** or **Take token**.
+Pardon and Revive on somebody who is not on the death list say so in the panel
+rather than sending a command whose only possible answer is "not on the death
+list".
 **Refresh** re-reads from the server, and **Clear all** wipes the death list
 behind a confirmation — it sits alone in the far corner so a misclick on Refresh
 cannot land on it.
@@ -280,6 +283,11 @@ A perk in an old snapshot that the game no longer knows about (a mod removed
 since the death, a renamed vanilla perk) is skipped and named in the server log
 rather than being dropped in silence.
 
+Levels are set in one call each (`setPerkLevelDebug`) rather than by calling
+`LevelPerk` once per level. A dozen perks restored at once is otherwise forty
+level-up cascades — XP maths, sound, screen flash, character-screen refresh —
+inside a single frame.
+
 ## The Fate Token
 
 `Base.FateToken` is an item that buys back one death. Die carrying one — anywhere
@@ -294,17 +302,17 @@ shield. Your corpse and everything on it still stay where they fell.
 One token is spent per death. Carrying three does not make you immortal three
 times over in a single death — but the other two are still on the body.
 
-It shows in the inventory under its own **Fate** category. That category is the
-mod's, not a vanilla one: naming a vanilla category Build 42 has since dropped
-makes the inventory print the raw translation key (`IGUI_ItemCat_Misc`) instead
-of a name. Shipping our own key cannot go stale that way.
+It shows in the inventory under **Junk**, which is a stock Build 42 category and
+where the game files oddments.
 
-The label lives in `Translate/EN/IG_UI_EN.txt`, and **the file name is not a
-typo**. The game maps a fixed set of translation file names onto table names;
-`IGUI` is not one of them, so a file called `IGUI_EN.txt` is never read at all
-and every key in it renders as its own name. The table inside is still
-`IGUI_EN = { ... }`. This cost a release: the category showed as
-`IGUI_ItemCat_Fate` until the file was renamed.
+That is the third attempt, and the lesson is worth keeping: **a category the
+game does not already have a name for renders as its own translation key.**
+First it was `Misc`, which Build 42 no longer has, and players saw
+`IGUI_ItemCat_Misc`. Then it was our own `Fate` with the label shipped in
+`IG_UI_EN.txt` — the correct file name, `IGUI_EN.txt` is never read — and it
+*still* came out as `IGUI_ItemCat_Fate`. `Junk` needs nothing from us: Junk Jet
+uses it, ships no label for it, and reads correctly in game. A right category
+beats a right-looking one we have to supply ourselves.
 
 ### Handing them out
 
@@ -317,13 +325,18 @@ Vanilla's `/additem <username> Base.FateToken` also works.
 The target has to be **online**: a token is a real item and someone has to be
 there to hold it.
 
-The handover itself is carried out by the target's *own client*, not by the
-server reaching into their inventory — in Project Zomboid a player's inventory
-belongs to their machine, and an item pushed in server-side is not reliably
-synced back. So the sequence is: the server asks their client, their client adds
-or removes the item, and only then does the panel that asked get a refreshed
-count. That count is read from the server's own view of the inventory, not from
-the number the client reported, so a modified client cannot inflate it.
+The item is added and removed **server-side**, the same as vanilla's `/additem`.
+1.5.0 relayed it to the target's client instead, reasoning that a player's
+inventory belongs to their own machine. In Build 42 it does not, and the
+consequence was not cosmetic: the client added the item and reported success,
+the server never saw it, and **the death check reads the server's inventory** —
+so a token handed out through the panel saved nobody. Players died carrying
+three of them and were locked out anyway. The `0` the panel reported straight
+afterwards was the visible half of the same fault.
+
+Granting also refreshes the cache the death check consults, so someone handed a
+token and killed ten seconds later is saved by it, and someone whose last token
+was just taken is not.
 
 To make them lootable instead, add a distribution file under
 `42/media/lua/server/` — for a rare medical-cabinet spawn:

@@ -140,13 +140,6 @@ end
 ---@type table<string, boolean>
 local carriedToken = {}
 
--- The admin waiting to see the result of a token they handed out or took back,
--- keyed by the target's username. A grant is carried out by the target's own
--- client, so the answer comes back a moment later and the panel that asked has
--- to be told to redraw then rather than immediately.
----@type table<string, string>
-local tokenWatchers = {}
-
 --- Note whether a LIVING player is carrying a token. Never called for the dead:
 --- their inventory has usually moved to the corpse, and recording "no token"
 --- then would erase what we learned while they were alive.
@@ -529,10 +522,18 @@ end
 
 --- Hand a player a Fate Token, or take one back.
 ---
---- Carried out by the target's own client rather than by reaching into their
---- inventory from here. In Project Zomboid a player's inventory belongs to
---- their machine; an item pushed in server-side is not reliably synced back to
---- them, and one removed server-side can reappear.
+--- Done here, on the server, and NOT by asking the target's client to do it.
+--- 1.5.0 had it the other way round, reasoning that a player's inventory
+--- belongs to their own machine. That was wrong for Build 42, and wrong in a
+--- way that mattered far more than a cosmetic count: the client added the item
+--- and reported success, the server never saw it, and the death check reads the
+--- server's inventory. A token handed out through the panel therefore saved
+--- nobody - players died carrying three of them and were locked out anyway.
+--- The count the admin was shown said 0 for the same reason, which was the
+--- visible half of the same fault.
+---
+--- Vanilla's own /additem adds server-side and works, death check included.
+--- This does the same thing.
 ---@param admin IsoPlayer
 ---@param target string?
 ---@param give boolean
@@ -543,9 +544,9 @@ local function commandToken(admin, target, give)
         return
     end
 
-    if not PL.getOption("FateTokenEnabled", true) then
-        tell(admin, "Fate Tokens are switched off in the sandbox settings. The item can still be")
-        tell(admin, "handed out, but dying with it will not save anyone.")
+    if give and not PL.getOption("FateTokenEnabled", true) then
+        tell(admin, "Note: Fate Tokens are switched off in the sandbox settings, so this one will")
+        tell(admin, "not save anyone until you turn them back on.")
     end
 
     local player = findOnline(target)
@@ -554,40 +555,49 @@ local function commandToken(admin, target, give)
         return
     end
 
-    tokenWatchers[PL.key(player:getUsername())] = admin:getUsername()
-    sendServerCommand(player, MODULE, give and "giveToken" or "takeToken", {})
-    print("[PermadeathLock] " .. admin:getUsername() .. " asked to " .. verb
-        .. " a Fate Token " .. (give and "to " or "from ") .. player:getUsername() .. ".")
-end
-
---- The target's client has finished adding or removing a token. Tell whichever
---- admin asked, and push them a fresh roster so the count they see is the one
---- the server can actually verify.
----@param player IsoPlayer the target, not the admin
----@param args table
-local function onTokenResult(player, args)
-    local key = PL.key(player:getUsername())
-    if key == nil then return end
-
-    local adminName = tokenWatchers[key]
-    tokenWatchers[key] = nil
-    if adminName == nil then return end
-
-    local admin = findOnline(adminName)
-    if admin == nil or not admin:isAccessLevel("admin") then return end
-
-    -- Counted here rather than trusting the number the client sent back.
-    local held = PL.countTokens(player)
-    local gave = args.action == "give"
-
-    if args.ok == true then
-        tell(admin, (gave and "Gave " or "Took a Fate Token from ") .. player:getUsername()
-            .. (gave and " a Fate Token." or ".") .. " They now carry " .. held .. ".")
-    elseif gave then
-        tell(admin, "Could not give " .. player:getUsername() .. " a Fate Token.")
-    else
-        tell(admin, player:getUsername() .. " has no Fate Token to take.")
+    local name = player:getUsername()
+    local inventory = player:getInventory()
+    if inventory == nil then
+        tell(admin, "Could not reach " .. name .. "'s inventory.")
+        return
     end
+
+    if give then
+        if inventory:AddItem(PL.FATE_TOKEN) == nil then
+            tell(admin, "Could not give " .. name .. " a Fate Token.")
+            return
+        end
+        sendServerCommand(player, MODULE, "message", {
+            text = "An admin handed you a Fate Token. Die carrying it and it burns away in your place.",
+        })
+    else
+        local token = PL.findToken(player)
+        local container = token and token:getContainer()
+        if container == nil then
+            tell(admin, name .. " has no Fate Token to take.")
+            return
+        end
+        container:Remove(token)
+        sendServerCommand(player, MODULE, "message", {
+            text = "An admin took back one of your Fate Tokens.",
+        })
+    end
+
+    -- Refresh the cache the death check consults, rather than leaving it to the
+    -- next sweep. Someone handed a token and killed ten seconds later should be
+    -- saved by it, and someone whose last token was just taken should not be.
+    local key = PL.key(name)
+    if key ~= nil and not player:isDead() then
+        carriedToken[key] = PL.findToken(player) ~= nil
+    end
+
+    local held = PL.countTokens(player)
+    local did = give and ("Gave " .. name .. " a Fate Token.")
+        or ("Took a Fate Token from " .. name .. ".")
+    tell(admin, did .. " They now carry " .. held .. ".")
+    print("[PermadeathLock] " .. admin:getUsername() .. " " .. (give and "gave" or "took")
+        .. " a Fate Token " .. (give and "to " or "from ") .. name
+        .. "; they now carry " .. held .. ".")
 
     commandListData(admin)
 end
@@ -691,14 +701,6 @@ local function onClientCommand(module, command, player, args)
     if command == "admin" then
         -- Access is re-checked here: the client asking is never trusted.
         handleAdmin(player, args)
-        return
-    end
-
-    if command == "tokenResult" then
-        -- Not trusted: it only says "I am done", and everything reported back to
-        -- the admin is re-read from the server's own view of the inventory. The
-        -- worst a forged one can do is make an admin's panel redraw.
-        onTokenResult(player, args)
         return
     end
 

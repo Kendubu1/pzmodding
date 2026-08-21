@@ -429,10 +429,16 @@ function PermadeathLockUI:setData(data)
         locked))
 end
 
+---@return table? row
+function PermadeathLockUI:selectedRow()
+    local item = self.list.items[self.list.selected]
+    return item and item.item or nil
+end
+
 ---@return string? username
 function PermadeathLockUI:selectedUsername()
-    local item = self.list.items[self.list.selected]
-    return item and item.item and item.item.username or nil
+    local row = self:selectedRow()
+    return row and row.username or nil
 end
 
 --- Act on the selected row, or explain that there isn't one.
@@ -457,8 +463,22 @@ end
 -- buttons
 --------------------------------------------------------------------------------
 
-function PermadeathLockUI:onPardon() self:actOnSelection("pardon") end
-function PermadeathLockUI:onRevive() self:actOnSelection("revive") end
+--- Pardon and Revive only mean anything for someone on the death list, and the
+--- roster shows everyone who is playing as well. Answered here rather than
+--- sending a command whose only possible reply is "X is not on the death list"
+--- three times over in chat.
+---@param sub string
+function PermadeathLockUI:actOnListed(sub)
+    local row = self:selectedRow()
+    if row ~= nil and not row.listed then
+        self.status:setName(row.username .. " is not on the death list - nothing to " .. sub .. ".")
+        return
+    end
+    self:actOnSelection(sub)
+end
+
+function PermadeathLockUI:onPardon() self:actOnListed("pardon") end
+function PermadeathLockUI:onRevive() self:actOnListed("revive") end
 
 -- Handing a token over is done by the target's own client, so the server pushes
 -- a fresh roster once that has actually happened. Asking for one here would
