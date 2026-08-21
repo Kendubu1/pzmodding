@@ -295,9 +295,12 @@ local function makeZombie(x, y, marker)
     return zombie
 end
 
-local flagged = makeZombie(10500, 9500, "flag")     -- a bandit, by variable
-local brained = makeZombie(10500, 9500, "brain")    -- a bandit, by brain
-local walker = makeZombie(10500, 9500, nil)         -- just a zombie
+-- Out past the blast radius (200) but well inside the fallout (300). Standing at
+-- ground zero would just kill them outright, which is the blast's job and is
+-- covered in test_blast.lua; this is about the air afterwards.
+local flagged = makeZombie(10500, 9710, "flag")     -- a bandit, by variable
+local brained = makeZombie(10500, 9710, "brain")    -- a bandit, by brain
+local walker = makeZombie(10500, 9710, nil)         -- just a zombie
 local distant = makeZombie(20000, 9500, "flag")     -- a bandit, nowhere near it
 
 local horde = { flagged, brained, walker, distant }
@@ -314,12 +317,12 @@ check("nor does a bandit outside the cloud", distant.data.nukeExposure, nil)
 check("nobody dies on the first breath", flagged.dead, false)
 
 -- Exposure accumulates, and kills at the point a player would have died.
-for _ = 1, 20 do fireEvent("EveryTenMinutes") end
+for _ = 1, 40 do fireEvent("EveryTenMinutes") end
 isTrue("standing in it long enough kills a bandit", flagged.dead)
 check("and still leaves the zombies alone", walker.dead, false)
 
 -- The switch turns it off.
-local spared = makeZombie(10500, 9500, "flag")
+local spared = makeZombie(10500, 9710, "flag")
 horde = { spared }
 SandboxVars.NukeStrike.HazeKillsBandits = false
 fireEvent("EveryTenMinutes")

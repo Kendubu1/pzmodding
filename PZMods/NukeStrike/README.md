@@ -96,6 +96,13 @@ on both axes; Muldraugh is around 10600, 9600 and West Point around 11700, 6800.
    | Ring | What is left |
    | --- | --- |
    | Inner 40% | Nothing above the ground. Walls, furniture, trees, upper storeys. Everything alive is gone; zombies are deleted rather than killed, because thousands of corpses is a frame rate problem, not a feature. |
+   
+   Everything alive is found by asking the **cell** for its zombie list, not by
+   walking squares. A square offers `getMovingObjects`, `getStaticMovingObjects`,
+   `getZombie` and `getZombieCount`, and guessing which of them a given zombie is
+   reachable through is what once let a spawned horde stand in the middle of a
+   fireball completely untouched. Every strike prints what it caught to
+   `console.txt`.
    | Out to 75% | Most structures collapse, fires are common, almost everything alive dies. |
    | Out to 100% | Windows out, roofs stripped, scattered fires, about half of what is alive. |
 

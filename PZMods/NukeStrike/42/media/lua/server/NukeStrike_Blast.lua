@@ -65,6 +65,8 @@ local function callVanish(zombie)
     zombie:removeFromSquare()
 end
 local function callGetFloor(sq) return sq:getFloor() end
+local function callMovingObjects(sq) return sq:getMovingObjects() end
+local function callStaticMovingObjects(sq) return sq:getStaticMovingObjects() end
 local function callGetVehicles(cell) return cell:getVehicles() end
 local function callRemoveVehicle(vehicle) vehicle:permanentlyRemove() end
 local function callVehicleSquare(vehicle) return vehicle:getSquare() end
@@ -156,8 +158,7 @@ end
 ---@param sq IsoGridSquare
 ---@param tier string
 ---@param killer IsoPlayer?
-local function killLiving(sq, tier, killer)
-    local movers = sq:getMovingObjects()
+local function killList(tier, killer, movers)
     if movers == nil then return end
 
     local chance = KILL_CHANCE[tier] or 0
@@ -189,6 +190,20 @@ local function killLiving(sq, tier, killer)
             end
         end
     end
+end
+
+--- The per-square backstop.
+---
+--- A square offers two lists that a character can be reachable through and the
+--- engine does not promise which one holds a given zombie, so both are asked.
+--- Killing something twice is free; missing it is the bug this whole pass exists
+--- to stop. The primary route is killEverything(), which asks the cell instead.
+---@param sq IsoGridSquare
+---@param tier string
+---@param killer IsoPlayer?
+local function killLiving(sq, tier, killer)
+    killList(tier, killer, NS.try("IsoGridSquare:getMovingObjects", callMovingObjects, sq))
+    killList(tier, killer, NS.try("IsoGridSquare:getStaticMovingObjects", callStaticMovingObjects, sq))
 end
 
 --- Level one square at one height.
@@ -472,6 +487,92 @@ local function ruinVehicle(vehicle, tier, cell, vx, vy)
     return false, wrecked, burning
 end
 
+local function callCellZombies(cell) return cell:getZombieList() end
+-- One value each: NS.try returns (result, ok) and so keeps only the first return
+-- of the function it calls. A helper returning x and y would have its y silently
+-- replaced by the ok flag.
+local function callX(thing) return thing:getX() end
+local function callY(thing) return thing:getY() end
+
+--- Kill everything alive inside the blast, in one pass over the cell's own list.
+---
+--- Deliberately NOT done by walking squares. A square offers getMovingObjects,
+--- getStaticMovingObjects, getZombie and getZombieCount, and which of them a
+--- zombie is actually reachable through is not something to guess at - guessing
+--- is what let a horde stand in the middle of a fireball completely untouched.
+--- The cell keeps one list of every zombie it has loaded, so ask it.
+---
+--- It is also far cheaper: tens of thousands of list entries rather than a
+--- hundred thousand squares each hoping to find somebody standing on them.
+---@param zone table
+---@param killer IsoPlayer?
+local function killEverything(zone, killer)
+    local cell = getCell()
+    if cell == nil then return end
+
+    local killPlayers = NS.getOption("KillPlayers", true) == true
+    local killed, vanished, loaded = 0, 0, 0
+
+    local zombies = NS.try("IsoCell:getZombieList", callCellZombies, cell)
+    if zombies ~= nil then
+        loaded = zombies:size()
+
+        -- Backwards: removing a zombie from the world mutates this list.
+        for i = loaded - 1, 0, -1 do
+            local zombie = zombies:get(i)
+            if zombie ~= nil then
+                local zx = NS.try("IsoZombie:getX", callX, zombie)
+                local zy = NS.try("IsoZombie:getY", callY, zombie)
+                if zx ~= nil and zy ~= nil then
+                    local tier = NS.tier(NS.dist(zx, zy, zone.x, zone.y), zone.r)
+                    if tier ~= nil and roll(KILL_CHANCE[tier] or 0) then
+                        -- In the fireball there is nothing left to leave a body,
+                        -- and a corpse for every zombie in six blocks is
+                        -- thousands of objects the server carries for the rest
+                        -- of the save.
+                        local gone = false
+                        if tier == "flatten" then
+                            local _, ok = NS.try("IsoZombie:removeFromWorld", callVanish, zombie)
+                            gone = ok
+                        end
+
+                        if gone then
+                            vanished = vanished + 1
+                        else
+                            local _, ok = NS.try("IsoZombie:Kill", callKill, zombie, killer)
+                            if not ok then
+                                _, ok = NS.try("IsoZombie:Kill(nil)", callKillNoSource, zombie)
+                            end
+                            if ok then killed = killed + 1 end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    local playersKilled = 0
+    if killPlayers then
+        for _, player in ipairs(NS.players()) do
+            local px = NS.try("IsoPlayer:getX", callX, player)
+            local py = NS.try("IsoPlayer:getY", callY, player)
+            if px ~= nil and py ~= nil
+                and NS.tier(NS.dist(px, py, zone.x, zone.y), zone.r) ~= nil then
+                local _, ok = NS.try("IsoPlayer:Kill", callKill, player, killer)
+                if not ok then ok = select(2, NS.try("IsoPlayer:Kill(nil)", callKillNoSource, player)) end
+                if ok then playersKilled = playersKilled + 1 end
+            end
+        end
+    end
+
+    -- Said out loud every strike, for the same reason the vehicle line is:
+    -- "nobody died" is impossible to diagnose without knowing whether it found
+    -- nobody or found a hundred and failed to kill them.
+    print(string.format(
+        "[NukeStrike] caught in the blast: %d zombies vaporised, %d killed, %d players, out of %d zombies loaded",
+        vanished, killed, playersKilled, loaded))
+end
+
 --- Ruin the vehicles caught in the blast. Cheap enough to do in one pass: there
 --- are tens of vehicles in a cell, not thousands.
 ---
@@ -556,6 +657,7 @@ function Blast.detonate(zone, killer)
         patches = {},
     }
 
+    killEverything(zone, killer)
     wreckVehicles(zone)
 end
 

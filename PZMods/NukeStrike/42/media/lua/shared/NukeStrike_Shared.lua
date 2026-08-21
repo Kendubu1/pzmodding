@@ -165,6 +165,10 @@ local function allowanceFor(label)
 end
 
 --- Call an engine function, tolerating its absence.
+---
+--- Returns only the FIRST value fn returns, followed by whether the call
+--- succeeded. A function returning two values through this loses its second one
+--- to the ok flag, so give each value its own helper.
 ---@param label string identifies the call in the log and in the skip list
 ---@param fn function
 ---@return any result, boolean ok

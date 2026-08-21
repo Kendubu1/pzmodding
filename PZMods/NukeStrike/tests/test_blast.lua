@@ -139,9 +139,36 @@ local function makeVehicle(x, y, broken, unremovable)
     return vehicle
 end
 
+--------------------------------------------------------------------------------
+-- a horde
+--
+-- The cell keeps its own list of every loaded zombie, and that is where the mod
+-- looks. It used to walk each square's moving-object list instead, which is not
+-- a dependable place to find one - a horde could stand in the middle of a
+-- fireball completely untouched.
+--------------------------------------------------------------------------------
+
+local horde = {}
+
+local function makeZombie(x, y)
+    local zombie = { x = x, y = y, killed = false, gone = false }
+    function zombie:getX() return x end
+    function zombie:getY() return y end
+    function zombie:Kill() zombie.killed = true end
+    function zombie:removeFromWorld() zombie.gone = true end
+    function zombie:removeFromSquare()
+        for i, held in ipairs(horde) do
+            if held == zombie then table.remove(horde, i) return end
+        end
+    end
+    horde[#horde + 1] = zombie
+    return zombie
+end
+
 stubs.cell = {
     getGridSquare = function(_, x, y, z) return world[x .. "," .. y .. "," .. z] end,
     getVehicles = function() return javaList(parked) end,
+    getZombieList = function() return javaList(horde) end,
 }
 
 function instanceof(obj, class)
@@ -257,6 +284,37 @@ local far = place(400, 400, 0)
 for _, fn in ipairs(stubs.registered["LoadGridsquare"] or {}) do fn(far) end
 check("ground outside a crater is left alone", #Blast.jobs, 0)
 check("and keeps everything", #far.structure.items, 3)
+
+--------------------------------------------------------------------------------
+-- a horde standing on ground zero
+--------------------------------------------------------------------------------
+
+sandbox.FlattenPercent = 40
+sandbox.HeavyPercent = 75
+
+local onTop = {}
+for i = 1, 12 do onTop[i] = makeZombie(500 + (i % 3), 500) end   -- dead centre
+local nearEdge = makeZombie(500, 519)                            -- 19 of 20: light
+local milesAway = makeZombie(900, 900)                           -- nowhere near it
+
+Blast.detonate(Zones.add(500, 500, 20, 30, 72, 0, "test"), nil)
+
+local survivors = 0
+for _, zombie in ipairs(onTop) do
+    if not (zombie.gone or zombie.killed) then survivors = survivors + 1 end
+end
+check("a horde on ground zero does not survive", survivors, 0)
+isTrue("and is vaporised rather than left as a heap of corpses", onTop[1].gone)
+
+isTrue("one at the edge is caught too", nearEdge.gone or nearEdge.killed)
+check("one well outside is untouched", milesAway.killed, false)
+check("and still there", milesAway.gone, false)
+
+-- Killing does not depend on walking squares, so a zombie the square list has
+-- never heard of still dies.
+local unlisted = makeZombie(501, 501)
+Blast.detonate(Zones.add(501, 501, 20, 30, 72, 0, "test"), nil)
+isTrue("a zombie no square knows about still dies", unlisted.gone or unlisted.killed)
 
 --------------------------------------------------------------------------------
 -- vehicles
