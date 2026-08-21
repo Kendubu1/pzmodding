@@ -15,6 +15,12 @@ if not NukeStrike.isClientSide() then return end
 
 local NS = NukeStrike
 
+-- Retire this one after a single failure, unlike the per-object calls in the
+-- blast, which get several goes because retrying them costs nothing. Retrying
+-- here is not free: every failed attempt is another right-click the player does
+-- not get. One bad menu is a bug worth bounding to one bad menu.
+NS.ALLOWANCE["world context menu"] = 1
+
 --- Whether to bother showing the menu to this player.
 ---@param player IsoPlayer?
 ---@return boolean

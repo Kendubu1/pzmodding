@@ -141,23 +141,27 @@ local failures = {}
 -- be one awkward object rather than a missing method. Those get a few goes
 -- first: enough that one bad car does not spare every car behind it, few enough
 -- that a method this build simply does not have stops after a handful of traces.
+-- Failures counted must be CONSECUTIVE. This is the whole difference between a
+-- guard and a kill switch.
+--
+-- Nearly every guarded call in this mod is made once per object, and a strike
+-- touches over a hundred thousand of them. Counting failures cumulatively meant
+-- one awkward object in one strike, plus another in the next, eventually retired
+-- the call for the rest of the session - so the mod worked the first time you
+-- used it, worked less the second time, and eventually destroyed nothing at all
+-- until the server was restarted.
+--
+-- Resetting the count on every success keeps the useful half: a method this
+-- build simply does not have fails every single time, so it still reaches the
+-- limit immediately and stops. A method that works fine except on one odd object
+-- never accumulates.
 NS.ALLOWANCE = {}
-
--- Everything done to a vehicle is per-object, so all of it gets the longer rope.
-NS.ALLOWANCE_PREFIX = {
-    ["BaseVehicle:"] = 5,
-}
+NS.ALLOWANCE_DEFAULT = 6
 
 ---@param label string
 ---@return integer
 local function allowanceFor(label)
-    local exact = NS.ALLOWANCE[label]
-    if exact ~= nil then return exact end
-
-    for prefix, allowed in pairs(NS.ALLOWANCE_PREFIX) do
-        if string.sub(label, 1, string.len(prefix)) == prefix then return allowed end
-    end
-    return 1
+    return NS.ALLOWANCE[label] or NS.ALLOWANCE_DEFAULT
 end
 
 --- Call an engine function, tolerating its absence.
@@ -174,13 +178,18 @@ function NS.try(label, fn, a, b, c, d)
 
         if count >= allowanceFor(label) then
             dead[label] = true
-            print("[NukeStrike] " .. label .. " is unavailable on this build, skipping it from here on: "
+            print("[NukeStrike] " .. label .. " failed " .. count
+                .. " times in a row, so it is unavailable on this build. Skipping it from here on: "
                 .. tostring(result))
         else
-            print("[NukeStrike] " .. label .. " failed (" .. count .. "), carrying on: " .. tostring(result))
+            print("[NukeStrike] " .. label .. " failed (" .. count .. " in a row), carrying on: "
+                .. tostring(result))
         end
         return nil, false
     end
+
+    -- Worked. Whatever went wrong before was the object, not the build.
+    if failures[label] ~= nil then failures[label] = nil end
 
     return result, true
 end

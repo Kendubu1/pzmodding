@@ -146,6 +146,48 @@ near("half way through the fade", NS.hazeStrength(0, 300, 7.2, 72), 0.5)
 near("still full before the fade starts", NS.hazeStrength(0, 300, 20, 72), 1)
 
 --------------------------------------------------------------------------------
+-- the guard around engine calls
+--
+-- This is a guard, not a kill switch, and the difference is what made the mod
+-- work the first time it was used and do less every time after. Almost every
+-- guarded call is made once per object over a hundred thousand objects, so
+-- counting failures cumulatively meant one odd object per strike eventually
+-- retired the call for the whole session.
+--------------------------------------------------------------------------------
+
+local function alwaysFails() error("this build has no such method") end
+local function alwaysWorks() return "fine" end
+
+-- A method the build genuinely does not have fails every time, so it still gets
+-- retired promptly rather than throwing forever.
+for _ = 1, NS.ALLOWANCE_DEFAULT do NS.try("missing:method", alwaysFails) end
+isTrue("a method that always fails is given up on", NS.isDead("missing:method"))
+
+local _, okAfter = NS.try("missing:method", alwaysWorks)
+check("and is not called again even if it would now work", okAfter, false)
+
+-- The regression. One bad object in a run of good ones must never accumulate
+-- towards retirement, however many strikes it takes.
+local flaky = "flaky:call"
+for round = 1, 200 do
+    NS.try(flaky, alwaysFails)          -- the one awkward object
+    for _ = 1, 5 do
+        NS.try(flaky, alwaysWorks)      -- and the ones either side of it
+    end
+end
+check("an occasional failure never retires a working call", NS.isDead(flaky), false)
+
+local result, okStill = NS.try(flaky, alwaysWorks)
+check("which is still called", okStill, true)
+check("and still returns its answer", result, "fine")
+
+-- Consecutive is what counts: the same call failing repeatedly does stop.
+local streak = "streak:call"
+NS.try(streak, alwaysWorks)
+for _ = 1, NS.ALLOWANCE_DEFAULT do NS.try(streak, alwaysFails) end
+isTrue("a run of failures does retire it", NS.isDead(streak))
+
+--------------------------------------------------------------------------------
 -- the die
 --------------------------------------------------------------------------------
 

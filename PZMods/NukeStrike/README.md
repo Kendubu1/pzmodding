@@ -241,14 +241,33 @@ alphabetically, so `NukeStrike_Blast.lua` runs before `NukeStrike_Zones.lua`;
 creating the tables in shared — which loads before both — means every file
 captures the same table whatever the order.
 
+## Is there a cooldown?
+
+No. Strikes can be called as fast as you can click, and they **queue**: a 200
+tile strike is a hundred thousand tiles and takes several seconds of real time to
+sweep, so a second one called immediately runs after the first rather than
+alongside it. `/nuke status` reports how many jobs are queued and how far the
+current one has got, which is the difference between "still working" and
+"stopped working".
+
 ## A note on the engine calls
 
 This mod reaches into a lot of the game: object removal, fire, body damage,
 vehicle parts, sound. The exact names of those calls have moved between builds.
-Every one of them goes through `NS.try()`, which reports a call that is missing
-**once** and then stops making it, instead of throwing sixty times a second from
-inside the blast loop. If something does not work on your build, the log will say
-which call it was on the first attempt — search `console.txt` for `[NukeStrike]`.
+Every one of them goes through `NS.try()`, which reports a failing call and
+eventually stops making it, instead of throwing sixty times a second from inside
+the blast loop. If something does not work on your build, the log will say which
+call it was — search `console.txt` for `[NukeStrike]`.
+
+The failures it counts are **consecutive**, and that detail matters more than it
+looks. Nearly every guarded call is made once per object, and a strike touches
+over a hundred thousand of them. Counting cumulatively meant one awkward object
+in one strike, plus another in the next, eventually retired the call for the rest
+of the session — so the mod worked the first time you used it, worked less the
+second time, and eventually destroyed nothing at all until the server was
+restarted. Resetting the count on every success keeps the useful half: a method
+this build genuinely does not have fails every single time, so it is still
+retired immediately.
 
 ## Tests
 

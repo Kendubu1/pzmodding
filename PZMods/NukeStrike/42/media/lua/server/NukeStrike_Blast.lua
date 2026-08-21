@@ -517,6 +517,27 @@ local function wreckVehicles(zone)
         found, total, removed, wrecked, burning))
 end
 
+--- What the engine is still chewing through, for /nuke status.
+---
+--- A 200 tile strike is a hundred thousand tiles and takes several seconds of
+--- real time to sweep, and strikes called back to back queue up and run one
+--- after another. Without this, a second strike that has not visibly happened
+--- yet is indistinguishable from a mod that has stopped working.
+---@return integer jobs, integer percent of the job in progress
+function Blast.progress()
+    local job = Blast.jobs[1]
+    if job == nil then return 0, 100 end
+
+    local percent = 0
+    if job.kind == "sweep" and (job.maxR or 0) > 0 then
+        percent = math.floor(100 * math.min(1, job.r / job.maxR))
+    elseif job.kind == "patch" then
+        percent = math.floor(100 * job.i / (NS.BUCKET * NS.BUCKET))
+    end
+
+    return #Blast.jobs, percent
+end
+
 --- Start levelling a strike that has just landed.
 ---@param zone table
 ---@param killer IsoPlayer?

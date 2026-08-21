@@ -383,6 +383,17 @@ function Server.handle(player, sub, args)
             NS.tell(player, string.format("INBOUND: %d, %d in %d seconds.", pending.x, pending.y, seconds))
         end
 
+        -- There is no cooldown, so back-to-back strikes queue up and run one
+        -- after another. Say so, or a strike that has not caught up yet looks
+        -- exactly like a mod that has stopped working.
+        if Blast.progress ~= nil then
+            local jobs, percent = Blast.progress()
+            if jobs > 0 then
+                NS.tell(player, string.format(
+                    "Still levelling: %d job(s) queued, current one %d%% done.", jobs, percent))
+            end
+        end
+
         if #lines == 0 then
             NS.tell(player, "No strikes on record.")
         else
