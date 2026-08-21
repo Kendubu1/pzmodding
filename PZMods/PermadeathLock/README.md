@@ -138,9 +138,14 @@ dozen perk levels in one go, on a body that is not finished loading. Reported as
 So the handshake now only ever *sends*: a notice, or a request for the client to
 say when it has settled. Four seconds later the client says so, the server
 re-reads the death list, and only then does anything happen — kill, restore, or
-nothing at all because an admin stepped in. The once-a-minute sweep applies a
-pending restore too, so a client that never reports in still gets what it is
-owed.
+nothing at all because an admin stepped in.
+
+The sweep is the backstop for a client that never reports in, and it waits too:
+it will only restore someone a *previous* sweep already saw alive. That is not
+belt and braces, it is load-bearing — **a sweep is one in-game minute, which at
+the default day length is two or three real seconds**, so an unguarded sweep
+beat the client's four-second signal nearly every time and put the restore right
+back into the moment it was moved out of.
 
 Turn `KillOnSpawn` off for the older behaviour: the player is shown a notice and
 their client disconnects itself after twelve seconds, with `EnforceKill` as the
@@ -174,6 +179,7 @@ Type these in chat as an admin (`/pd` is a shorthand):
 
 ```
 /permadeath status          is the lock on, and how many are locked out
+/permadeath status <user>   everything the mod knows about one player
 /permadeath ui              open the admin panel
 /permadeath list            show the death list
 /permadeath revive <user>   bring a player back, keeping their skills
@@ -186,6 +192,23 @@ Type these in chat as an admin (`/pd` is a shorthand):
 ```
 
 Usernames are matched case-insensitively.
+
+### When nothing seems to be happening
+
+`/permadeath status <user>` answers it in one go: are they online, are they
+dead, are they **exempt**, how many Fate Tokens are they carrying, are they on
+the death list, are they owed a restore, and which sandbox switches are on.
+
+Reach for it first. Almost every "the mod is broken" report has been one of
+those lines. An exempt player's death in particular does nothing at all — not
+recorded, no token spent, nothing locked — which from the inside is
+indistinguishable from a fault. The server log now says so explicitly when it
+happens:
+
+```
+[PermadeathLock] Willy died, but is EXEMPT (an admin, with ExemptAdmins on):
+not recorded, no Fate Token spent, not locked out.
+```
 
 ### The admin panel
 

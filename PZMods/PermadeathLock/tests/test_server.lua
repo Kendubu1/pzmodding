@@ -260,6 +260,7 @@ Store.record(adminDead, "test")          -- recorded while not exempt
 Store.revive("Boss")
 local adminBack = makePlayer("Boss", { admin = true })
 online = { adminBack }
+sweep()   -- first sweep: still could be loading, so only noted as alive
 sweep()
 check("exempt admin still gets a queued restore", adminBack._levels.TYPE_Aiming, 3)
 check("admin record cleared after restore", Store.get("Boss"), nil)
@@ -285,10 +286,32 @@ Store.revive("Dee")
 local deeNew = makePlayer("Dee", {})
 online = { deeNew }
 sweep()
+sweep()
 check("restore applied", deeNew._levels.TYPE_Woodwork, 2)
 deeNew._dead = true
 sweep()
 check("second death re-locks them", Store.isLocked("Dee"), true)
+
+--------------------------------------------------------------------------------
+io.write("\n-- the sweep waits for a character to finish loading --\n")
+
+-- REGRESSION: deferring the restore off the spawn handshake achieved nothing
+-- while the sweep still applied it the instant it saw a living character. A
+-- sweep is one IN-GAME minute - two or three real seconds at the default day
+-- length - so it beat the client's four-second settle signal nearly every time,
+-- and the restore landed on a character that was still loading anyway.
+reset()
+local opal = makePlayer("Opal", { levels = { TYPE_Aiming = 5 } })
+Store.record(opal, "test")
+Store.revive("Opal")
+local opalNew = makePlayer("Opal", {})
+online = { opalNew }
+sweep()
+check("the first sweep does not restore", opalNew._levels.TYPE_Aiming, nil)
+check("and the restore is still owed", Store.get("Opal") ~= nil, true)
+sweep()
+check("the second one does", opalNew._levels.TYPE_Aiming, 5)
+check("and clears the record", Store.get("Opal"), nil)
 
 --------------------------------------------------------------------------------
 io.write("\n-- spending a token and coming back --\n")
@@ -522,6 +545,7 @@ check("skills captured before the save", Store.get("Gil").skills["Woodwork"], 7)
 -- the saved player walks straight back in and collects their skills
 local gilNew = makePlayer("Gil", {})
 online = { gilNew }
+sweep()
 sent = {}
 sweep()
 check("saved player is not blocked", lastCommandTo("Gil"), "message")
@@ -705,6 +729,31 @@ online = { tokenAdmin }
 sent = {}
 onClientCommand(MODULE, "admin", tokenAdmin, { sub = "take", target = "Ghosty" })
 check("offline target is refused", lastCommandTo("Admin"), "message")
+
+--------------------------------------------------------------------------------
+io.write("\n-- what the mod knows about one player --\n")
+
+reset()
+local dumpAdmin = makePlayer("Admin", { admin = true })
+local pia = makePlayer("Pia", { tokens = 2 })
+online = { pia, dumpAdmin }
+sent = {}
+onClientCommand(MODULE, "admin", dumpAdmin, { sub = "status", target = "Pia" })
+
+local dump = ""
+for _, entry in ipairs(sent) do
+    if entry.user == "Admin" and entry.text ~= nil then dump = dump .. entry.text .. "\n" end
+end
+check("it names them", string.find(dump, "Pia") ~= nil, true)
+check("it reports their tokens", string.find(dump, "carrying 2 Fate Token") ~= nil, true)
+check("it says they are not listed", string.find(dump, "not on the death list") ~= nil, true)
+check("and it prints the settings that decide behaviour",
+    string.find(dump, "ExemptAdmins=") ~= nil and string.find(dump, "KillOnSpawn=") ~= nil, true)
+
+-- the plain status is unchanged when no target is given
+sent = {}
+onClientCommand(MODULE, "admin", dumpAdmin, { sub = "status" })
+check("bare status still reports the lock", string.find(sent[1].text or "", "Permadeath Lock") ~= nil, true)
 
 --------------------------------------------------------------------------------
 io.write("\n-- disabling the mod --\n")

@@ -41,6 +41,23 @@ local blockedAt = {}
 -- long that lasts depends entirely on the server's day length.
 local KILL_BACKSTOP_SECONDS = 15
 
+-- Players a previous sweep has already seen alive. A character in its very
+-- first sweep may still be loading into the world, and that is not a moment to
+-- hand it a dozen perk levels - it is the same instant that black-screened
+-- people when the kill was done there.
+--
+-- This matters more than it looks. A sweep is one IN-GAME minute, which at the
+-- default day length is two or three real seconds, so the sweep usually beats
+-- the client's four-second settle signal. Deferring the restore off the spawn
+-- handshake achieved nothing while this path was still firing immediately.
+---@type table<string, boolean>
+local seenAlive = {}
+
+-- Players whose death has already been logged as ignored because they are
+-- exempt, so it is said once per death rather than once per sweep.
+---@type table<string, boolean>
+local exemptNoted = {}
+
 -- Players an admin has taken off the list while their character was still lying
 -- dead in the world.
 --
@@ -228,6 +245,7 @@ local function applyRestore(player, record)
     strikes[PL.key(record.username)] = nil
     blockedAt[PL.key(record.username)] = nil
     forgiven[PL.key(record.username)] = nil
+    exemptNoted[PL.key(record.username)] = nil
 
     local source = "An admin brought you back."
     if record.reason == PL.REASON_TOKEN then
@@ -264,24 +282,44 @@ end
 ---@param player IsoPlayer
 local function checkPlayer(player)
     local username = player:getUsername()
-    if PL.key(username) == nil then return end
+    local key = PL.key(username)
+    if key == nil then return end
 
     local record = Store.get(username)
+    local alive = not player:isDead()
 
     -- Alive, and an admin has cleared them: this is the new character. Checked
     -- before the exemption, because a queued restore is owed to the player
     -- whatever their access level - an admin who becomes exempt after being
     -- revived should still get their skills back.
-    if record ~= nil and record.pendingRestore and not player:isDead() then
+    --
+    -- Only from the second sweep that sees them alive, though. The first one
+    -- may catch a character that is still loading, and the client's own settle
+    -- signal normally gets there before this does anyway; this path is the
+    -- backstop for a client that never reports in.
+    if record ~= nil and record.pendingRestore and alive and seenAlive[key] then
         applyRestore(player, record)
         return
     end
 
-    if PL.isExempt(player) then return end
-
-    local key = PL.key(username)
+    if PL.isExempt(player) then
+        -- The most confusing state this mod has, and until now a silent one. An
+        -- exempt player's death is not recorded, spends no Fate Token and locks
+        -- nothing, which from their side is indistinguishable from the mod
+        -- being broken. Said once per death rather than once per sweep.
+        if alive then
+            exemptNoted[key] = nil
+            seenAlive[key] = true
+        elseif not exemptNoted[key] then
+            exemptNoted[key] = true
+            print("[PermadeathLock] " .. username .. " died, but is EXEMPT (an admin, with"
+                .. " ExemptAdmins on): not recorded, no Fate Token spent, not locked out.")
+        end
+        return
+    end
 
     if player:isDead() then
+        seenAlive[key] = nil
         -- A new character starts the enforcement count over.
         strikes[key] = nil
         blockedAt[key] = nil
@@ -293,6 +331,7 @@ local function checkPlayer(player)
 
     -- Alive: this is a new character, so an earlier pardon has done its job.
     forgiven[key] = nil
+    seenAlive[key] = true
 
     -- Note whether they are carrying a token, so a death spotted after the
     -- corpse has taken the inventory still counts.
@@ -351,6 +390,7 @@ Events.EveryOneMinute.Add(sweep)
 
 local HELP = {
     "/permadeath status            - is the lock on, and how many are locked out",
+    "/permadeath status <user>     - everything the mod knows about one player",
     "/permadeath list              - show the death list",
     "/permadeath ui                - open the admin panel",
     "/permadeath give <user>       - hand a player a Fate Token",
@@ -607,6 +647,47 @@ local function commandToken(admin, target, give)
     commandListData(admin)
 end
 
+--- Everything the mod knows about one player, in one place.
+---
+--- This exists because "nothing happened and I do not know why" was the hardest
+--- thing to answer from the outside. Exempt, listed, locked, owed a restore,
+--- carrying a token, and which sandbox switches are on - all of it decides the
+--- behaviour and none of it was visible without reading the death list by hand.
+---@param admin IsoPlayer
+---@param target string
+local function commandStatusFor(admin, target)
+    local key = PL.key(target)
+    local record = Store.get(target)
+    local online = findOnline(target)
+
+    tell(admin, "--- " .. target .. " ---")
+
+    if online == nil then
+        tell(admin, "not online.")
+    else
+        tell(admin, "online, " .. (online:isDead() and "DEAD" or "alive")
+            .. ", exempt: " .. tostring(PL.isExempt(online))
+            .. ", carrying " .. PL.countTokens(online) .. " Fate Token(s)"
+            .. " (last seen with one while alive: " .. tostring(carriedToken[key] == true) .. ")")
+    end
+
+    if record == nil then
+        tell(admin, "not on the death list.")
+    else
+        local count = 0
+        for _ in pairs(record.skills or {}) do count = count + 1 end
+        tell(admin, "on the death list: locked=" .. tostring(record.locked)
+            .. ", awaiting restore=" .. tostring(record.pendingRestore)
+            .. ", " .. count .. " skill(s) held, reason: " .. (record.reason or "?"))
+    end
+
+    tell(admin, "settings: Enabled=" .. tostring(PL.isEnabled())
+        .. ", ExemptAdmins=" .. tostring(PL.getOption("ExemptAdmins", true))
+        .. ", FateTokens=" .. tostring(PL.getOption("FateTokenEnabled", true))
+        .. ", KillOnSpawn=" .. tostring(PL.getOption("KillOnSpawn", true))
+        .. ", EnforceKill=" .. tostring(PL.getOption("EnforceKill", true)))
+end
+
 ---@param admin IsoPlayer
 local function commandList(admin)
     local all = Store.all()
@@ -633,7 +714,9 @@ local function handleAdmin(player, args)
     local sub = string.lower(tostring(args.sub or "status"))
     local target = args.target
 
-    if sub == "status" then
+    if sub == "status" and target ~= nil then
+        commandStatusFor(player, target)
+    elseif sub == "status" then
         local state = PL.isEnabled() and "ON" or "OFF"
         tell(player, "Permadeath Lock " .. PL.VERSION .. " is " .. state .. ". " .. Store.count() .. " player(s) on the death list.")
     elseif sub == "list" then
