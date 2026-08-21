@@ -234,11 +234,16 @@ local function applyRestore(player, record)
         source = "Your Fate Token paid for this life."
     end
 
+    local detail = "Try to stay alive this time."
     if restored > 0 then
-        tell(player, source .. " " .. restored .. " skill(s) restored from your last character.")
-    else
-        tell(player, source .. " Try to stay alive this time.")
+        detail = restored .. " skill(s) restored from your last character."
     end
+
+    -- On screen, not only in chat. This lands seconds after a death screen and
+    -- nobody is reading the chat window then: players spent a Fate Token, got
+    -- their life and their skills back, and were told nothing they could see.
+    sendServerCommand(player, MODULE, "notice", { text = source .. " " .. detail })
+    tell(player, source .. " " .. detail)
 
     print("[PermadeathLock] Restored " .. record.username .. " (" .. restored .. " skills).")
     -- Loud on purpose. A perk in the snapshot that the game no longer knows
@@ -706,21 +711,30 @@ local function onClientCommand(module, command, player, args)
 
     if not PL.isEnabled() then return end
 
-    if command == "blockConfirmed" then
-        -- Their client has finished loading and is asking whether the block
-        -- still stands before killing its own character. Re-read it rather
-        -- than trusting what we said a few seconds ago: an admin may have
-        -- pardoned them in between, and killing them anyway would be a bug the
-        -- player experiences as the pardon not working.
-        if not PL.getOption("KillOnSpawn", true) then return end
+    if command == "spawnSettled" then
+        -- The client has finished loading and is telling us it is safe to touch
+        -- the character. Everything is re-read here rather than trusted from a
+        -- few seconds ago: an admin may have pardoned them in between, and
+        -- killing them anyway is a bug the player experiences as the pardon not
+        -- working.
         if player:isDead() then return end
-        if PL.isExempt(player) then return end
 
         local record = Store.get(player:getUsername())
-        if record == nil or not record.locked then
+        if record == nil then return end
+
+        -- Honoured even for exempt players: a queued restore is owed to them
+        -- whatever their access level.
+        if record.pendingRestore then
+            applyRestore(player, record)
+            return
+        end
+
+        if not record.locked then
             blockedAt[PL.key(player:getUsername())] = nil
             return
         end
+        if PL.isExempt(player) then return end
+        if not PL.getOption("KillOnSpawn", true) then return end
 
         sendServerCommand(player, MODULE, "killNow", {})
         print("[PermadeathLock] " .. player:getUsername()
@@ -731,9 +745,15 @@ local function onClientCommand(module, command, player, args)
     if command == "checkStatus" then
         local record = Store.get(player:getUsername())
         if record == nil then return end
-        -- As in the sweep: a queued restore is honoured even for exempt players.
+
+        -- Nothing is done to the character here, deliberately. This runs from
+        -- OnCreatePlayer, while the character is still loading into the world.
+        -- Acting at that instant is what black-screened people: it is where the
+        -- kill used to happen, and it is where a whole character's worth of
+        -- perk levels used to be applied in one go. Both now wait for the
+        -- client to say it has settled - see spawnSettled above.
         if record.pendingRestore and not player:isDead() then
-            applyRestore(player, record)
+            sendServerCommand(player, MODULE, "settle", {})
         elseif record.locked and not PL.isExempt(player) then
             sendBlocked(player, record)
         end

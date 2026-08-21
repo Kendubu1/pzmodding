@@ -111,12 +111,10 @@ fault.
 spawn, carried out by their own client:
 
 1. The spawn handshake finds them locked and sends the notice. It does *not*
-   kill anything — `OnCreatePlayer` fires while the character is still loading
-   into the world, and killing at that instant leaves the client with no valid
-   camera target and a **black screen it does not recover from**.
-2. Four seconds later, the client asks the server whether the block still
-   stands. A pardon in that window calls the kill off entirely.
-3. If it does still stand, the client kills its own character. That side owns
+   kill anything — see **Nothing happens during the spawn handshake** below.
+2. Four seconds later, the client tells the server it has settled. The server
+   re-reads the death list; a pardon in that window calls the kill off entirely.
+3. If the block still stands, the client kills its own character. That side owns
    and simulates it; a kill applied to a remote player from the server is the
    same class of desync that made items pushed into a remote inventory
    unreliable.
@@ -124,6 +122,25 @@ spawn, carried out by their own client:
    seconds after the notice. That deadline is in real seconds, not sweeps —
    a sweep is one *in-game* minute and how long that lasts depends on the
    server's day length.
+
+### Nothing happens during the spawn handshake
+
+`OnCreatePlayer` fires **while the character is still loading into the world**,
+and the handshake the client sends from it is the earliest the server hears
+about a new character. Acting on the character at that instant leaves the client
+with no valid camera target and a **black screen it does not recover from**.
+
+This caught the mod twice. First with the kill. Then, after that was deferred,
+with the restore — which is not a small thing either: it hands a character a
+dozen perk levels in one go, on a body that is not finished loading. Reported as
+"I respawn after using a Fate Token and suddenly die".
+
+So the handshake now only ever *sends*: a notice, or a request for the client to
+say when it has settled. Four seconds later the client says so, the server
+re-reads the death list, and only then does anything happen — kill, restore, or
+nothing at all because an admin stepped in. The once-a-minute sweep applies a
+pending restore too, so a client that never reports in still gets what it is
+owed.
 
 Turn `KillOnSpawn` off for the older behaviour: the player is shown a notice and
 their client disconnects itself after twelve seconds, with `EnforceKill` as the
@@ -287,6 +304,10 @@ Levels are set in one call each (`setPerkLevelDebug`) rather than by calling
 `LevelPerk` once per level. A dozen perks restored at once is otherwise forty
 level-up cascades — XP maths, sound, screen flash, character-screen refresh —
 inside a single frame.
+
+The player is told **on screen**, not only in chat. A restore lands seconds
+after a death screen and nobody is reading the chat window then: players spent a
+Fate Token, got their life and their skills back, and saw nothing at all.
 
 ## The Fate Token
 
