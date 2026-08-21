@@ -20,9 +20,22 @@ local MODULE = PL.MODULE
 local BOOT_SECONDS = 12
 local TICKS_PER_SECOND = 60
 
+-- Seconds between being told the character is forfeit and it dying.
+--
+-- Not zero, and this matters. OnCreatePlayer fires while the character is still
+-- loading into the world; killing at that instant leaves the client with no
+-- valid camera target and a black screen it does not recover from. Waiting also
+-- gives an admin a few seconds to pardon someone mid-spawn without it landing
+-- on a character that has already been killed.
+local GRACE_SECONDS = 4
+
 local booting = false
 local bootTicks = 0
 local bootTick
+
+local awaitingKill = false
+local graceTicks = 0
+local graceTick
 
 --------------------------------------------------------------------------------
 -- being blocked
@@ -42,6 +55,35 @@ end
 
 local function onDialogClosed()
     leaveServer()
+end
+
+--------------------------------------------------------------------------------
+-- being killed on spawn
+--------------------------------------------------------------------------------
+
+graceTick = function()
+    graceTicks = graceTicks + 1
+    if graceTicks < GRACE_SECONDS * TICKS_PER_SECOND then return end
+
+    Events.OnTick.Remove(graceTick)
+    graceTicks = 0
+    awaitingKill = false
+
+    local player = getPlayer()
+    if player == nil or player:isDead() then return end
+
+    -- Ask again instead of acting on what we were told four seconds ago. The
+    -- server re-reads the death list and only answers if the block still
+    -- stands, so a pardon in the meantime quietly calls this off.
+    sendClientCommand(player, MODULE, "blockConfirmed", {})
+end
+
+--- Start the countdown to this character's death.
+local function beginGrace()
+    if awaitingKill then return end
+    awaitingKill = true
+    graceTicks = 0
+    Events.OnTick.Add(graceTick)
 end
 
 -- Where the bottom edge of a death-screen notice sits, as a fraction of screen
@@ -94,44 +136,6 @@ local function showBlockNotice(text)
 end
 
 --------------------------------------------------------------------------------
--- fate tokens handed out by an admin
---------------------------------------------------------------------------------
-
---- Add or remove one Fate Token on this player, and tell the server it is done.
----
---- The server asks rather than doing it itself: a player's inventory belongs to
---- their own machine, and items pushed in or pulled out server-side do not sync
---- back reliably. Whether it worked is re-checked server-side afterwards, so
---- there is nothing to gain by lying here.
----@param give boolean
-local function changeToken(give)
-    local player = getPlayer()
-    if player == nil then return end
-
-    local inventory = player:getInventory()
-    local ok = false
-
-    if give then
-        if inventory ~= nil then
-            ok = inventory:AddItem(PL.FATE_TOKEN) ~= nil
-        end
-        if ok then
-            processGeneralMessage("An admin handed you a Fate Token. Die carrying it and it burns away in your place.")
-        end
-    else
-        local token = PL.findToken(player)
-        local container = token and token:getContainer()
-        if container ~= nil then
-            container:Remove(token)
-            ok = true
-            processGeneralMessage("An admin took back one of your Fate Tokens.")
-        end
-    end
-
-    sendClientCommand(player, MODULE, "tokenResult", { action = give and "give" or "take", ok = ok })
-end
-
---------------------------------------------------------------------------------
 -- events
 --------------------------------------------------------------------------------
 
@@ -156,12 +160,23 @@ local function onServerCommand(module, command, args)
 
     if command == "blocked" then
         if args ~= nil and args.kill then
-            -- The server is killing this character rather than showing us the
-            -- door, so stay put: the notice sits low, over the death screen
-            -- that is about to appear.
+            -- This character is forfeit rather than us being shown the door, so
+            -- stay connected: the notice sits low, over the death screen that
+            -- is a few seconds away.
             showNotice(getText("IGUI_PermadeathLock_BlockedKilled"), nil, true)
+            beginGrace()
         else
             showBlockNotice(getText("IGUI_PermadeathLock_Blocked"))
+        end
+    elseif command == "killNow" then
+        -- Done here rather than from the server. A player's own machine owns
+        -- and simulates their character; a kill applied to a remote player from
+        -- the server is the same desync that made items pushed into a remote
+        -- inventory unreliable. The server still kills anyone whose client
+        -- ignores this, a few seconds later.
+        local player = getPlayer()
+        if player ~= nil and not player:isDead() then
+            player:Kill(player)
         end
     elseif command == "tokenSpent" then
         -- Arrives at the moment of death, so it has to be a modal, and low.
@@ -171,10 +186,6 @@ local function onServerCommand(module, command, args)
         -- has closed. Says so now instead of leaving them to discover it by
         -- being thrown off the server on their next character.
         showNotice(getText("IGUI_PermadeathLock_FateSealed"), nil, true)
-    elseif command == "giveToken" then
-        changeToken(true)
-    elseif command == "takeToken" then
-        changeToken(false)
     elseif command == "openUI" then
         if PermadeathLockUI ~= nil then PermadeathLockUI.open() end
     elseif command == "listData" then

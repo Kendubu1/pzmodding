@@ -157,51 +157,14 @@ end
 -- window
 --------------------------------------------------------------------------------
 
-function PermadeathLockUI:createChildren()
-    ISCollapsableWindow.createChildren(self)
-
-    -- Placeholder geometry throughout: layout() sets the real numbers, and is
-    -- the only place that knows them.
-    self.status = ISLabel:new(0, 0, metrics().status, "Loading...", 1, 1, 1, 1, UIFont.Small, true)
-    self.status:initialise()
-    self:addChild(self.status)
-
-    self.list = ISScrollingListBox:new(0, 0, 10, 10)
-    self.list:initialise()
-    self.list:instantiate()
-    self.list.font = UIFont.Small
-    self.list.drawBorder = true
-    self.list.doDrawItem = PermadeathLockUI.drawRow
-    self:addChild(self.list)
-
-    self.pardonBtn = self:makeButton("Pardon", "onPardon")
-    self.reviveBtn = self:makeButton("Revive", "onRevive")
-    self.giveBtn = self:makeButton("Give token", "onGiveToken")
-    self.takeBtn = self:makeButton("Take token", "onTakeToken")
-    self.refreshBtn = self:makeButton("Refresh", "onRefresh")
-    self.clearBtn = self:makeButton("Clear all", "onClearAll")
-
-    self:layout()
-end
-
----@param label string
----@param handler string
----@return ISButton
-function PermadeathLockUI:makeButton(label, handler)
-    local button = ISButton:new(0, 0, 10, metrics().button, label, self, PermadeathLockUI[handler])
-    button:initialise()
-    button:instantiate()
-    button.borderColor = { r = 0.4, g = 0.4, b = 0.4, a = 1 }
-    self:addChild(button)
-    return button
-end
-
---- Place everything. Called once when the window is built and again whenever it
---- is dragged to a new size: children are positioned in absolute pixels and do
---- not follow the frame on their own.
-function PermadeathLockUI:layout()
-    if self.list == nil then return end
-
+--- Where every band goes at the current frame size.
+---
+--- The single source of geometry: createChildren builds children at these
+--- positions, and layout() puts them back after a resize. Both go through here
+--- so the window a player opens is laid out identically to one they have
+--- dragged, which it was not.
+---@return table
+function PermadeathLockUI:bands()
     local m = metrics()
 
     -- Top down: title bar, a gap, the status line, a gap, the column titles,
@@ -218,41 +181,124 @@ function PermadeathLockUI:layout()
     -- underneath the resize strip.
     local secondRow = self.height - m.bottom - m.button
     local firstRow = secondRow - m.button - m.pad
-    local listHeight = math.max(m.row * 2, firstRow - m.pad - listTop)
 
-    self.status:setX(m.pad)
-    self.status:setY(statusY)
-    self.status:setHeight(m.status)
+    return {
+        m = m,
+        statusY = statusY,
+        headerY = headerY,
+        listTop = listTop,
+        listWidth = self.width - (m.pad * 2),
+        listHeight = math.max(m.row * 2, firstRow - m.pad - listTop),
+        firstRow = firstRow,
+        secondRow = secondRow,
+        -- Four columns of buttons. The destructive one sits alone in the far
+        -- corner of the second row rather than next to Refresh, so a misclick
+        -- on "refresh the list" cannot land on "wipe the list".
+        slotWidth = (self.width - (m.pad * 5)) / 4,
+    }
+end
 
-    -- Remembered for prerender, which draws the column titles.
-    self.headerY = headerY
+function PermadeathLockUI:createChildren()
+    ISCollapsableWindow.createChildren(self)
 
-    self.list:setX(m.pad)
-    self.list:setY(listTop)
-    self.list:setWidth(self.width - (m.pad * 2))
-    self.list:setHeight(listHeight)
-    self.list.itemheight = m.row
-    -- drawRow runs with the list as self, so it reads the text height from here.
-    self.list.textHeight = m.text
+    local b = self:bands()
 
-    -- Four columns of buttons. The destructive one sits alone in the far corner
-    -- of the second row rather than next to Refresh, so a misclick on "refresh
-    -- the list" cannot land on "wipe the list".
-    local slotWidth = (self.width - (m.pad * 5)) / 4
+    self.status = ISLabel:new(b.m.pad, b.statusY, b.m.status, "Loading...",
+        1, 1, 1, 1, UIFont.Small, true)
+    self.status:initialise()
+    self:addChild(self.status)
 
-    local function place(button, column, y)
-        button:setX(m.pad + (column - 1) * (slotWidth + m.pad))
-        button:setY(y)
-        button:setWidth(slotWidth)
-        button:setHeight(m.button)
+    -- Built at its real size, never at a placeholder that layout() corrects a
+    -- moment later. ISScrollingListBox lays out its scrollbar in
+    -- createChildren, from whatever size the box has at that instant: born
+    -- 10x10, it put the bar at x = 10 - 17, a sliver hanging off the left edge,
+    -- and the rows did not appear until the window was dragged to a new size.
+    self.list = ISScrollingListBox:new(b.m.pad, b.listTop, b.listWidth, b.listHeight)
+    self.list.itemheight = b.m.row
+    self.list.font = UIFont.Small
+    self.list:initialise()
+    self.list:instantiate()
+    self.list.drawBorder = true
+    self.list.doDrawItem = PermadeathLockUI.drawRow
+    self:addChild(self.list)
+
+    local function button(label, handler, column, y)
+        return self:makeButton(label, handler,
+            b.m.pad + (column - 1) * (b.slotWidth + b.m.pad), y, b.slotWidth, b.m.button)
     end
 
-    place(self.pardonBtn, 1, firstRow)
-    place(self.reviveBtn, 2, firstRow)
-    place(self.giveBtn, 3, firstRow)
-    place(self.takeBtn, 4, firstRow)
-    place(self.refreshBtn, 1, secondRow)
-    place(self.clearBtn, 4, secondRow)
+    self.pardonBtn = button("Pardon", "onPardon", 1, b.firstRow)
+    self.reviveBtn = button("Revive", "onRevive", 2, b.firstRow)
+    self.giveBtn = button("Give token", "onGiveToken", 3, b.firstRow)
+    self.takeBtn = button("Take token", "onTakeToken", 4, b.firstRow)
+    self.refreshBtn = button("Refresh", "onRefresh", 1, b.secondRow)
+    self.clearBtn = button("Clear all", "onClearAll", 4, b.secondRow)
+
+    self:layout()
+end
+
+---@param label string
+---@param handler string
+---@param x number
+---@param y number
+---@param width number
+---@param height number
+---@return ISButton
+function PermadeathLockUI:makeButton(label, handler, x, y, width, height)
+    local button = ISButton:new(x, y, width, height, label, self, PermadeathLockUI[handler])
+    button:initialise()
+    button:instantiate()
+    button.borderColor = { r = 0.4, g = 0.4, b = 0.4, a = 1 }
+    self:addChild(button)
+    return button
+end
+
+--- Place everything. Called once when the window is built and again whenever it
+--- is dragged to a new size: children are positioned in absolute pixels and do
+--- not follow the frame on their own.
+function PermadeathLockUI:layout()
+    if self.list == nil then return end
+
+    local b = self:bands()
+
+    self.status:setX(b.m.pad)
+    self.status:setY(b.statusY)
+    self.status:setHeight(b.m.status)
+
+    -- Remembered for prerender, which draws the column titles.
+    self.headerY = b.headerY
+
+    self.list:setX(b.m.pad)
+    self.list:setY(b.listTop)
+    self.list:setWidth(b.listWidth)
+    self.list:setHeight(b.listHeight)
+    self.list.itemheight = b.m.row
+    -- drawRow runs with the list as self, so it reads the text height from here.
+    self.list.textHeight = b.m.text
+
+    -- The scrollbar is a child of the list and was placed once, when the list
+    -- was built. Resizing the box does not move it, so put it back against the
+    -- right edge at the new height.
+    local bar = self.list.vscroll
+    if bar ~= nil then
+        bar:setX(b.listWidth - bar:getWidth())
+        bar:setY(0)
+        bar:setHeight(b.listHeight)
+    end
+
+    local function place(button, column, y)
+        button:setX(b.m.pad + (column - 1) * (b.slotWidth + b.m.pad))
+        button:setY(y)
+        button:setWidth(b.slotWidth)
+        button:setHeight(b.m.button)
+    end
+
+    place(self.pardonBtn, 1, b.firstRow)
+    place(self.reviveBtn, 2, b.firstRow)
+    place(self.giveBtn, 3, b.firstRow)
+    place(self.takeBtn, 4, b.firstRow)
+    place(self.refreshBtn, 1, b.secondRow)
+    place(self.clearBtn, 4, b.secondRow)
 end
 
 function PermadeathLockUI:onResize()
@@ -383,10 +429,16 @@ function PermadeathLockUI:setData(data)
         locked))
 end
 
+---@return table? row
+function PermadeathLockUI:selectedRow()
+    local item = self.list.items[self.list.selected]
+    return item and item.item or nil
+end
+
 ---@return string? username
 function PermadeathLockUI:selectedUsername()
-    local item = self.list.items[self.list.selected]
-    return item and item.item and item.item.username or nil
+    local row = self:selectedRow()
+    return row and row.username or nil
 end
 
 --- Act on the selected row, or explain that there isn't one.
@@ -411,8 +463,22 @@ end
 -- buttons
 --------------------------------------------------------------------------------
 
-function PermadeathLockUI:onPardon() self:actOnSelection("pardon") end
-function PermadeathLockUI:onRevive() self:actOnSelection("revive") end
+--- Pardon and Revive only mean anything for someone on the death list, and the
+--- roster shows everyone who is playing as well. Answered here rather than
+--- sending a command whose only possible reply is "X is not on the death list"
+--- three times over in chat.
+---@param sub string
+function PermadeathLockUI:actOnListed(sub)
+    local row = self:selectedRow()
+    if row ~= nil and not row.listed then
+        self.status:setName(row.username .. " is not on the death list - nothing to " .. sub .. ".")
+        return
+    end
+    self:actOnSelection(sub)
+end
+
+function PermadeathLockUI:onPardon() self:actOnListed("pardon") end
+function PermadeathLockUI:onRevive() self:actOnListed("revive") end
 
 -- Handing a token over is done by the target's own client, so the server pushes
 -- a fresh roster once that has actually happened. Asking for one here would

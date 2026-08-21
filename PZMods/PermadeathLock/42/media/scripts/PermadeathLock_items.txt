@@ -7,16 +7,19 @@ module Base
 
         Build 42 item syntax - ItemType replaces Build 41's Type.
 
-        DisplayCategory is the mod's own category, not a vanilla one, and its
-        label ships as IGUI_ItemCat_Fate in Translate/EN/IG_UI_EN.txt. Note the
-        file name: the game does not read a file called IGUI_EN.txt, so a label
-        put there shows as its own key. Naming a vanilla category that Build 42
-        has since dropped fails the same way - "Misc" rendered as
-        IGUI_ItemCat_Misc.
+        DisplayCategory is a stock Build 42 one, deliberately. A category the
+        game does not already have a name for renders as its own translation
+        key in the inventory, and two goes at supplying that name ourselves both
+        came back showing "IGUI_ItemCat_..." to the player: first "Misc", which
+        Build 42 no longer has, then our own "Fate".
+
+        "Junk" is where Build 42 files oddments, and it needs nothing from us -
+        Junk Jet uses it, ships no label for it, and reads correctly in game.
+        A right category name beats a right-looking one we have to supply.
     */
     item FateToken
     {
-        DisplayCategory = Fate,
+        DisplayCategory = Junk,
         ItemType = base:normal,
         DisplayName = Fate Token,
         Icon = FateToken,

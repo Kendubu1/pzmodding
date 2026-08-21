@@ -29,6 +29,18 @@ local MODULE = PL.MODULE
 ---@type table<string, integer>
 local strikes = {}
 
+-- When each locked-out player was last told their new character is forfeit, in
+-- real seconds. Their own client carries out the kill a few seconds later; if
+-- that has not happened well past the deadline, the server does it instead.
+---@type table<string, integer>
+local blockedAt = {}
+
+-- How long to wait for a client to kill its own character before doing it from
+-- here. Comfortably longer than the client's grace period, and measured in real
+-- seconds rather than sweeps, because a sweep is one *in-game* minute and how
+-- long that lasts depends entirely on the server's day length.
+local KILL_BACKSTOP_SECONDS = 15
+
 -- Players an admin has taken off the list while their character was still lying
 -- dead in the world.
 --
@@ -70,15 +82,21 @@ local function sendBlocked(player, record)
     sendServerCommand(player, MODULE, "blocked", {
         username = player:getUsername(),
         time = record and record.time or 0,
-        -- Whether the client should show itself out. It never decides this:
-        -- the server is about to kill the character either way.
+        -- Whether the character is forfeit or the client should show itself
+        -- out. It never decides this; it is told.
         kill = killOnSpawn,
     })
 
-    if killOnSpawn and not player:isDead() then
-        player:Kill(player)
-        print("[PermadeathLock] " .. player:getUsername()
-            .. " is locked out; the new character was killed on spawn.")
+    if killOnSpawn then
+        -- Deliberately no kill here.
+        --
+        -- This runs from the spawn handshake, and OnCreatePlayer fires while
+        -- the character is still loading into the world. Killing at that
+        -- instant leaves the client with no valid camera target and a black
+        -- screen it never recovers from. The client waits until it has
+        -- finished loading, asks again, and kills its own character - which is
+        -- also the side that owns it. See blockConfirmed below.
+        blockedAt[PL.key(player:getUsername())] = getTimestamp()
     end
 end
 
@@ -121,13 +139,6 @@ end
 -- nothing and the player is wrongly locked out.
 ---@type table<string, boolean>
 local carriedToken = {}
-
--- The admin waiting to see the result of a token they handed out or took back,
--- keyed by the target's username. A grant is carried out by the target's own
--- client, so the answer comes back a moment later and the panel that asked has
--- to be told to redraw then rather than immediately.
----@type table<string, string>
-local tokenWatchers = {}
 
 --- Note whether a LIVING player is carrying a token. Never called for the dead:
 --- their inventory has usually moved to the corpse, and recording "no token"
@@ -215,6 +226,7 @@ local function applyRestore(player, record)
     end
     Store.finishRestore(record.username)
     strikes[PL.key(record.username)] = nil
+    blockedAt[PL.key(record.username)] = nil
     forgiven[PL.key(record.username)] = nil
 
     local source = "An admin brought you back."
@@ -265,6 +277,9 @@ local function checkPlayer(player)
     local key = PL.key(username)
 
     if player:isDead() then
+        -- A new character starts the enforcement count over.
+        strikes[key] = nil
+        blockedAt[key] = nil
         -- Pardoned since they died: leave the corpse alone rather than putting
         -- them back on the list they were just taken off.
         if not forgiven[key] then recordDeath(player, "died") end
@@ -282,9 +297,20 @@ local function checkPlayer(player)
 
     -- Alive while locked out means they made a new character.
     if PL.getOption("KillOnSpawn", true) then
-        -- Every time, with no strike count to keep: the character dies on the
-        -- spot, and so does the next one.
-        sendBlocked(player, record)
+        local since = blockedAt[key]
+        if since == nil then
+            -- Tell them. Their client kills the character once it has finished
+            -- loading, and re-checks with us first so a pardon in the meantime
+            -- calls it off.
+            sendBlocked(player, record)
+        elseif getTimestamp() - since > KILL_BACKSTOP_SECONDS
+            and PL.getOption("EnforceKill", true) then
+            -- Their client never went through with it.
+            blockedAt[key] = nil
+            player:Kill(player)
+            print("[PermadeathLock] " .. username
+                .. " ignored the block; new character killed server-side.")
+        end
         return
     end
 
@@ -351,6 +377,7 @@ local function commandRevive(admin, target)
         return
     end
     strikes[PL.key(record.username)] = nil
+    blockedAt[PL.key(record.username)] = nil
 
     local online = findOnline(record.username)
     if online == nil then
@@ -381,6 +408,7 @@ local function commandPardon(admin, target)
     end
     local key = PL.key(target)
     strikes[key] = nil
+    blockedAt[key] = nil
 
     tell(admin, target .. " pardoned. They may rejoin with a fresh character.")
 
@@ -494,10 +522,18 @@ end
 
 --- Hand a player a Fate Token, or take one back.
 ---
---- Carried out by the target's own client rather than by reaching into their
---- inventory from here. In Project Zomboid a player's inventory belongs to
---- their machine; an item pushed in server-side is not reliably synced back to
---- them, and one removed server-side can reappear.
+--- Done here, on the server, and NOT by asking the target's client to do it.
+--- 1.5.0 had it the other way round, reasoning that a player's inventory
+--- belongs to their own machine. That was wrong for Build 42, and wrong in a
+--- way that mattered far more than a cosmetic count: the client added the item
+--- and reported success, the server never saw it, and the death check reads the
+--- server's inventory. A token handed out through the panel therefore saved
+--- nobody - players died carrying three of them and were locked out anyway.
+--- The count the admin was shown said 0 for the same reason, which was the
+--- visible half of the same fault.
+---
+--- Vanilla's own /additem adds server-side and works, death check included.
+--- This does the same thing.
 ---@param admin IsoPlayer
 ---@param target string?
 ---@param give boolean
@@ -508,9 +544,9 @@ local function commandToken(admin, target, give)
         return
     end
 
-    if not PL.getOption("FateTokenEnabled", true) then
-        tell(admin, "Fate Tokens are switched off in the sandbox settings. The item can still be")
-        tell(admin, "handed out, but dying with it will not save anyone.")
+    if give and not PL.getOption("FateTokenEnabled", true) then
+        tell(admin, "Note: Fate Tokens are switched off in the sandbox settings, so this one will")
+        tell(admin, "not save anyone until you turn them back on.")
     end
 
     local player = findOnline(target)
@@ -519,40 +555,49 @@ local function commandToken(admin, target, give)
         return
     end
 
-    tokenWatchers[PL.key(player:getUsername())] = admin:getUsername()
-    sendServerCommand(player, MODULE, give and "giveToken" or "takeToken", {})
-    print("[PermadeathLock] " .. admin:getUsername() .. " asked to " .. verb
-        .. " a Fate Token " .. (give and "to " or "from ") .. player:getUsername() .. ".")
-end
-
---- The target's client has finished adding or removing a token. Tell whichever
---- admin asked, and push them a fresh roster so the count they see is the one
---- the server can actually verify.
----@param player IsoPlayer the target, not the admin
----@param args table
-local function onTokenResult(player, args)
-    local key = PL.key(player:getUsername())
-    if key == nil then return end
-
-    local adminName = tokenWatchers[key]
-    tokenWatchers[key] = nil
-    if adminName == nil then return end
-
-    local admin = findOnline(adminName)
-    if admin == nil or not admin:isAccessLevel("admin") then return end
-
-    -- Counted here rather than trusting the number the client sent back.
-    local held = PL.countTokens(player)
-    local gave = args.action == "give"
-
-    if args.ok == true then
-        tell(admin, (gave and "Gave " or "Took a Fate Token from ") .. player:getUsername()
-            .. (gave and " a Fate Token." or ".") .. " They now carry " .. held .. ".")
-    elseif gave then
-        tell(admin, "Could not give " .. player:getUsername() .. " a Fate Token.")
-    else
-        tell(admin, player:getUsername() .. " has no Fate Token to take.")
+    local name = player:getUsername()
+    local inventory = player:getInventory()
+    if inventory == nil then
+        tell(admin, "Could not reach " .. name .. "'s inventory.")
+        return
     end
+
+    if give then
+        if inventory:AddItem(PL.FATE_TOKEN) == nil then
+            tell(admin, "Could not give " .. name .. " a Fate Token.")
+            return
+        end
+        sendServerCommand(player, MODULE, "message", {
+            text = "An admin handed you a Fate Token. Die carrying it and it burns away in your place.",
+        })
+    else
+        local token = PL.findToken(player)
+        local container = token and token:getContainer()
+        if container == nil then
+            tell(admin, name .. " has no Fate Token to take.")
+            return
+        end
+        container:Remove(token)
+        sendServerCommand(player, MODULE, "message", {
+            text = "An admin took back one of your Fate Tokens.",
+        })
+    end
+
+    -- Refresh the cache the death check consults, rather than leaving it to the
+    -- next sweep. Someone handed a token and killed ten seconds later should be
+    -- saved by it, and someone whose last token was just taken should not be.
+    local key = PL.key(name)
+    if key ~= nil and not player:isDead() then
+        carriedToken[key] = PL.findToken(player) ~= nil
+    end
+
+    local held = PL.countTokens(player)
+    local did = give and ("Gave " .. name .. " a Fate Token.")
+        or ("Took a Fate Token from " .. name .. ".")
+    tell(admin, did .. " They now carry " .. held .. ".")
+    print("[PermadeathLock] " .. admin:getUsername() .. " " .. (give and "gave" or "took")
+        .. " a Fate Token " .. (give and "to " or "from ") .. name
+        .. "; they now carry " .. held .. ".")
 
     commandListData(admin)
 end
@@ -616,6 +661,7 @@ local function handleAdmin(player, args)
         else
             local removed = Store.clear()
             strikes = {}
+            blockedAt = {}
             -- Same trap as a single pardon, for everyone at once: any online
             -- player currently lying dead would be re-recorded by the next
             -- sweep, undoing the wipe a minute after it happened.
@@ -658,15 +704,29 @@ local function onClientCommand(module, command, player, args)
         return
     end
 
-    if command == "tokenResult" then
-        -- Not trusted: it only says "I am done", and everything reported back to
-        -- the admin is re-read from the server's own view of the inventory. The
-        -- worst a forged one can do is make an admin's panel redraw.
-        onTokenResult(player, args)
+    if not PL.isEnabled() then return end
+
+    if command == "blockConfirmed" then
+        -- Their client has finished loading and is asking whether the block
+        -- still stands before killing its own character. Re-read it rather
+        -- than trusting what we said a few seconds ago: an admin may have
+        -- pardoned them in between, and killing them anyway would be a bug the
+        -- player experiences as the pardon not working.
+        if not PL.getOption("KillOnSpawn", true) then return end
+        if player:isDead() then return end
+        if PL.isExempt(player) then return end
+
+        local record = Store.get(player:getUsername())
+        if record == nil or not record.locked then
+            blockedAt[PL.key(player:getUsername())] = nil
+            return
+        end
+
+        sendServerCommand(player, MODULE, "killNow", {})
+        print("[PermadeathLock] " .. player:getUsername()
+            .. " is locked out; their new character was killed.")
         return
     end
-
-    if not PL.isEnabled() then return end
 
     if command == "checkStatus" then
         local record = Store.get(player:getUsername())

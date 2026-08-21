@@ -9,7 +9,7 @@
 PermadeathLock = PermadeathLock or {}
 local PL = PermadeathLock
 
-PL.VERSION = "1.6.2"
+PL.VERSION = "1.8.0"
 
 -- Module name used by sendClientCommand / sendServerCommand.
 PL.MODULE = "PermadeathLock"
@@ -89,11 +89,16 @@ end
 -- finding fate tokens
 --------------------------------------------------------------------------------
 --
--- Shared rather than server-only because both halves need it now: the server
--- counts a player's tokens for the admin panel and spends one on death, and the
--- client takes one back when an admin revokes it. Handing out and taking away
--- is done by the owning client, because in Project Zomboid a player's inventory
--- belongs to their own machine.
+-- Shared rather than server-only so either half can ask, though in practice the
+-- server does all of it: it counts a player's tokens for the admin panel, spends
+-- one on death, and adds or removes one when an admin hands it out.
+--
+-- Handing out used to be done by the target's client, on the reasoning that a
+-- player's inventory belongs to their own machine. In Build 42 it does not: the
+-- client added the item, the server never saw it, and the death check - which
+-- reads the server's inventory - let the player be locked out while carrying
+-- three tokens. Inventory changes are made server-side, as vanilla's /additem
+-- does.
 
 local scanTokens
 

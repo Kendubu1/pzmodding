@@ -8,7 +8,10 @@ local handlers = {}      -- captured Events.*.Add callbacks
 
 function isServer() return true end
 function isClient() return false end
-function getTimestamp() return 1700000000 end
+local now = 1700000000
+function getTimestamp() return now end
+--- Advance the server's real-time clock, for the kill backstop's deadline.
+local function advance(seconds) now = now + seconds end
 function print(...) end
 
 -- Kahlua, the Lua implementation Project Zomboid runs, does not provide every
@@ -293,26 +296,76 @@ online = { uma }
 sweep()
 check("Uma is locked out", Store.isLocked("Uma"), true)
 
+-- REGRESSION: the kill used to happen inside the spawn handshake, while the
+-- character was still loading into the world. That is what left people looking
+-- at a black screen they never came back from. Nothing may die here.
 sent = {}
 local umaNew = makePlayer("Uma", {})
 online = { umaNew }
-sweep()
-check("the new character is killed at once", umaNew._dead, true)
-check("and told why", lastCommandTo("Uma"), "blocked")
-check("the notice says not to disconnect", sent[#sent].args.kill, true)
+onClientCommand(MODULE, "checkStatus", umaNew, {})
+check("the spawn handshake does not kill", umaNew._dead, false)
+check("it tells them instead", lastCommandTo("Uma"), "blocked")
+check("and says the character is forfeit", sent[#sent].args.kill, true)
 
--- and the character after that, with no strike count to run out
-local umaAgain = makePlayer("Uma", {})
-online = { umaAgain }
+-- the client finishes loading, asks again, and is told to go ahead
+sent = {}
+onClientCommand(MODULE, "blockConfirmed", umaNew, {})
+check("the confirmed block is answered", lastCommandTo("Uma"), "killNow")
+check("but the server does not kill it itself", umaNew._dead, false)
+
+-- REGRESSION: a pardon during the client's grace period must call it off.
+-- Killing anyway is a bug the player experiences as the pardon not working.
+reset()
+local vic = makePlayer("Vic", { dead = true })
+online = { vic }
 sweep()
-check("so is the one after it", umaAgain._dead, true)
+local vicNew = makePlayer("Vic", {})
+-- Its own admin: the shared one is not declared until the section below, and a
+-- nil sender is dropped by the command handler, so the pardon would never run.
+local graceAdmin = makePlayer("Admin", { admin = true })
+online = { vicNew, graceAdmin }
+onClientCommand(MODULE, "checkStatus", vicNew, {})
+onClientCommand(MODULE, "admin", graceAdmin, { sub = "pardon", target = "Vic" })
+check("the pardon landed", Store.get("Vic"), nil)
+sent = {}
+onClientCommand(MODULE, "blockConfirmed", vicNew, {})
+check("a pardon mid-grace calls the kill off", lastCommandTo("Vic"), nil)
+check("and they stay alive", vicNew._dead, false)
+
+-- a client that never goes through with it is killed from here, but only well
+-- after the deadline
+reset()
+local wren = makePlayer("Wren", { dead = true })
+online = { wren }
+sweep()
+local wrenNew = makePlayer("Wren", {})
+online = { wrenNew }
+sweep()
+check("the sweep tells them first", wrenNew._dead, false)
+advance(5)
+sweep()
+check("and does not kill inside the grace period", wrenNew._dead, false)
+advance(20)
+sweep()
+check("but does once the deadline passes", wrenNew._dead, true)
+
+-- each new character starts the count over rather than being killed instantly
+local wrenAgain = makePlayer("Wren", {})
+online = { wrenAgain }
+sweep()
+check("the next character gets its own grace", wrenAgain._dead, false)
+advance(30)
+sweep()
+check("and is killed once that runs out too", wrenAgain._dead, true)
 
 -- being killed by the block must not spend a Fate Token they happen to hold
-local umaToken = makePlayer("Uma", { tokens = 1 })
+local umaToken = makePlayer("Wren", { tokens = 1 })
 online = { umaToken }
 sweep()
+advance(30)
+sweep()
 check("an enforcement kill does not eat a token", #umaToken._items, 1)
-check("and does not unlock them", Store.isLocked("Uma"), true)
+check("and does not unlock them", Store.isLocked("Wren"), true)
 SandboxVars.PermadeathLock.KillOnSpawn = false
 
 --------------------------------------------------------------------------------
@@ -532,34 +585,60 @@ local tara = makePlayer("Tara", {})
 local tokenAdmin = makePlayer("Admin", { admin = true })
 online = { tara, tokenAdmin }
 
+-- REGRESSION: the grant used to be relayed to the target's client to carry out.
+-- In Build 42 the server never saw the result: the count reported to the admin
+-- was 0, and - the part that actually mattered - the death check reads this
+-- same inventory, so a token handed out through the panel saved nobody. Players
+-- died carrying three of them and were locked out.
 sent = {}
 onClientCommand(MODULE, "admin", tokenAdmin, { sub = "give", target = "tara" })
-check("the target's client is asked to add it", lastCommandTo("Tara"), "giveToken")
-check("nothing is pushed into the inventory from here", #tara._items, 0)
+check("the token is really in their inventory", #tara._items, 1)
+check("the admin is told, and gets a fresh roster", lastCommandTo("Admin"), "listData")
 
--- the client does it and reports back
 onClientCommand(MODULE, "admin", tokenAdmin, { sub = "give", target = "tara" })
-tara._container:AddItem("Base.FateToken")
+check("a second one stacks up", #tara._items, 2)
+
+-- and the count the admin is shown is the real one
+local told = nil
+for i = #sent, 1, -1 do
+    if sent[i].user == "Admin" and sent[i].text ~= nil then told = sent[i].text break end
+end
+check("the count reported is not zero", told ~= nil and string.find(told, "carry 2") ~= nil, true)
+
+-- the death check must honour a token handed out this way, immediately
+tara._dead = true
+sweep()
+check("dying with a granted token does not lock them out", Store.isLocked("Tara"), false)
+check("and the granted token is what was spent", #tara._items, 1)
+
+-- taking one back
+reset()
+local ursa = makePlayer("Ursa", { tokens = 2 })
+online = { ursa, tokenAdmin }
+onClientCommand(MODULE, "admin", tokenAdmin, { sub = "take", target = "Ursa" })
+check("take removes one", #ursa._items, 1)
+onClientCommand(MODULE, "admin", tokenAdmin, { sub = "take", target = "Ursa" })
+check("and then the last one", #ursa._items, 0)
 sent = {}
-onClientCommand(MODULE, "tokenResult", tara, { action = "give", ok = true })
-check("the admin who asked is told", lastCommandTo("Admin"), "listData")
-check("and the fresh roster reaches them", sent[#sent].args.rows ~= nil, true)
+onClientCommand(MODULE, "admin", tokenAdmin, { sub = "take", target = "Ursa" })
+check("taking from empty hands is refused", lastCommandTo("Admin"), "message")
+
+-- REGRESSION: taking the last token must not leave the death check thinking
+-- they still have one from an earlier sweep.
+ursa._dead = true
+sweep()
+check("a revoked token does not still save them", Store.isLocked("Ursa"), true)
 
 -- a non-admin cannot hand themselves one
+reset()
 sent = {}
 local greedy = makePlayer("Greedy", {})
 online = { greedy }
 onClientCommand(MODULE, "admin", greedy, { sub = "give", target = "Greedy" })
 check("a non-admin is refused", lastCommandTo("Greedy"), "message")
+check("and gets nothing", #greedy._items, 0)
 
--- and an unsolicited result is ignored rather than spraying panels
-reset()
-online = { tara, tokenAdmin }
-sent = {}
-onClientCommand(MODULE, "tokenResult", tara, { action = "give", ok = true })
-check("an unasked-for result is dropped", #sent, 0)
-
--- taking one back from someone offline is refused, not silently lost
+-- an offline target is refused, not silently lost
 reset()
 online = { tokenAdmin }
 sent = {}

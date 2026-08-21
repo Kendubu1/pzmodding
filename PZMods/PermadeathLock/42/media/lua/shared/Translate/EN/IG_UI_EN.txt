@@ -1,12 +1,4 @@
--- The table is IGUI_EN but the FILE is IG_UI_EN.txt. The game maps a fixed set
--- of translation file names onto table names and IGUI is not one of them, so a
--- file called IGUI_EN.txt is never read: every key in it comes back as its own
--- name, which is why the Fate Token sat in a category called
--- "IGUI_ItemCat_Fate". Every shipped mod that defines IGUI keys uses this
--- spelling.
 IGUI_EN = {
-	IGUI_ItemCat_Fate = "Fate",
-
 	IGUI_PermadeathLock_Blocked = "You died on this server. Permadeath is enabled here, so you cannot create a new character. If you think this is a mistake, contact an admin - they can bring you back.",
 
 	IGUI_PermadeathLock_BlockedKilled = "You died on this server, and permadeath is enabled here. No new character of yours is allowed to live - this one dies now, and so will the next. An admin can lift it: they can pardon you, or revive you and give you back what you learned.",
