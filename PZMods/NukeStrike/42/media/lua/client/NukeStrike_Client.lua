@@ -117,19 +117,66 @@ end
 ---@type table?
 local overlay = nil
 
-local function ensureOverlay()
-    if overlay ~= nil then return end
-    overlay = Overlay:new()
-    overlay:initialise()
-    overlay:instantiate()
-    overlay:addToUIManager()
+-- nil until we have found out whether this build lets us make a full screen
+-- element click-through; false means it does not and we never try again.
+---@type boolean?
+local clickThrough = nil
 
-    -- An overlay that swallows clicks would make the game unplayable for as long
-    -- as the haze is up, which is most of three days. The Java side only exists
-    -- once the element has been instantiated, so this cannot go in new().
-    NS.try("UIElement:setConsumeMouseEvents", function()
-        overlay.javaObject:setConsumeMouseEvents(false)
+--- Put the overlay on screen, if it is safe to.
+---
+--- A full screen element sitting in the UI manager swallows every mouse event
+--- behind it, which takes right-click away from the whole game. Two rules keep
+--- that from happening:
+---
+---   * It is made click-through BEFORE it goes on screen, not after. There is no
+---     window where it is live and still eating clicks.
+---   * If the build has no way to make it click-through, it is never added at
+---     all and the visuals are given up. Losing the green tint is a disappointment;
+---     losing the mouse is a broken game.
+---
+--- It is also only on screen while there is something to draw. Nothing is
+--- happening most of the time, and an element that is not there cannot misbehave.
+---@return boolean showing
+local function ensureOverlay()
+    if overlay ~= nil then return true end
+    if clickThrough == false then return false end
+
+    local element = Overlay:new()
+    element:initialise()
+    element:instantiate()
+
+    NS.try("ISUIElement:setAlwaysOnTop", function() element:setAlwaysOnTop(false) end)
+    NS.try("ISUIElement:setCapture", function() element:setCapture(false) end)
+
+    local _, ok = NS.try("UIElement:setConsumeMouseEvents", function()
+        element.javaObject:setConsumeMouseEvents(false)
     end)
+
+    if not ok then
+        clickThrough = false
+        print("[NukeStrike] this build will not let the screen overlay pass mouse clicks "
+            .. "through, so the flash and the haze tint are switched off. Everything else "
+            .. "works - this only costs you the visuals, and it keeps your right-click.")
+        return false
+    end
+
+    clickThrough = true
+    element:addToUIManager()
+    overlay = element
+    return true
+end
+
+--- Take it off screen the moment there is nothing left to draw.
+local function dropOverlay()
+    if overlay == nil then return end
+    NS.try("ISUIElement:removeFromUIManager", function() overlay:removeFromUIManager() end)
+    overlay = nil
+end
+
+--- Whether anything wants drawing right now.
+---@return boolean
+local function anythingToDraw()
+    return flash > 0.01 or haze > 0.01 or hazeTarget > 0.01 or warning ~= nil
 end
 
 --------------------------------------------------------------------------------
@@ -154,7 +201,6 @@ end
 
 ---@param args table
 local function onDetonate(args)
-    ensureOverlay()
     warning = nil
 
     local distance = distanceTo(args.x, args.y)
@@ -180,8 +226,6 @@ end
 
 ---@param args table
 local function onWarn(args)
-    ensureOverlay()
-
     local seconds = tonumber(args.seconds) or 0
     warning = { endMs = NS.realMillis() + seconds * 1000 }
 
@@ -211,7 +255,6 @@ local function receive(command, args)
         onWarn(args)
     elseif command == "zones" then
         zones = args.zones or {}
-        if #zones > 0 then ensureOverlay() end
     elseif command == "hazeHit" then
         onHazeHit()
     elseif command == "message" then
@@ -301,13 +344,22 @@ local function tick()
     elseif haze > hazeTarget then
         haze = math.max(hazeTarget, haze - 0.01)
     end
+
+    -- On screen only while it has something to say.
+    if anythingToDraw() then
+        ensureOverlay()
+    else
+        dropOverlay()
+    end
 end
 
 ---@param playerIndex integer
 ---@param player IsoPlayer
 local function onCreatePlayer(playerIndex, player)
     if playerIndex ~= 0 or player == nil then return end
-    ensureOverlay()
+    -- Deliberately does NOT put the overlay on screen. There is nothing to draw
+    -- at spawn, and a full screen element that is up from the moment you load in
+    -- is exactly how the mod used to eat everyone's right-click.
     NS.toHost("sync", {})
 end
 

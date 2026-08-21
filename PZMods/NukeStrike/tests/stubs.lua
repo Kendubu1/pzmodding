@@ -16,8 +16,11 @@ function stubs.install(flags)
     function isClient() return flags.client == true end
     function isCoopHost() return flags.coop == true end
 
-    function getTimestamp() return 1700000000 end
-    function getTimestampMs() return 1700000000000 end
+    -- A clock the tests can move. The countdown is measured in real time, so a
+    -- test that wants to watch one run out has to be able to push it forward.
+    stubs.millis = 1700000000000
+    function getTimestamp() return math.floor(stubs.millis / 1000) end
+    function getTimestampMs() return stubs.millis end
 
     -- Deterministic, so a test that rolls a die gets the same answer twice.
     math.randomseed(4)
@@ -66,6 +69,11 @@ function stubs.install(flags)
 
     -- Client-side furniture.
     ISChat = { onCommandEntered = function() end, instance = nil }
+    -- Screen elements. stubs.ui records what actually reached the UI manager,
+    -- which is the thing that decides whether the player still has a mouse.
+    stubs.ui = { onScreen = 0 }
+    stubs.consumeMouseEventsWorks = true
+
     ISUIElement = {
         derive = function(_, name)
             local class = {}
@@ -73,7 +81,37 @@ function stubs.install(flags)
             class.name = name
             return class
         end,
-        new = function(_, x, y, w, h) return { x = x, y = y, width = w, height = h } end,
+        new = function(_, x, y, w, h)
+            local element = { x = x, y = y, width = w, height = h, added = false }
+
+            element.javaObject = {
+                setConsumeMouseEvents = function()
+                    if not stubs.consumeMouseEventsWorks then
+                        error("setConsumeMouseEvents does not exist on this build")
+                    end
+                    element.clickThrough = true
+                end,
+            }
+
+            function element:initialise() end
+            function element:instantiate() end
+            function element:setAlwaysOnTop() end
+            function element:setCapture() end
+            function element:drawRect() end
+            function element:drawTextCentre() end
+
+            function element:addToUIManager()
+                element.added = true
+                stubs.ui.onScreen = stubs.ui.onScreen + 1
+            end
+
+            function element:removeFromUIManager()
+                element.added = false
+                stubs.ui.onScreen = stubs.ui.onScreen - 1
+            end
+
+            return element
+        end,
     }
     function getCore()
         return { getScreenWidth = function() return 1920 end,

@@ -110,4 +110,25 @@ check("and the sirens still run", plain.args.immediate, false)
 check("the second option rolls for it", click(menu.options[2]).args.roll, true)
 check("the third skips the warning", click(menu.options[3]).args.immediate, true)
 
+--------------------------------------------------------------------------------
+-- it must never take the whole menu down with it
+--------------------------------------------------------------------------------
+
+-- An error raised while the game is building a context menu kills the WHOLE
+-- menu: the player loses right-click on doors, corpses, inventory, everything,
+-- not just on this mod. A missing Nuke Strike entry is a bug; a missing context
+-- menu is a bricked game.
+local realGetNew = ISContextMenu.getNew
+ISContextMenu.getNew = function() error("submenus work differently on this build") end
+
+local context = stubs.newContextMenu()
+local survived = pcall(fill, 0, context, ground(10500, 9500), false)
+
+isTrue("a broken submenu does not escape into the game's menu code", survived)
+
+ISContextMenu.getNew = realGetNew
+
+-- And the next right-click still works once whatever it was has passed.
+isTrue("the menu recovers afterwards", build(ground(10500, 9500)) ~= nil)
+
 stubs.finish("test_contextmenu")

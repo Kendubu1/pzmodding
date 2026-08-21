@@ -11,7 +11,8 @@ with `dofile`.
 | `test_zones.lua` | The record of what has been nuked: overlapping craters, haze expiry, the patch bookkeeping that stops ground being levelled twice, the cap on how many strikes are kept. |
 | `test_blast.lua` | The blast engine against a toy sixteen-by-sixteen world: that the queue drains, that it levels inside the radius and not outside, that a patch which was only half loaded is left for later and levelled when it arrives, and that the fire cap holds across the sweep *and* the late arrivals. Also the vehicles: deleted in the fireball, wrecked and burning outside it, spared beyond it, and — the regression — that one car the build cannot read does not take every car after it down with it. |
 | `test_server.lua` | The server's decisions: admin gating, target resolution, off-map rejection, the d6, the countdown and aborting it, and what the fallout costs a player with and without a mask — and that the haze kills bandits (by either identifying mark) at a player's pace while leaving plain zombies alone. |
-| `test_contextmenu.lua` | The right-click menu: who is offered it, that the measuring pass adds nothing, that ground with no square is skipped, and that each option sends the command it says it does. |
+| `test_contextmenu.lua` | The right-click menu: who is offered it, that the measuring pass adds nothing, that ground with no square is skipped, that each option sends the command it says it does, and that an error inside it cannot escape into the game's menu code and take everyone's right-click with it. |
+| `test_client.lua` | The screen overlay, and the one rule that matters most about it: that it is never on screen when there is nothing to draw, and that on a build which cannot make it click-through it is abandoned rather than added anyway. A full screen element in the UI manager swallows every mouse event behind it — this is the test that stops the mod taking right-click away from the whole game. |
 | `test_gating.sh` | Loads the mod once per game mode and checks which halves come alive against the expected matrix. The guard against the mod silently doing nothing in a mode it should support. |
 
 They cannot test anything the game owns — whether the events actually fire,
@@ -26,6 +27,7 @@ lua5.1 PZMods/NukeStrike/tests/test_zones.lua
 lua5.1 PZMods/NukeStrike/tests/test_blast.lua
 lua5.1 PZMods/NukeStrike/tests/test_server.lua
 lua5.1 PZMods/NukeStrike/tests/test_contextmenu.lua
+lua5.1 PZMods/NukeStrike/tests/test_client.lua
 sh      PZMods/NukeStrike/tests/test_gating.sh
 ```
 

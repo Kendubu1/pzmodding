@@ -57,9 +57,7 @@ end
 ---@param playerIndex integer
 ---@param context ISContextMenu
 ---@param worldobjects table
----@param test boolean
-local function onFillWorldObjectContextMenu(playerIndex, context, worldobjects, test)
-    if test then return end
+local function build(playerIndex, context, worldobjects)
     if not NS.isEnabled() then return end
 
     local player = getSpecificPlayer(playerIndex)
@@ -78,6 +76,29 @@ local function onFillWorldObjectContextMenu(playerIndex, context, worldobjects, 
     menu:addOption(string.format("Call a strike on %d, %d", x, y), target, call, false, false)
     menu:addOption(string.format("Roll the die for %d, %d", x, y), target, call, true, false)
     menu:addOption("Call one with no warning", target, call, false, true)
+end
+
+---@param playerIndex integer
+---@param context ISContextMenu
+---@param worldobjects table
+---@param test boolean
+local function onFillWorldObjectContextMenu(playerIndex, context, worldobjects, test)
+    -- The measuring pass. Adding options during it is how you get a menu that
+    -- is the wrong size or opens twice.
+    if test then return end
+
+    -- Everything this mod adds to the menu is wrapped, because the alternative
+    -- is severe out of all proportion: an error raised while the game is
+    -- building a context menu takes the WHOLE menu down, and the player loses
+    -- right-click on everything - doors, corpses, inventory - not just on us.
+    -- A missing Nuke Strike entry is a bug. A missing context menu is a bricked
+    -- game, and no feature of this mod is worth that trade.
+    local ok, err = pcall(build, playerIndex, context, worldobjects)
+    if not ok then
+        NS.try("NukeStrike context menu", function()
+            print("[NukeStrike] could not add the right-click menu, skipping it: " .. tostring(err))
+        end)
+    end
 end
 
 Events.OnFillWorldObjectContextMenu.Add(onFillWorldObjectContextMenu)
