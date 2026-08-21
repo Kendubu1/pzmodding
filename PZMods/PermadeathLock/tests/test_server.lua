@@ -9,9 +9,22 @@ local handlers = {}      -- captured Events.*.Add callbacks
 function isServer() return true end
 function isClient() return false end
 function getTimestamp() return 1700000000 end
-function print(...) end  -- silence the mod's console output
+function print(...) end
 
-SandboxVars = { PermadeathLock = { Enabled = true, ExemptAdmins = true, EnforceKill = true, RestoreSkillsOnRevive = true } }
+-- Kahlua, the Lua implementation Project Zomboid runs, does not provide every
+-- Lua 5.1 global. `next` in particular is missing, and a call to it threw on
+-- every sweep. Removing them here makes that class of mistake a failing test
+-- rather than a server log full of stack traces. pairs/ipairs are unaffected:
+-- Lua 5.1 implements them natively rather than through the global.
+next = nil  -- silence the mod's console output
+
+SandboxVars = { PermadeathLock = {
+    Enabled = true, ExemptAdmins = true, EnforceKill = true,
+    RestoreSkillsOnRevive = true,
+    -- The disconnect path is the one the existing checks describe, so the
+    -- default is turned off here and tested on its own below.
+    KillOnSpawn = false,
+} }
 
 Events = setmetatable({}, { __index = function(t, name)
     local slot = {
@@ -23,21 +36,27 @@ Events = setmetatable({}, { __index = function(t, name)
 end })
 
 function sendServerCommand(player, module, command, args)
-    sent[#sent + 1] = { user = player:getUsername(), command = command, text = args and args.text }
+    sent[#sent + 1] = { user = player:getUsername(), command = command, text = args and args.text, args = args }
 end
 
 function getOnlinePlayers()
     return { size = function() return #online end, get = function(_, i) return online[i + 1] end }
 end
 
-local function makePerk(id)
-    return { getId = function() return id end, getType = function() return "TYPE_" .. id end }
+-- As in test_store: the id and the display name differ, because they do in the
+-- real game, and getPerkFromName matches the display name only.
+local function makePerk(id, displayName)
+    return {
+        getId = function() return id end,
+        getName = function() return displayName or id end,
+        getType = function() return "TYPE_" .. id end,
+    }
 end
-local perkList = { makePerk("Woodwork"), makePerk("Aiming") }
+local perkList = { makePerk("Woodwork", "Carpentry"), makePerk("Aiming", "Aiming") }
 PerkFactory = {
     PerkList = { size = function() return #perkList end, get = function(_, i) return perkList[i + 1] end },
     getPerkFromName = function(name)
-        for _, p in ipairs(perkList) do if p.getId() == name then return p end end
+        for _, p in ipairs(perkList) do if p.getName() == name then return p end end
     end,
 }
 
@@ -83,6 +102,16 @@ local function makeInventory(owner, tokens, nativeLookupBlind)
             return { size = function() return #items end, get = function(_, i) return items[i + 1] end }
         end,
     }
+    container.AddItem = function(_, fullType)
+        local item = {
+            getFullType = function() return fullType end,
+            getContainer = function() return container end,
+            IsInventoryContainer = function() return false end,
+            getInventory = function() error("getInventory called on a plain item") end,
+        }
+        items[#items + 1] = item
+        return item
+    end
     for _ = 1, tokens or 0 do
         items[#items + 1] = {
             getFullType = function() return "Base.FateToken" end,
@@ -190,6 +219,8 @@ check("checkStatus blocks on spawn", lastCommandTo("Bob"), "blocked")
 
 --------------------------------------------------------------------------------
 io.write("\n-- revive --\n")
+-- Continues the Bob thread from the section above: do not put a reset() in
+-- between, or Bob has no record left to be revived from.
 
 Store.revive("Bob")
 sent = {}
@@ -236,6 +267,55 @@ sweep()
 check("second death re-locks them", Store.isLocked("Dee"), true)
 
 --------------------------------------------------------------------------------
+io.write("\n-- the notice sent at the moment of death --\n")
+
+reset()
+sent = {}
+local pat = makePlayer("Pat", { dead = true })
+online = { pat }
+sweep()
+check("dying with no token is announced to the player", lastCommandTo("Pat"), "fateSealed")
+
+reset()
+sent = {}
+local quin = makePlayer("Quin", { dead = true, tokens = 1 })
+online = { quin }
+sweep()
+check("dying with a token announces the token instead", lastCommandTo("Quin"), "tokenSpent")
+
+--------------------------------------------------------------------------------
+io.write("\n-- killing on spawn instead of disconnecting --\n")
+
+reset()
+SandboxVars.PermadeathLock.KillOnSpawn = true
+local uma = makePlayer("Uma", { dead = true })
+online = { uma }
+sweep()
+check("Uma is locked out", Store.isLocked("Uma"), true)
+
+sent = {}
+local umaNew = makePlayer("Uma", {})
+online = { umaNew }
+sweep()
+check("the new character is killed at once", umaNew._dead, true)
+check("and told why", lastCommandTo("Uma"), "blocked")
+check("the notice says not to disconnect", sent[#sent].args.kill, true)
+
+-- and the character after that, with no strike count to run out
+local umaAgain = makePlayer("Uma", {})
+online = { umaAgain }
+sweep()
+check("so is the one after it", umaAgain._dead, true)
+
+-- being killed by the block must not spend a Fate Token they happen to hold
+local umaToken = makePlayer("Uma", { tokens = 1 })
+online = { umaToken }
+sweep()
+check("an enforcement kill does not eat a token", #umaToken._items, 1)
+check("and does not unlock them", Store.isLocked("Uma"), true)
+SandboxVars.PermadeathLock.KillOnSpawn = false
+
+--------------------------------------------------------------------------------
 io.write("\n-- admin command authorisation --\n")
 
 reset()
@@ -256,6 +336,50 @@ onClientCommand(MODULE, "admin", admin, { sub = "clear" })
 check("clear without confirm is refused", Store.count(), 2)
 onClientCommand(MODULE, "admin", admin, { sub = "clear", target = "confirm" })
 check("clear with confirm wipes", Store.count(), 0)
+
+-- REGRESSION: pardoning a player whose character is still lying dead in the
+-- world used to be undone by the very next sweep. The sweep records any dead
+-- player it finds with no record, so a minute after the pardon they were back
+-- on the list - and were then blocked when they made a new character, which is
+-- exactly the "I cleared myself and still cannot spawn in" report.
+reset()
+local rae = makePlayer("Rae", { dead = true })
+online = { rae }
+sweep()
+check("Rae is locked out after dying", Store.isLocked("Rae"), true)
+onClientCommand(MODULE, "admin", admin, { sub = "pardon", target = "Rae" })
+check("pardon takes them off the list", Store.get("Rae"), nil)
+sweep()                                   -- corpse still standing there
+check("the next sweep does not re-record them", Store.get("Rae"), nil)
+sweep()
+check("nor the sweep after that", Store.get("Rae"), nil)
+
+-- and once they are back on their feet a fresh death counts again
+rae._dead = false
+sweep()
+rae._dead = true
+sweep()
+check("a death after the pardon still locks them", Store.isLocked("Rae"), true)
+
+-- the same trap for a whole-list wipe
+reset()
+local sam = makePlayer("Sam", { dead = true })
+online = { sam }
+sweep()
+check("Sam is locked out after dying", Store.isLocked("Sam"), true)
+onClientCommand(MODULE, "admin", admin, { sub = "clear", target = "confirm" })
+sweep()
+check("clear all is not undone by the next sweep", Store.count(), 0)
+
+-- but pardoning someone who is OFFLINE must not excuse a later death
+reset()
+Store.addManual("Tess", "test")
+online = {}
+onClientCommand(MODULE, "admin", admin, { sub = "pardon", target = "Tess" })
+local tess = makePlayer("Tess", { dead = true })
+online = { tess }
+sweep()
+check("offline pardon does not excuse the next death", Store.isLocked("Tess"), true)
 
 -- reviving someone who is online and alive heals them on the spot
 reset()
@@ -359,6 +483,88 @@ sweep()
 nia._dead = true
 sweep()
 check("no token means locked out", Store.isLocked("Nia"), true)
+
+--------------------------------------------------------------------------------
+io.write("\n-- the admin panel's roster feed --\n")
+
+reset()
+local sara = makePlayer("Sara", { levels = { TYPE_Woodwork = 3, TYPE_Aiming = 1 }, dead = true })
+online = { sara }
+sweep()
+
+local panelAdmin = makePlayer("Admin", { admin = true })
+sent = {}
+onClientCommand(MODULE, "admin", panelAdmin, { sub = "listdata" })
+local payload = sent[#sent]
+check("listData answers an admin", payload.command, "listData")
+check("the row names the player", payload.args.rows[1].username, "Sara")
+check("and counts their skills", payload.args.rows[1].skills, 2)
+check("and reports them locked", payload.args.rows[1].locked, true)
+check("the payload carries the version", payload.args.version, PermadeathLock.VERSION)
+
+-- the roster covers the living too, which is the point of it
+local wes = makePlayer("Wes", { tokens = 2 })
+online = { sara, wes, panelAdmin }
+sent = {}
+onClientCommand(MODULE, "admin", panelAdmin, { sub = "listdata" })
+payload = sent[#sent]
+local rows = {}
+for _, row in ipairs(payload.args.rows) do rows[row.username] = row end
+check("a player who never died is listed", rows.Wes ~= nil, true)
+check("they are not on the death list", rows.Wes and rows.Wes.listed, false)
+check("their tokens are counted", rows.Wes and rows.Wes.tokens, 2)
+check("and they are reported online", rows.Wes and rows.Wes.online, true)
+check("an exempt admin is flagged as such", rows.Admin and rows.Admin.exempt, true)
+check("the dead player is still there", rows.Sara and rows.Sara.locked, true)
+
+-- trouble sorts to the top
+check("locked players come first", payload.args.rows[1].username, "Sara")
+
+sent = {}
+onClientCommand(MODULE, "admin", makePlayer("Nobody", {}), { sub = "listdata" })
+check("but not a non-admin", sent[1] and sent[1].command, "message")
+
+--------------------------------------------------------------------------------
+io.write("\n-- handing out and taking back tokens --\n")
+
+reset()
+local tara = makePlayer("Tara", {})
+local tokenAdmin = makePlayer("Admin", { admin = true })
+online = { tara, tokenAdmin }
+
+sent = {}
+onClientCommand(MODULE, "admin", tokenAdmin, { sub = "give", target = "tara" })
+check("the target's client is asked to add it", lastCommandTo("Tara"), "giveToken")
+check("nothing is pushed into the inventory from here", #tara._items, 0)
+
+-- the client does it and reports back
+onClientCommand(MODULE, "admin", tokenAdmin, { sub = "give", target = "tara" })
+tara._container:AddItem("Base.FateToken")
+sent = {}
+onClientCommand(MODULE, "tokenResult", tara, { action = "give", ok = true })
+check("the admin who asked is told", lastCommandTo("Admin"), "listData")
+check("and the fresh roster reaches them", sent[#sent].args.rows ~= nil, true)
+
+-- a non-admin cannot hand themselves one
+sent = {}
+local greedy = makePlayer("Greedy", {})
+online = { greedy }
+onClientCommand(MODULE, "admin", greedy, { sub = "give", target = "Greedy" })
+check("a non-admin is refused", lastCommandTo("Greedy"), "message")
+
+-- and an unsolicited result is ignored rather than spraying panels
+reset()
+online = { tara, tokenAdmin }
+sent = {}
+onClientCommand(MODULE, "tokenResult", tara, { action = "give", ok = true })
+check("an unasked-for result is dropped", #sent, 0)
+
+-- taking one back from someone offline is refused, not silently lost
+reset()
+online = { tokenAdmin }
+sent = {}
+onClientCommand(MODULE, "admin", tokenAdmin, { sub = "take", target = "Ghosty" })
+check("offline target is refused", lastCommandTo("Admin"), "message")
 
 --------------------------------------------------------------------------------
 io.write("\n-- disabling the mod --\n")

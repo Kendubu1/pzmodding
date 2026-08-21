@@ -9,7 +9,7 @@
 PermadeathLock = PermadeathLock or {}
 local PL = PermadeathLock
 
-PL.VERSION = "1.0.4"
+PL.VERSION = "1.6.2"
 
 -- Module name used by sendClientCommand / sendServerCommand.
 PL.MODULE = "PermadeathLock"
@@ -83,6 +83,86 @@ function PL.key(username)
     local trimmed = tostring(username):match("^%s*(.-)%s*$")
     if trimmed == nil or trimmed == "" then return nil end
     return string.lower(trimmed)
+end
+
+--------------------------------------------------------------------------------
+-- finding fate tokens
+--------------------------------------------------------------------------------
+--
+-- Shared rather than server-only because both halves need it now: the server
+-- counts a player's tokens for the admin panel and spends one on death, and the
+-- client takes one back when an admin revokes it. Handing out and taking away
+-- is done by the owning client, because in Project Zomboid a player's inventory
+-- belongs to their own machine.
+
+local scanTokens
+
+--- Walk a container and its bags by hand, collecting every token found.
+---@param container ItemContainer?
+---@param depth integer
+---@param found InventoryItem[]
+scanTokens = function(container, depth, found)
+    if container == nil or depth > 3 then return end
+
+    local items = container:getItems()
+    if items == nil then return end
+
+    for i = 0, items:size() - 1 do
+        local item = items:get(i)
+        if item ~= nil then
+            if item:getFullType() == PL.FATE_TOKEN then
+                found[#found + 1] = item
+            end
+            -- Ask before descending. Calling getInventory on a plain item
+            -- raises, and a pcall around it is NOT quiet: Kahlua prints the
+            -- stack trace even when the error is caught, which floods the
+            -- server log once per item per sweep.
+            if item:IsInventoryContainer() then
+                scanTokens(item:getInventory(), depth + 1, found)
+            end
+        end
+    end
+end
+
+--- Every Fate Token on a character, bags included.
+--- Matched by full type, so there is no ambiguity with a similarly named item
+--- from another mod.
+---@param player IsoPlayer?
+---@return InventoryItem[]
+function PL.findTokens(player)
+    if player == nil then return {} end
+
+    local inventory = player:getInventory()
+    if inventory == nil then return {} end
+
+    -- The native lookup first, because it is the one the game maintains. The
+    -- hand-rolled scan is a backstop for it not reaching inside nested bags.
+    local ok, native = pcall(function()
+        return inventory:getItemsFromFullType(PL.FATE_TOKEN, true)
+    end)
+    if ok and native ~= nil and native:size() > 0 then
+        local found = {}
+        for i = 0, native:size() - 1 do
+            found[#found + 1] = native:get(i)
+        end
+        return found
+    end
+
+    local found = {}
+    pcall(scanTokens, inventory, 0, found)
+    return found
+end
+
+---@param player IsoPlayer?
+---@return InventoryItem?
+function PL.findToken(player)
+    return PL.findTokens(player)[1]
+end
+
+---@param player IsoPlayer?
+---@return integer
+function PL.countTokens(player)
+    return #PL.findTokens(player)
 end
 
 --- Players the lock never applies to.

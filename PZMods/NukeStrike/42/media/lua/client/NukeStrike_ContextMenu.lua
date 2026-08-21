@@ -23,11 +23,14 @@ local function mayCall(player)
     if NS.isSingle() then return true end
     if NS.getOption("AdminOnly", true) ~= true then return true end
 
-    local ok, admin = pcall(function() return player:isAccessLevel("admin") end)
-    if ok and admin == true then return true end
-
-    local debugOk, debugging = pcall(function() return isDebugEnabled() end)
-    return debugOk and debugging == true
+    -- NS.try rather than a bare pcall: in Kahlua a caught error still prints its
+    -- whole stack trace, so a bare pcall in a right-click handler floods the log
+    -- every time anyone right-clicks anything. NS.try complains once, then stops
+    -- asking.
+    if NS.try("isAccessLevel", function() return player:isAccessLevel("admin") end) == true then
+        return true
+    end
+    return NS.try("isDebugEnabled", function() return isDebugEnabled() end) == true
 end
 
 ---@param target table {x, y}
@@ -48,16 +51,45 @@ end
 ---@return IsoGridSquare?
 local function squareUnder(worldobjects)
     for _, object in ipairs(worldobjects or {}) do
-        local ok, square = pcall(function() return object:getSquare() end)
-        if ok and square ~= nil then return square end
+        local square = NS.try("getSquare", function() return object:getSquare() end)
+        if square ~= nil then return square end
     end
     return nil
+end
+
+--- Attach the submenu. Separated out so the whole mutation can be guarded as
+--- one unit, and so a half-built menu is never left behind.
+---@param context ISContextMenu
+---@param target table
+---@param x integer
+---@param y integer
+---@return boolean built
+local function buildMenu(context, target, x, y)
+    local parent = context:addOption("Nuke Strike", nil, nil)
+    if parent == nil then return false end
+
+    local menu = ISContextMenu:getNew(context)
+    if menu == nil then
+        -- Greyed out beats dangling: an option pointing at a submenu that does
+        -- not exist is what breaks the whole menu.
+        parent.notAvailable = true
+        return false
+    end
+
+    context:addSubMenu(parent, menu)
+    menu:addOption(string.format("Call a strike on %d, %d", x, y), target, call, false, false)
+    menu:addOption(string.format("Roll the die for %d, %d", x, y), target, call, true, false)
+    menu:addOption("Call one with no warning", target, call, false, true)
+    return true
 end
 
 ---@param playerIndex integer
 ---@param context ISContextMenu
 ---@param worldobjects table
-local function build(playerIndex, context, worldobjects)
+---@param test boolean
+local function onFillWorldObjectContextMenu(playerIndex, context, worldobjects, test)
+    if test then return end
+    if context == nil then return end
     if not NS.isEnabled() then return end
 
     local player = getSpecificPlayer(playerIndex)
@@ -69,36 +101,15 @@ local function build(playerIndex, context, worldobjects)
     local x, y = math.floor(square:getX()), math.floor(square:getY())
     local target = { x = x, y = y }
 
-    local parent = context:addOption("Nuke Strike", nil, nil)
-    local menu = ISContextMenu:getNew(context)
-    context:addSubMenu(parent, menu)
-
-    menu:addOption(string.format("Call a strike on %d, %d", x, y), target, call, false, false)
-    menu:addOption(string.format("Roll the die for %d, %d", x, y), target, call, true, false)
-    menu:addOption("Call one with no warning", target, call, false, true)
-end
-
----@param playerIndex integer
----@param context ISContextMenu
----@param worldobjects table
----@param test boolean
-local function onFillWorldObjectContextMenu(playerIndex, context, worldobjects, test)
-    -- The measuring pass. Adding options during it is how you get a menu that
-    -- is the wrong size or opens twice.
-    if test then return end
-
-    -- Everything this mod adds to the menu is wrapped, because the alternative
-    -- is severe out of all proportion: an error raised while the game is
-    -- building a context menu takes the WHOLE menu down, and the player loses
-    -- right-click on everything - doors, corpses, inventory - not just on us.
-    -- A missing Nuke Strike entry is a bug. A missing context menu is a bricked
-    -- game, and no feature of this mod is worth that trade.
-    local ok, err = pcall(build, playerIndex, context, worldobjects)
-    if not ok then
-        NS.try("NukeStrike context menu", function()
-            print("[NukeStrike] could not add the right-click menu, skipping it: " .. tostring(err))
-        end)
-    end
+    -- Everything above this line only reads. The context is mutated below, all
+    -- at once, and never before every value the options need already exists.
+    --
+    -- This matters more than it looks. A handler that adds its parent option and
+    -- then fails leaves the menu holding a parent whose submenu never arrived,
+    -- and the game cannot render that - so right-click stops working for every
+    -- mod, not just this one. Guarded so a fault here costs this menu and
+    -- nothing else.
+    NS.try("world context menu", buildMenu, context, target, x, y)
 end
 
 Events.OnFillWorldObjectContextMenu.Add(onFillWorldObjectContextMenu)

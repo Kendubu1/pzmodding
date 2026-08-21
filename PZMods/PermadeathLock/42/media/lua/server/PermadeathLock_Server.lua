@@ -29,6 +29,20 @@ local MODULE = PL.MODULE
 ---@type table<string, integer>
 local strikes = {}
 
+-- Players an admin has taken off the list while their character was still lying
+-- dead in the world.
+--
+-- The sweep records any dead player it finds who has no record, so without this
+-- a pardon is quietly undone about a minute after it is given: the corpse is
+-- still standing there, the sweep sees a dead player with no record, and puts
+-- them straight back on the list. The player then makes a new character and is
+-- blocked by a lock they were told had been lifted.
+--
+-- The flag is dropped the moment they are seen alive again - that is their new
+-- character, and any death after it counts normally.
+---@type table<string, boolean>
+local forgiven = {}
+
 --------------------------------------------------------------------------------
 -- helpers
 --------------------------------------------------------------------------------
@@ -39,13 +53,33 @@ local function tell(player, text)
     sendServerCommand(player, MODULE, "message", { text = text })
 end
 
+--- Tell a locked-out player they are locked out, and, in the default mode, kill
+--- the character they just made.
+---
+--- Killing rather than disconnecting is deliberate. Being thrown off the server
+--- is indistinguishable from a crash or a connection problem, and it makes the
+--- mod much harder to watch while testing: you lose the console, the chat and
+--- the world the moment anything happens. Killed, the player stays connected,
+--- reads the notice, and can keep making characters - each of which dies the
+--- same way, which is a rule rather than a fault.
 ---@param player IsoPlayer
 ---@param record table?
 local function sendBlocked(player, record)
+    local killOnSpawn = PL.getOption("KillOnSpawn", true) == true
+
     sendServerCommand(player, MODULE, "blocked", {
         username = player:getUsername(),
         time = record and record.time or 0,
+        -- Whether the client should show itself out. It never decides this:
+        -- the server is about to kill the character either way.
+        kill = killOnSpawn,
     })
+
+    if killOnSpawn and not player:isDead() then
+        player:Kill(player)
+        print("[PermadeathLock] " .. player:getUsername()
+            .. " is locked out; the new character was killed on spawn.")
+    end
 end
 
 ---@param username string?
@@ -88,58 +122,12 @@ end
 ---@type table<string, boolean>
 local carriedToken = {}
 
-local scanForToken
-
---- Walk a container and its bags by hand. A backstop for the native lookup,
---- which we do not want to depend on for reaching inside nested containers.
----@param container ItemContainer?
----@param depth integer
----@return InventoryItem?
-scanForToken = function(container, depth)
-    if container == nil or depth > 3 then return nil end
-
-    local items = container:getItems()
-    if items == nil then return nil end
-
-    for i = 0, items:size() - 1 do
-        local item = items:get(i)
-        if item ~= nil then
-            if item:getFullType() == PL.FATE_TOKEN then return item end
-            -- Ask before descending. Calling getInventory on a plain item raises,
-            -- and a pcall around it is NOT quiet: Kahlua prints the stack trace
-            -- even when the error is caught, which floods the server log once
-            -- per item per sweep.
-            if item:IsInventoryContainer() then
-                local nested = item:getInventory()
-                if nested ~= nil then
-                    local found = scanForToken(nested, depth + 1)
-                    if found ~= nil then return found end
-                end
-            end
-        end
-    end
-    return nil
-end
-
---- Find a Fate Token anywhere on the character, bags included.
---- Searched by full type so there is no ambiguity with a similarly named item
---- from another mod.
----@param player IsoPlayer
----@return InventoryItem?
-local function findFateToken(player)
-    local inventory = player:getInventory()
-    if inventory == nil then return nil end
-
-    local ok, found = pcall(function()
-        return inventory:getItemsFromFullType(PL.FATE_TOKEN, true)
-    end)
-    if ok and found ~= nil and found:size() > 0 then return found:get(0) end
-
-    local scanned
-    ok, scanned = pcall(scanForToken, inventory, 0)
-    if ok then return scanned end
-    return nil
-end
+-- The admin waiting to see the result of a token they handed out or took back,
+-- keyed by the target's username. A grant is carried out by the target's own
+-- client, so the answer comes back a moment later and the panel that asked has
+-- to be told to redraw then rather than immediately.
+---@type table<string, string>
+local tokenWatchers = {}
 
 --- Note whether a LIVING player is carrying a token. Never called for the dead:
 --- their inventory has usually moved to the corpse, and recording "no token"
@@ -150,7 +138,7 @@ local function rememberToken(player)
 
     local key = PL.key(player:getUsername())
     if key == nil then return end
-    carriedToken[key] = findFateToken(player) ~= nil
+    carriedToken[key] = PL.findToken(player) ~= nil
 end
 
 --- Burn the token. Failure is not fatal: the save is already earned, and the
@@ -175,13 +163,17 @@ local function recordDeath(player, reason)
     local key = PL.key(player:getUsername())
     local token, remembered = nil, false
     if PL.getOption("FateTokenEnabled", true) then
-        token = findFateToken(player)
+        token = PL.findToken(player)
         remembered = carriedToken[key] == true
     end
 
     if token == nil and not remembered then
         local record = Store.record(player, reason)
         if record ~= nil then
+            -- Tell them what just happened. Without this the only sign that the
+            -- lock has closed is being thrown off the server when they try to
+            -- make a new character, which reads as a crash rather than a rule.
+            sendServerCommand(player, MODULE, "fateSealed", {})
             print("[PermadeathLock] " .. record.username .. " died (" .. reason
                 .. ") and is locked out. No Fate Token on the body or in their last living inventory.")
         end
@@ -217,24 +209,35 @@ end
 ---@param player IsoPlayer
 ---@param record table
 local function applyRestore(player, record)
-    local raised = 0
+    local restored, missing = 0, {}
     if PL.getOption("RestoreSkillsOnRevive", true) then
-        raised = Store.applySkills(player, record.skills)
+        restored, missing = Store.applySkills(player, record.skills)
     end
     Store.finishRestore(record.username)
     strikes[PL.key(record.username)] = nil
+    forgiven[PL.key(record.username)] = nil
 
     local source = "An admin brought you back."
     if record.reason == PL.REASON_TOKEN then
         source = "Your Fate Token paid for this life."
     end
 
-    if raised > 0 then
-        tell(player, source .. " " .. raised .. " skill(s) restored from your last character.")
+    if restored > 0 then
+        tell(player, source .. " " .. restored .. " skill(s) restored from your last character.")
     else
         tell(player, source .. " Try to stay alive this time.")
     end
-    print("[PermadeathLock] Restored " .. record.username .. " (" .. raised .. " skills).")
+
+    print("[PermadeathLock] Restored " .. record.username .. " (" .. restored .. " skills).")
+    -- Loud on purpose. A perk in the snapshot that the game no longer knows
+    -- about - a mod removed since the death, or a renamed vanilla perk - is
+    -- silently dropped, and the player is the last person who should have to
+    -- work that out.
+    if #missing > 0 then
+        print("[PermadeathLock] WARNING: " .. #missing .. " perk(s) in "
+            .. record.username .. "'s snapshot no longer exist and were skipped: "
+            .. table.concat(missing, ", "))
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -259,19 +262,33 @@ local function checkPlayer(player)
 
     if PL.isExempt(player) then return end
 
+    local key = PL.key(username)
+
     if player:isDead() then
-        recordDeath(player, "died")
+        -- Pardoned since they died: leave the corpse alone rather than putting
+        -- them back on the list they were just taken off.
+        if not forgiven[key] then recordDeath(player, "died") end
         return
     end
 
-    -- Alive: note whether they are carrying a token, so a death spotted after
-    -- the corpse has taken the inventory still counts.
+    -- Alive: this is a new character, so an earlier pardon has done its job.
+    forgiven[key] = nil
+
+    -- Note whether they are carrying a token, so a death spotted after the
+    -- corpse has taken the inventory still counts.
     rememberToken(player)
 
     if record == nil or not record.locked then return end
 
-    -- Alive while locked out means they made a new character. Ask once, then act.
-    local key = PL.key(username)
+    -- Alive while locked out means they made a new character.
+    if PL.getOption("KillOnSpawn", true) then
+        -- Every time, with no strike count to keep: the character dies on the
+        -- spot, and so does the next one.
+        sendBlocked(player, record)
+        return
+    end
+
+    -- Otherwise ask them to leave once, then enforce it.
     strikes[key] = (strikes[key] or 0) + 1
 
     if strikes[key] == 1 then
@@ -304,6 +321,9 @@ Events.EveryOneMinute.Add(sweep)
 local HELP = {
     "/permadeath status            - is the lock on, and how many are locked out",
     "/permadeath list              - show the death list",
+    "/permadeath ui                - open the admin panel",
+    "/permadeath give <user>       - hand a player a Fate Token",
+    "/permadeath take <user>       - take a Fate Token back",
     "/permadeath revive <user>     - bring a player back, keeping their skills",
     "/permadeath pardon <user>     - let a player back in, from scratch",
     "/permadeath add <user>        - lock a player out by hand",
@@ -359,9 +379,182 @@ local function commandPardon(admin, target)
         tell(admin, target .. " is not on the death list.")
         return
     end
-    strikes[PL.key(target)] = nil
+    local key = PL.key(target)
+    strikes[key] = nil
+
     tell(admin, target .. " pardoned. They may rejoin with a fresh character.")
+
+    -- Only flagged when they are online AND dead right now, which is the case
+    -- the flag exists for. Setting it for an offline player would also excuse a
+    -- fresh death in the minute after they reconnect.
+    local online = findOnline(target)
+    if online ~= nil and online:isDead() then
+        forgiven[key] = true
+        -- Worth saying out loud: a pardon does not stand their character back
+        -- up, and an admin watching the corpse not move assumes it did nothing.
+        tell(admin, "Their current character is still dead - the game gives no way to undo that. They")
+        tell(admin, "need to reconnect and make a new one; they will not be blocked.")
+    end
+
     print("[PermadeathLock] " .. admin:getUsername() .. " pardoned " .. target .. ".")
+end
+
+--- The roster, for the admin panel to render. The chat `list` command sends
+--- prose about the death list; this sends a row per player, and covers everyone
+--- online as well as everyone listed.
+---
+--- The point of including the living is that most of what an admin wants to
+--- know is about people who are NOT on the death list: who is playing, who is
+--- exempt and therefore cannot be locked out at all, and who is carrying a Fate
+--- Token. Reading that off a list of the dead was impossible.
+---@param admin IsoPlayer
+local function commandListData(admin)
+    local byKey, order = {}, {}
+
+    ---@param username string?
+    ---@return table? row
+    local function rowFor(username)
+        local key = PL.key(username)
+        if key == nil then return nil end
+        if byKey[key] == nil then
+            byKey[key] = { username = username }
+            order[#order + 1] = key
+        end
+        return byKey[key]
+    end
+
+    for _, record in ipairs(Store.all()) do
+        local row = rowFor(record.username)
+        if row ~= nil then
+            local count = 0
+            for _ in pairs(record.skills or {}) do count = count + 1 end
+            row.listed = true
+            row.age = describeAge(record.time)
+            row.locked = record.locked == true
+            row.pendingRestore = record.pendingRestore == true
+            row.skills = count
+        end
+    end
+
+    local players = getOnlinePlayers()
+    if players ~= nil then
+        for i = 0, players:size() - 1 do
+            local player = players:get(i)
+            if player ~= nil then
+                local row = rowFor(player:getUsername())
+                if row ~= nil then
+                    row.online = true
+                    row.dead = player:isDead()
+                    row.exempt = PL.isExempt(player)
+                    -- Read from the server's own view of the inventory, not
+                    -- reported by the client. Offline players are left with no
+                    -- token count at all rather than a made-up zero.
+                    row.tokens = PL.countTokens(player)
+                end
+            end
+        end
+    end
+
+    local rows = {}
+    for _, key in ipairs(order) do
+        local row = byKey[key]
+        row.listed = row.listed == true
+        row.online = row.online == true
+        row.dead = row.dead == true
+        row.exempt = row.exempt == true
+        row.locked = row.locked == true
+        row.pendingRestore = row.pendingRestore == true
+        row.skills = row.skills or 0
+        row.age = row.age or ""
+        rows[#rows + 1] = row
+    end
+
+    -- Trouble first: locked out, then awaiting a restore, then anyone else on
+    -- the list, then everyone who is simply playing. Alphabetical inside each
+    -- group. An admin opening this wants the people needing a decision on top.
+    local function rank(row)
+        if row.locked then return 1 end
+        if row.pendingRestore then return 2 end
+        if row.listed then return 3 end
+        return 4
+    end
+    table.sort(rows, function(a, b)
+        local ra, rb = rank(a), rank(b)
+        if ra ~= rb then return ra < rb end
+        return string.lower(a.username) < string.lower(b.username)
+    end)
+
+    sendServerCommand(admin, MODULE, "listData", {
+        version = PL.VERSION,
+        enabled = PL.isEnabled(),
+        tokens = PL.getOption("FateTokenEnabled", true) == true,
+        rows = rows,
+    })
+end
+
+--- Hand a player a Fate Token, or take one back.
+---
+--- Carried out by the target's own client rather than by reaching into their
+--- inventory from here. In Project Zomboid a player's inventory belongs to
+--- their machine; an item pushed in server-side is not reliably synced back to
+--- them, and one removed server-side can reappear.
+---@param admin IsoPlayer
+---@param target string?
+---@param give boolean
+local function commandToken(admin, target, give)
+    local verb = give and "give" or "take"
+    if target == nil then
+        tell(admin, "Usage: /permadeath " .. verb .. " <username>")
+        return
+    end
+
+    if not PL.getOption("FateTokenEnabled", true) then
+        tell(admin, "Fate Tokens are switched off in the sandbox settings. The item can still be")
+        tell(admin, "handed out, but dying with it will not save anyone.")
+    end
+
+    local player = findOnline(target)
+    if player == nil then
+        tell(admin, target .. " is not online. Tokens are real items, so they have to be here to hold one.")
+        return
+    end
+
+    tokenWatchers[PL.key(player:getUsername())] = admin:getUsername()
+    sendServerCommand(player, MODULE, give and "giveToken" or "takeToken", {})
+    print("[PermadeathLock] " .. admin:getUsername() .. " asked to " .. verb
+        .. " a Fate Token " .. (give and "to " or "from ") .. player:getUsername() .. ".")
+end
+
+--- The target's client has finished adding or removing a token. Tell whichever
+--- admin asked, and push them a fresh roster so the count they see is the one
+--- the server can actually verify.
+---@param player IsoPlayer the target, not the admin
+---@param args table
+local function onTokenResult(player, args)
+    local key = PL.key(player:getUsername())
+    if key == nil then return end
+
+    local adminName = tokenWatchers[key]
+    tokenWatchers[key] = nil
+    if adminName == nil then return end
+
+    local admin = findOnline(adminName)
+    if admin == nil or not admin:isAccessLevel("admin") then return end
+
+    -- Counted here rather than trusting the number the client sent back.
+    local held = PL.countTokens(player)
+    local gave = args.action == "give"
+
+    if args.ok == true then
+        tell(admin, (gave and "Gave " or "Took a Fate Token from ") .. player:getUsername()
+            .. (gave and " a Fate Token." or ".") .. " They now carry " .. held .. ".")
+    elseif gave then
+        tell(admin, "Could not give " .. player:getUsername() .. " a Fate Token.")
+    else
+        tell(admin, player:getUsername() .. " has no Fate Token to take.")
+    end
+
+    commandListData(admin)
 end
 
 ---@param admin IsoPlayer
@@ -395,10 +588,20 @@ local function handleAdmin(player, args)
         tell(player, "Permadeath Lock " .. PL.VERSION .. " is " .. state .. ". " .. Store.count() .. " player(s) on the death list.")
     elseif sub == "list" then
         commandList(player)
+    elseif sub == "listdata" then
+        commandListData(player)
+    elseif sub == "ui" then
+        -- Normally the client opens the panel itself without a round trip. This
+        -- branch catches an older client, and keeps the help text honest.
+        sendServerCommand(player, MODULE, "openUI", {})
     elseif sub == "revive" then
         commandRevive(player, target)
     elseif sub == "pardon" then
         commandPardon(player, target)
+    elseif sub == "give" then
+        commandToken(player, target, true)
+    elseif sub == "take" then
+        commandToken(player, target, false)
     elseif sub == "add" then
         if target == nil then
             tell(player, "Usage: /permadeath add <username>")
@@ -413,6 +616,19 @@ local function handleAdmin(player, args)
         else
             local removed = Store.clear()
             strikes = {}
+            -- Same trap as a single pardon, for everyone at once: any online
+            -- player currently lying dead would be re-recorded by the next
+            -- sweep, undoing the wipe a minute after it happened.
+            forgiven = {}
+            local players = getOnlinePlayers()
+            if players ~= nil then
+                for i = 0, players:size() - 1 do
+                    local other = players:get(i)
+                    if other ~= nil and other:isDead() then
+                        forgiven[PL.key(other:getUsername())] = true
+                    end
+                end
+            end
             tell(player, "Death list cleared (" .. removed .. " record(s) removed).")
             print("[PermadeathLock] " .. player:getUsername() .. " cleared the death list.")
         end
@@ -439,6 +655,14 @@ local function onClientCommand(module, command, player, args)
     if command == "admin" then
         -- Access is re-checked here: the client asking is never trusted.
         handleAdmin(player, args)
+        return
+    end
+
+    if command == "tokenResult" then
+        -- Not trusted: it only says "I am done", and everything reported back to
+        -- the admin is re-read from the server's own view of the inventory. The
+        -- worst a forged one can do is make an admin's panel redraw.
+        onTokenResult(player, args)
         return
     end
 

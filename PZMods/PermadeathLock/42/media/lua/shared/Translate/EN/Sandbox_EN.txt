@@ -7,8 +7,11 @@ Sandbox_EN = {
     Sandbox_PermadeathLock_ExemptAdmins = "Exempt admins",
     Sandbox_PermadeathLock_ExemptAdmins_tooltip = "Admins are never added to the death list and are never blocked. Useful for testing, and stops you locking yourself out of your own server.",
 
+    Sandbox_PermadeathLock_KillOnSpawn = "Kill locked-out players instead of disconnecting them"
+    Sandbox_PermadeathLock_KillOnSpawn_tooltip = "On: a locked-out player who makes a new character is killed on the spot and stays connected, and every character after that dies the same way. Off: they are shown a notice and their client disconnects itself, with 'Kill clients that ignore the block' as the backstop. Leaving them connected is much easier to watch while testing, and reads as a rule rather than a crash."
+
     Sandbox_PermadeathLock_EnforceKill = "Kill clients that ignore the block",
-    Sandbox_PermadeathLock_EnforceKill_tooltip = "The block is normally enforced by asking the client to disconnect. A modified client can ignore that. With this on, a locked-out player still in the world one minute later is killed server-side instead.",
+    Sandbox_PermadeathLock_EnforceKill_tooltip = "Only used when 'Kill locked-out players instead of disconnecting them' is off. The block is then enforced by asking the client to disconnect, which a modified client can ignore; with this on, a locked-out player still in the world one minute later is killed server-side instead.",
 
     Sandbox_PermadeathLock_RestoreSkillsOnRevive = "Restore skills on revive",
     Sandbox_PermadeathLock_RestoreSkillsOnRevive_tooltip = "When an admin revives a player, give their next character the skill levels the dead character had. Turn off to let revived players return from scratch.",
@@ -18,4 +21,5 @@ Sandbox_EN = {
 
     Sandbox_PermadeathLock_FateTokenConsume = "Fate Tokens are consumed",
     Sandbox_PermadeathLock_FateTokenConsume_tooltip = "Remove the token from the body when it saves someone. Turn off and the token stays on the corpse, so it can be looted and used again.",
+
 }

@@ -62,6 +62,57 @@ end
 -- skills
 --------------------------------------------------------------------------------
 
+--- Every perk, indexed by its id AND its display name.
+---
+--- This exists because the two are not the same string and the mod used both.
+--- A snapshot stores perk:getId() - "Woodwork", "Blunt" - while the restore
+--- looked the perk back up with PerkFactory.getPerkFromName, which matches the
+--- *display* name - "Carpentry", "Long Blunt". Every perk whose two names
+--- differ silently resolved to nil, so most of a character's skills were never
+--- given back and the count reported to the player was far too low.
+---
+--- Indexing both keys also means death lists written by older versions, or
+--- edited by hand with display names in them, still load.
+---@type table<string, any>?
+local perkIndex = nil
+
+---@return table<string, any>
+local function perksByKey()
+    if perkIndex ~= nil then return perkIndex end
+
+    local index = {}
+    local found = 0
+
+    local perks = PerkFactory and PerkFactory.PerkList
+    if perks == nil then return index end
+
+    for i = 0, perks:size() - 1 do
+        local perk = perks:get(i)
+        if perk ~= nil then
+            index[tostring(perk:getId())] = perk
+            found = found + 1
+            -- getName is absent on some stubs and older builds; only index it
+            -- when it is really there, and never let it shadow an id.
+            if perk.getName ~= nil then
+                local name = perk:getName()
+                if name ~= nil and index[tostring(name)] == nil then
+                    index[tostring(name)] = perk
+                end
+            end
+        end
+    end
+
+    -- Only cache once the perk list is actually populated. Called before
+    -- PerkFactory.init() this would otherwise cache an empty table forever.
+    --
+    -- Counted in the loop rather than asked afterwards with next(). Kahlua, the
+    -- Lua implementation the game runs, does not provide `next` - calling it
+    -- threw on every sweep, which aborted the restore before the record was
+    -- cleared, so the player got no skills back and the crash repeated forever.
+    if found > 0 then perkIndex = index end
+    return index
+end
+
 --- Snapshot every perk the character has at least one level in.
 ---@param player IsoPlayer
 ---@return table<string, integer>
@@ -110,30 +161,40 @@ end
 
 --- Give a character the levels from a snapshot. Levels already held are kept,
 --- so this never demotes anyone.
+---
+--- The count returned is every perk the character now holds at the recorded
+--- level, not just the ones this call had to raise. A player told "2 skills
+--- restored" when their dead character had eleven reasonably concludes the mod
+--- lost the other nine.
 ---@param player IsoPlayer
 ---@param skills table<string, integer>
----@return integer count of perks raised
+---@return integer restored perks now held at the recorded level
+---@return string[] missing perk keys that could not be resolved
 function Store.applySkills(player, skills)
-    local raised = 0
-    if player == nil or skills == nil then return raised end
+    local restored, missing = 0, {}
+    if player == nil or skills == nil then return restored, missing end
+
+    local index = perksByKey()
 
     for name, level in pairs(skills) do
-        local perk = PerkFactory.getPerkFromName(name)
-        if perk ~= nil and level ~= nil then
+        local perk = index[name]
+        if perk == nil or level == nil then
+            missing[#missing + 1] = tostring(name)
+        else
             local perkType = perk:getType()
             local current = player:getPerkLevel(perkType) or 0
-            if current < level then
-                for _ = current + 1, level do
-                    player:LevelPerk(perkType)
-                end
-                raised = raised + 1
+            for _ = current + 1, level do
+                player:LevelPerk(perkType)
             end
+            restored = restored + 1
         end
     end
-    return raised
+
+    table.sort(missing)
+    return restored, missing
 end
 
---------------------------------------------------------------------------------
+---------------------------------------------------------------
 -- persistence
 --------------------------------------------------------------------------------
 
