@@ -125,9 +125,27 @@ end
 
 -- Which engine calls have already failed. This mod pokes at a lot of surface -
 -- object removal, fire, body damage, vehicles - and the names drift between
--- builds. A call that raises is reported once and then skipped for the rest of
--- the session rather than throwing sixty times a second inside the blast loop.
+-- builds. A call that raises is reported and then skipped for the rest of the
+-- session rather than throwing sixty times a second inside the blast loop.
+--
+-- Giving up quickly matters more than it sounds. Kahlua prints a caught error's
+-- whole stack trace anyway, even from inside a pcall, so a call that fails once
+-- per object across a hundred thousand tiles does not just fail quietly - it
+-- writes a hundred thousand stack traces into console.txt while the server tries
+-- to run a blast.
 local dead = {}
+local failures = {}
+
+-- Most calls are asking "does this build have this method", where one failure is
+-- the whole answer. A few are made once per object, where a single failure might
+-- be one awkward object rather than a missing method. Those get a few goes
+-- first: enough that one bad car does not spare every car behind it, few enough
+-- that a method this build simply does not have stops after a handful of traces.
+NS.ALLOWANCE = {
+    ["BaseVehicle:parts"] = 5,
+    ["BaseVehicle:permanentlyRemove"] = 5,
+    ["BaseVehicle:getSquare"] = 5,
+}
 
 --- Call an engine function, tolerating its absence.
 ---@param label string identifies the call in the log and in the skip list
@@ -135,12 +153,22 @@ local dead = {}
 ---@return any result, boolean ok
 function NS.try(label, fn, a, b, c, d)
     if dead[label] then return nil, false end
+
     local ok, result = pcall(fn, a, b, c, d)
     if not ok then
-        dead[label] = true
-        print("[NukeStrike] " .. label .. " is unavailable on this build, skipping it: " .. tostring(result))
+        local count = (failures[label] or 0) + 1
+        failures[label] = count
+
+        if count >= (NS.ALLOWANCE[label] or 1) then
+            dead[label] = true
+            print("[NukeStrike] " .. label .. " is unavailable on this build, skipping it from here on: "
+                .. tostring(result))
+        else
+            print("[NukeStrike] " .. label .. " failed (" .. count .. "), carrying on: " .. tostring(result))
+        end
         return nil, false
     end
+
     return result, true
 end
 

@@ -66,6 +66,14 @@ local function callVanish(zombie)
 end
 local function callGetFloor(sq) return sq:getFloor() end
 local function callGetVehicles(cell) return cell:getVehicles() end
+local function callRemoveVehicle(vehicle) vehicle:permanentlyRemove() end
+local function callVehicleSquare(vehicle) return vehicle:getSquare() end
+local function callRuinParts(vehicle)
+    for index = 0, vehicle:getPartCount() - 1 do
+        local part = vehicle:getPartByIndex(index)
+        if part ~= nil then part:setCondition(0) end
+    end
+end
 
 --- Take one object off a square. transmitRemoveItemFromSquare is the removal
 --- that reaches the other players; RemoveTileObject is the local fallback for
@@ -398,24 +406,16 @@ local VEHICLE_FIRE = { flatten = 100, heavy = 85, light = 35 }
 ---@return boolean removed, boolean wrecked, boolean burning
 local function ruinVehicle(vehicle, tier, cell, vx, vy)
     if tier == "flatten" then
-        local gone = pcall(function() vehicle:permanentlyRemove() end)
+        local _, gone = NS.try("BaseVehicle:permanentlyRemove", callRemoveVehicle, vehicle)
         if gone then return true, false, false end
         -- Fall through and wreck it instead.
     end
 
-    local wrecked = pcall(function()
-        for index = 0, vehicle:getPartCount() - 1 do
-            local part = vehicle:getPartByIndex(index)
-            if part ~= nil then
-                pcall(function() part:setCondition(0) end)
-            end
-        end
-    end)
+    local _, wrecked = NS.try("BaseVehicle:parts", callRuinParts, vehicle)
 
     local burning = false
     if ZombRand(100) < (VEHICLE_FIRE[tier] or 0) then
-        local square = nil
-        pcall(function() square = vehicle:getSquare() end)
+        local square = NS.try("BaseVehicle:getSquare", callVehicleSquare, vehicle)
         if square == nil then
             square = cell:getGridSquare(math.floor(vx), math.floor(vy), 0)
         end
