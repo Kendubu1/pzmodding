@@ -85,23 +85,47 @@ end
 
 local parked = {}
 
---- A car. `broken` makes getPartCount raise, standing in for the one awkward
---- vehicle that a shared error guard used to let take the whole feature down.
+--- A car, modelling the API the game actually has.
+---
+--- These fakes used to offer getPartCount/getPartByIndex, which BaseVehicle does
+--- not have at all. The tests passed against methods that do not exist while the
+--- real thing threw on the first car of every strike - which is exactly how the
+--- mod shipped "wrecks vehicles" without ever damaging one.
+---
+--- `broken` makes ruining the parts raise, standing in for the one awkward car.
 local function makeVehicle(x, y, broken, unremovable)
-    local vehicle = { x = x, y = y, removed = false, ruined = 0 }
+    local vehicle = {
+        x = x, y = y,
+        removed = false,
+        ruined = 0,
+        smashed = {},
+        overlayRebuilt = 0,
+        transmitted = 0,
+        crashed = 0,
+    }
 
     function vehicle:getX() return x end
     function vehicle:getY() return y end
     function vehicle:getSquare() return world[x .. "," .. y .. ",0"] end
 
-    function vehicle:getPartCount()
-        if broken then error("no parts on this build") end
-        return 3
+    function vehicle:setGeneralPartCondition(quality, chance)
+        if broken then error("setGeneralPartCondition is not a thing here") end
+        vehicle.ruined = vehicle.ruined + 1
+        vehicle.quality = quality
+        vehicle.damageChance = chance
     end
 
-    function vehicle:getPartByIndex()
-        return { setCondition = function() vehicle.ruined = vehicle.ruined + 1 end }
+    function vehicle:setSmashed(panel) vehicle.smashed[panel] = true end
+    function vehicle:updateDamageOverlayLater() vehicle.overlayRebuilt = vehicle.overlayRebuilt + 1 end
+    function vehicle:addRandomDamageFromCrash(_, force)
+        vehicle.crashed = vehicle.crashed + 1
+        vehicle.crashForce = force
     end
+
+    function vehicle:getParts()
+        return javaList({ { id = "Engine" }, { id = "TireFrontLeft" } })
+    end
+    function vehicle:transmitPartCondition() vehicle.transmitted = vehicle.transmitted + 1 end
 
     function vehicle:permanentlyRemove()
         if unremovable then error("permanentlyRemove is not a thing here") end
@@ -258,28 +282,43 @@ local carPark = Zones.add(105, 115, 20, 30, 72, 0, "test")
 Blast.detonate(carPark, nil)
 runToCompletion()
 
-isTrue("a car in the fireball is taken out of the world", atZero.removed)
-check("a car in the blast wave is not deleted", nearby.removed, false)
-isTrue("but every one of its parts is ruined", nearby.ruined >= 3)
-isTrue("a car at the edge is wrecked too", outer.ruined >= 3)
+-- A wrecked car is four separate things, and leaving any one of them out is how
+-- a strike ends up looking like it missed.
+isTrue("the parts are ruined", atZero.ruined > 0)
+check("to nothing", atZero.quality, 0)
+isTrue("the bodywork is smashed at the front", atZero.smashed["Front"] == true)
+isTrue("and the rear", atZero.smashed["Rear"] == true)
+isTrue("and both sides",
+    atZero.smashed["Left"] == true and atZero.smashed["Right"] == true)
+isTrue("the damage overlay is rebuilt, or none of it is drawn",
+    atZero.overlayRebuilt > 0)
+isTrue("and the conditions go out to the other players, or only the host sees it",
+    atZero.transmitted > 0)
+isTrue("it takes crash damage too", atZero.crashed > 0)
+
+check("a car is wrecked, not quietly deleted", atZero.removed, false)
+isTrue("a car in the blast wave is wrecked", nearby.ruined > 0)
+isTrue("a car at the edge is wrecked too", outer.ruined > 0)
+isTrue("harder at the centre than at the edge", atZero.crashForce > outer.crashForce)
+
 check("a car well clear is untouched", wellClear.ruined, 0)
+check("and not smashed", wellClear.smashed["Front"], nil)
 check("and still there", wellClear.removed, false)
 
-isTrue("a car the build cannot read is skipped, not fatal", awkward.ruined == 0)
-isTrue("and the car behind it is still wrecked", alsoNearby.ruined >= 3)
+check("a car the build cannot read is skipped, not fatal", awkward.ruined, 0)
+isTrue("and the car behind it is still wrecked", alsoNearby.ruined > 0)
+isTrue("a car that cannot have its parts ruined is still smashed visibly",
+    awkward.smashed["Front"] == true)
 
--- Deleting a vehicle mutates the list being walked. A forward loop would step
--- over whatever moved into the gap.
-check("removing cars does not make the loop skip others",
-    (atZero.removed and alsoNearby.ruined >= 3), true)
-
--- Falling back when the engine will not delete a vehicle.
-local stubborn = makeVehicle(105, 300, false, true)
-local stubbornZone = Zones.add(105, 300, 20, 30, 72, 0, "test")
-Blast.detonate(stubbornZone, nil)
+-- The one case where deleting is still right: a build that will not let us mark
+-- the car as damaged in any way at all. An intact car at ground zero is worse
+-- than no car.
+local hopeless = makeVehicle(105, 300, true)
+hopeless.setSmashed = function() error("no setSmashed here either") end
+hopeless.updateDamageOverlayLater = function() error("nor this") end
+Blast.detonate(Zones.add(105, 300, 20, 30, 72, 0, "test"), nil)
 runToCompletion()
-check("a car that will not delete is not lost", stubborn.removed, false)
-isTrue("it gets wrecked instead", stubborn.ruined >= 3)
+isTrue("a car that cannot be damaged at all is removed instead", hopeless.removed)
 
 -- And the switch turns it all off.
 local spared = makeVehicle(105, 400)

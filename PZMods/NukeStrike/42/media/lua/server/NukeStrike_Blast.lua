@@ -68,12 +68,36 @@ local function callGetFloor(sq) return sq:getFloor() end
 local function callGetVehicles(cell) return cell:getVehicles() end
 local function callRemoveVehicle(vehicle) vehicle:permanentlyRemove() end
 local function callVehicleSquare(vehicle) return vehicle:getSquare() end
-local function callRuinParts(vehicle)
-    for index = 0, vehicle:getPartCount() - 1 do
-        local part = vehicle:getPartByIndex(index)
-        if part ~= nil then part:setCondition(0) end
+
+-- Ruin every part in one call. The first argument is the base quality and the
+-- second is the chance a part spawns damaged, so nothing survives this.
+local function callRuinParts(vehicle) vehicle:setGeneralPartCondition(0, 100) end
+
+-- The bodywork itself. This is the call that makes a car LOOK wrecked rather
+-- than merely being undriveable, and it takes the panel to smash, not a boolean.
+local function callSmash(vehicle, location) vehicle:setSmashed(location) end
+
+-- Redraw. Part conditions and smashed panels do not show up on their own; the
+-- damage overlay has to be told to rebuild, which is why a car whose parts were
+-- all ruined still sat there looking showroom fresh.
+local function callDamageOverlay(vehicle) vehicle:updateDamageOverlayLater() end
+
+-- And tell the other players. Conditions changed on the server do not reach a
+-- client on their own, so in multiplayer everyone else keeps seeing an intact car.
+local function callTransmitParts(vehicle)
+    local parts = vehicle:getParts()
+    if parts == nil then return end
+    for i = 0, parts:size() - 1 do
+        local part = parts:get(i)
+        if part ~= nil then vehicle:transmitPartCondition(part) end
     end
 end
+
+local function callCrashDamage(vehicle, force) vehicle:addRandomDamageFromCrash(nil, force) end
+
+-- The panels setSmashed understands. Tried one at a time so a build that names
+-- them differently still gets whichever ones it does recognise.
+local SMASH_PANELS = { "Front", "Rear", "Left", "Right" }
 
 --- Take one object off a square. transmitRemoveItemFromSquare is the removal
 --- that reaches the other players; RemoveTileObject is the local fallback for
@@ -391,10 +415,19 @@ local VEHICLE_FIRE = { flatten = 100, heavy = 85, light = 35 }
 
 --- Do as much to one vehicle as the build will allow.
 ---
---- Ruining the parts alone is close to invisible: the car will not start and the
---- tyres are flat, but it still sits there looking like a car, which reads as the
---- mod having done nothing. So inside the fireball the vehicle is taken out of
---- the world outright, and outside it the fire is what sells the damage.
+--- There is no "explode this car" call in the game - vehicles have no explode
+--- method at all - so a wrecked car is made out of four separate things, and
+--- leaving any one of them out is what makes a strike look like it missed:
+---
+---   1. Ruin the parts. Dead engine, flat tyres, nothing that will start.
+---   2. Smash the bodywork. This is the part that is actually visible; ruined
+---      parts alone leave a showroom-fresh car that happens not to drive.
+---   3. Rebuild the damage overlay, or none of the above is drawn.
+---   4. Transmit the part conditions, or nobody else on the server sees it.
+---
+--- Then set it alight, because burning is as close to exploding as the game
+--- gets, and a charred husk reads as a nuke went off here far better than a
+--- missing car does.
 ---
 --- Every call is wrapped on its own, per vehicle. A shared guard here would mean
 --- one awkward car disabling the whole feature for the rest of the session.
@@ -405,13 +438,19 @@ local VEHICLE_FIRE = { flatten = 100, heavy = 85, light = 35 }
 ---@param vy number
 ---@return boolean removed, boolean wrecked, boolean burning
 local function ruinVehicle(vehicle, tier, cell, vx, vy)
-    if tier == "flatten" then
-        local _, gone = NS.try("BaseVehicle:permanentlyRemove", callRemoveVehicle, vehicle)
-        if gone then return true, false, false end
-        -- Fall through and wreck it instead.
+    local _, wrecked = NS.try("BaseVehicle:setGeneralPartCondition", callRuinParts, vehicle)
+
+    -- A nuke is a very large crash.
+    NS.try("BaseVehicle:addRandomDamageFromCrash", callCrashDamage, vehicle,
+        tier == "flatten" and 100 or 60)
+
+    for _, panel in ipairs(SMASH_PANELS) do
+        local _, smashed = NS.try("BaseVehicle:setSmashed:" .. panel, callSmash, vehicle, panel)
+        if smashed then wrecked = true end
     end
 
-    local _, wrecked = NS.try("BaseVehicle:parts", callRuinParts, vehicle)
+    NS.try("BaseVehicle:updateDamageOverlayLater", callDamageOverlay, vehicle)
+    NS.try("BaseVehicle:transmitPartCondition", callTransmitParts, vehicle)
 
     local burning = false
     if ZombRand(100) < (VEHICLE_FIRE[tier] or 0) then
@@ -420,6 +459,14 @@ local function ruinVehicle(vehicle, tier, cell, vx, vy)
             square = cell:getGridSquare(math.floor(vx), math.floor(vy), 0)
         end
         if square ~= nil then burning = ignite(square) == true end
+    end
+
+    -- Last resort. If this build would not let us mark the car as damaged in any
+    -- way at all, an intact car sitting at ground zero is worse than no car, so
+    -- inside the fireball it goes.
+    if not wrecked and tier == "flatten" then
+        local _, gone = NS.try("BaseVehicle:permanentlyRemove", callRemoveVehicle, vehicle)
+        if gone then return true, false, false end
     end
 
     return false, wrecked, burning

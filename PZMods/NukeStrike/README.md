@@ -101,12 +101,25 @@ on both axes; Muldraugh is around 10600, 9600 and West Point around 11700, 6800.
 
    The ground floor tile is always left behind, so the ruins are walkable rather
    than a hole in the world.
-5. **The cars.** A vehicle inside the fireball is taken out of the world
-   outright; further out its parts are all ruined — dead engine, flat tyres,
-   smashed windows — and it is very likely left burning. Ruining the parts alone
-   is close to invisible, which is why the fireball deletes and the outer rings
-   burn. Every strike prints a line to `console.txt` saying how many vehicles it
-   found and what it did to them, so "it did nothing to the cars" is answerable.
+5. **The cars.** There is no "explode this car" call in Project Zomboid —
+   `BaseVehicle` has no explode method at all — so a wrecked car is built out of
+   four separate things, and leaving any one of them out makes a strike look
+   like it missed:
+
+   1. `setGeneralPartCondition(0, 100)` — dead engine, flat tyres, nothing that
+      will start.
+   2. `setSmashed()` on all four panels — the part that is actually *visible*.
+      Ruined parts alone leave a showroom-fresh car that happens not to drive.
+   3. `updateDamageOverlayLater()` — or none of the above is drawn.
+   4. `transmitPartCondition()` — or nobody else on the server sees it.
+
+   Then it is set alight, because burning is as close to exploding as the game
+   gets, and a charred husk reads as *a nuke went off here* far better than a
+   missing car does. Cars are only deleted outright as a last resort, if a build
+   will not let them be marked as damaged in any way.
+
+   Every strike prints a line to `console.txt` saying how many vehicles it found
+   and what it did to them, so "it did nothing to the cars" is answerable.
 6. **The fires.** Capped (250 by default) and spread across the whole blast
    rather than clustered at the middle, then they spread on their own. This is
    the setting to turn down first if the server chugs after a strike.

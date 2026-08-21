@@ -141,11 +141,24 @@ local failures = {}
 -- be one awkward object rather than a missing method. Those get a few goes
 -- first: enough that one bad car does not spare every car behind it, few enough
 -- that a method this build simply does not have stops after a handful of traces.
-NS.ALLOWANCE = {
-    ["BaseVehicle:parts"] = 5,
-    ["BaseVehicle:permanentlyRemove"] = 5,
-    ["BaseVehicle:getSquare"] = 5,
+NS.ALLOWANCE = {}
+
+-- Everything done to a vehicle is per-object, so all of it gets the longer rope.
+NS.ALLOWANCE_PREFIX = {
+    ["BaseVehicle:"] = 5,
 }
+
+---@param label string
+---@return integer
+local function allowanceFor(label)
+    local exact = NS.ALLOWANCE[label]
+    if exact ~= nil then return exact end
+
+    for prefix, allowed in pairs(NS.ALLOWANCE_PREFIX) do
+        if string.sub(label, 1, string.len(prefix)) == prefix then return allowed end
+    end
+    return 1
+end
 
 --- Call an engine function, tolerating its absence.
 ---@param label string identifies the call in the log and in the skip list
@@ -159,7 +172,7 @@ function NS.try(label, fn, a, b, c, d)
         local count = (failures[label] or 0) + 1
         failures[label] = count
 
-        if count >= (NS.ALLOWANCE[label] or 1) then
+        if count >= allowanceFor(label) then
             dead[label] = true
             print("[NukeStrike] " .. label .. " is unavailable on this build, skipping it from here on: "
                 .. tostring(result))
