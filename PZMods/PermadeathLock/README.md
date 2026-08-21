@@ -195,6 +195,14 @@ is left between them. Sizing the list first and letting the buttons fall where
 that put them is what pushed the bottom row off the frame in 1.4.0, underneath
 the resize strip.
 
+One geometry function, `bands()`, answers where everything goes, and both
+`createChildren` and `layout` go through it. Children are therefore *built* at
+their real size rather than at a placeholder that gets corrected a moment later:
+`ISScrollingListBox` positions its scrollbar when it is built and never moves it
+again, so a list born 10x10 got a 10px bar at x = -7 — a sliver hanging off the
+left edge — and its rows did not appear at all until the window was dragged to a
+new size.
+
 Every band's height comes from `getTextManager():getFontHeight(UIFont.Small)`,
 never from a pixel count. **The UI Scaling setting changes the size of every
 glyph on screen**, so a 20px status band holding 28px text bleeds into the

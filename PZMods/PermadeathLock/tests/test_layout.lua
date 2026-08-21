@@ -86,11 +86,25 @@ function ISScrollingListBox:new(x, y, width, height)
     local list = widget(x, y, width, height)
     list.items = {}
     list.selected = 0
+    list.itemheight = 24
+
     function list:clear() self.items = {} end
     function list:addItem(text, item)
         self.items[#self.items + 1] = { text = text, item = item }
         return self.items[#self.items]
     end
+
+    -- The real one builds its scrollbar here, sized and positioned from
+    -- whatever the box measures at this instant, and never moves it again. A
+    -- box built at 10x10 therefore gets a 10px bar at x = -7 and rows that do
+    -- not appear until the window is dragged to a new size. Recording the
+    -- measurements taken at this moment is what makes that visible offline.
+    function list:initialise()
+        self.builtAtWidth = self.width
+        self.builtAtHeight = self.height
+        self.vscroll = widget(self.width - 17, 0, 17, self.height)
+    end
+
     return list
 end
 
@@ -208,6 +222,23 @@ local function checkLayout(width, height)
             list.y - window.headerY >= TEXT_HEIGHT,
             "band " .. (list.y - window.headerY) .. ", text " .. TEXT_HEIGHT)
     end
+
+    -- REGRESSION: the list used to be built at a 10x10 placeholder and resized
+    -- afterwards. ISScrollingListBox lays its scrollbar out when it is built,
+    -- so the bar ended up as a sliver off the left edge and the rows were not
+    -- reachable until the window was resized by hand.
+    check(label .. ": the list is built at its real size",
+        list.builtAtWidth == list.width and list.builtAtHeight == list.height,
+        string.format("built %sx%s, now %dx%d",
+            tostring(list.builtAtWidth), tostring(list.builtAtHeight), list.width, list.height))
+
+    local bar = list.vscroll
+    check(label .. ": the scrollbar sits on the list's right edge",
+        bar ~= nil and bar.x + bar.width == list.width,
+        bar and ("bar ends at " .. (bar.x + bar.width) .. ", list is " .. list.width) or "no bar")
+    check(label .. ": the scrollbar spans the list",
+        bar ~= nil and bar.height == list.height,
+        bar and ("bar " .. bar.height .. ", list " .. list.height) or "no bar")
 
     -- Buttons must not overlap each other along a row.
     local row = { window.pardonBtn, window.reviveBtn, window.giveBtn, window.takeBtn }
