@@ -52,9 +52,29 @@ the two into `common/media/`.
 | Co-op **Host** game | Yes - the host runs the server in-process |
 | Single player | No, by design - loads and does nothing |
 
-A Host game is not a dedicated server: `isServer()` is false there, and for the
-host `isClient()` is false too. The mod therefore gates on `isCoopHost()` as well,
-so the host gets both halves - they are the server *and* a player.
+A Host game is not a dedicated server, and — this is the part that cost the most
+— **it runs two Lua states in one process**: the in-process server, and the
+host's own client. `isCoopHost()` is true in *both* of them.
+
+So gating a "server only" half on `isCoopHost()` alone loads it **twice**: two
+death lists, two sweeps, two Fate Token caches, both writing the same file. What
+that looked like in play was a single death judged twice, a fifth of a second
+apart, reaching opposite conclusions:
+
+```
+death of Willy: token on body=true,  ... not locked out. Token consumed.
+death of Willy: token on body=false, ... and is locked out. No Fate Token.
+```
+
+The first state found the Fate Token and spent it. The second ran after it,
+found nothing left, and locked the player out — who was then killed by the
+enforcement seconds after respawning. The rescue is what killed them.
+
+The gate therefore excludes the state that is a client, and the client half
+excludes the state that is the server. Exactly one of each, on every mode. The
+boot line prints `isServer` / `isClient` / `isCoopHost` so a double load is
+visible at a glance: **if `Server module … loaded` appears twice, that is the
+fault, not noise.**
 
 **If you are hosting, you are almost certainly an admin, and `ExemptAdmins`
 defaults to on** - your deaths will be ignored until you turn it off in the

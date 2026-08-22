@@ -43,10 +43,16 @@ through 1.6.0 every band was a fixed pixel count, so at 2x the status line, the
 column titles and the first row drew on top of each other. Neither is visible
 from reading the code and neither shows up in a syntax check.
 
-`test_gating.sh` loads the mod once per game mode (dedicated, co-op host, client,
-single player) and checks which halves come alive against the expected matrix.
-It is the guard against the mod silently doing nothing in a mode it should
-support.
+`test_gating.sh` loads the mod once per game mode and checks which halves come
+alive against the expected matrix. It guards against the mod silently doing
+nothing in a mode it should support — and, since 1.10.0, against it doing
+everything *twice*.
+
+A co-op Host is **two** rows in that matrix, not one, because the game really
+does run two Lua states in one process for a Host game and `isCoopHost()` is
+true in both. Modelling it as a single mode hid a fault where the whole server
+half loaded twice and two death lists arbitrated the same death to opposite
+conclusions.
 
 Any Lua 5.1 interpreter works (`apt install lua5.1`). They all exit non-zero on
 failure. A syntax check over the mod is worth running too:

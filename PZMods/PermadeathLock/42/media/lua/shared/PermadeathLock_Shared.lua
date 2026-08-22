@@ -9,7 +9,7 @@
 PermadeathLock = PermadeathLock or {}
 local PL = PermadeathLock
 
-PL.VERSION = "1.9.3"
+PL.VERSION = "1.10.0"
 
 -- Module name used by sendClientCommand / sendServerCommand.
 PL.MODULE = "PermadeathLock"
@@ -41,18 +41,46 @@ local function coopHost()
     return ok and value == true
 end
 
+--- Exposed so the boot line can report it. See isServerSide.
+---@return boolean
+function PL.isCoopHost() return coopHost() end
+
 --- Where the authoritative logic runs: a dedicated server, or the host of a
 --- co-op game, who runs the server in-process. False in single player, which
 --- the mod deliberately leaves alone.
+---
+--- The isClient() exclusion is the important part, and it was learned the hard
+--- way. **A co-op Host game runs two Lua states in one process** - the
+--- in-process server, and the host's own client - and isCoopHost() is true in
+--- BOTH of them. Gating on it alone loaded the whole server half twice: two
+--- death lists, two sweeps, two Fate Token caches, both writing the same file.
+---
+--- What that looked like from the outside was a single death being evaluated
+--- twice, a fifth of a second apart, with opposite verdicts:
+---
+---   death of Willy: token on body=true,  ... not locked out. Token consumed.
+---   death of Willy: token on body=false, ... and is locked out. No Fate Token.
+---
+--- The first state found the token and spent it. The second ran afterwards,
+--- found nothing left to find, and locked the player out - who was then killed
+--- by the enforcement a few seconds after respawning. The rescue was what
+--- killed them.
+---
+--- Whichever state is a client is never the one that should be arbitrating.
 ---@return boolean
 function PL.isServerSide()
+    if isClient() then return false end
     return isServer() or coopHost()
 end
 
 --- Where the player-facing logic runs: a connected client, or the co-op host,
 --- who is both the server and a player.
+---
+--- Mirror of the exclusion above, for the same reason: the state that is the
+--- server is not the one with a player sitting in front of it.
 ---@return boolean
 function PL.isClientSide()
+    if isServer() then return false end
     return isClient() or coopHost()
 end
 

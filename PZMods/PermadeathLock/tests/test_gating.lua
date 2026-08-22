@@ -2,20 +2,29 @@
 --
 -- Run once per mode (the mod files set globals, so modes cannot share a process):
 --     lua5.1 PZMods/PermadeathLock/tests/test_gating.lua dedicated
---     lua5.1 PZMods/PermadeathLock/tests/test_gating.lua coophost
+--     lua5.1 PZMods/PermadeathLock/tests/test_gating.lua coophost-server
+--     lua5.1 PZMods/PermadeathLock/tests/test_gating.lua coophost-client
 --     lua5.1 PZMods/PermadeathLock/tests/test_gating.lua client
 --     lua5.1 PZMods/PermadeathLock/tests/test_gating.lua singleplayer
 --
--- test_gating.sh runs all four and checks them against the expected matrix.
+-- test_gating.sh runs all five and checks them against the expected matrix.
+--
+-- A co-op Host is TWO modes, not one, and that is the whole point of this file
+-- now. The game runs two Lua states in one process for a Host game, and
+-- isCoopHost() is true in both. Treating it as a single mode hid a fault where
+-- the entire server half loaded twice - two death lists arbitrating the same
+-- death and reaching opposite conclusions.
 
 local mode = ...
 assert(mode, "usage: test_gating.lua <dedicated|coophost|client|singleplayer>")
 
 local MODES = {
-    dedicated    = { server = true,  client = false, coop = false },
-    coophost     = { server = false, client = false, coop = true  },
-    client       = { server = false, client = true,  coop = false },
-    singleplayer = { server = false, client = false, coop = false },
+    dedicated         = { server = true,  client = false, coop = false },
+    -- The two halves of one Host game.
+    ["coophost-server"] = { server = true,  client = false, coop = true  },
+    ["coophost-client"] = { server = false, client = true,  coop = true  },
+    client            = { server = false, client = true,  coop = false },
+    singleplayer      = { server = false, client = false, coop = false },
 }
 local flags = assert(MODES[mode], "unknown mode: " .. tostring(mode))
 

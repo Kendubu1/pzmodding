@@ -965,4 +965,10 @@ end
 
 Events.OnClientCommand.Add(onClientCommand)
 
-print("[PermadeathLock] Server module " .. PL.VERSION .. " loaded.")
+-- The flags are printed, not just the version. A co-op Host runs two Lua
+-- states and this line appearing twice means the server half has loaded twice,
+-- which is a fault serious enough to be visible at a glance.
+print("[PermadeathLock] Server module " .. PL.VERSION .. " loaded."
+    .. " isServer=" .. tostring(isServer())
+    .. " isClient=" .. tostring(isClient())
+    .. " isCoopHost=" .. tostring(PL.isCoopHost()))
