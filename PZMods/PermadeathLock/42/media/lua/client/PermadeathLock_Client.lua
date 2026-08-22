@@ -182,16 +182,6 @@ local function onServerCommand(module, command, args)
         if text ~= nil and text ~= "" then
             showNotice(text, nil, false)
         end
-    elseif command == "killNow" then
-        -- Done here rather than from the server. A player's own machine owns
-        -- and simulates their character; a kill applied to a remote player from
-        -- the server is the same desync that made items pushed into a remote
-        -- inventory unreliable. The server still kills anyone whose client
-        -- ignores this, a few seconds later.
-        local player = getPlayer()
-        if player ~= nil and not player:isDead() then
-            player:Kill(player)
-        end
     elseif command == "tokenSpent" then
         -- Arrives at the moment of death, so it has to be a modal, and low.
         showNotice(getText("IGUI_PermadeathLock_TokenSpent"), nil, true)

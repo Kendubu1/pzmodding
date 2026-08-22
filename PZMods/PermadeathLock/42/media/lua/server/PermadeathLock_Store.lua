@@ -159,27 +159,52 @@ local function deserialiseSkills(text)
     return skills
 end
 
+-- The two perks the body's condition is computed from. Restored last, so that
+-- if touching them is what has been killing freshly restored characters, every
+-- other skill has already landed by then and the log says which one it stopped
+-- at.
+local PHYSICAL = { Fitness = true, Strength = true }
+
 --- Put one perk at a level.
 ---
---- setPerkLevelDebug does it in a single call. The alternative - LevelPerk once
---- per level - runs the whole level-up cascade every time: XP maths, the sound,
---- the on-screen flash, a character-screen refresh. A restore is a dozen perks
---- at once, so that is easily forty of those cascades inside one frame on a
---- character that has just been handed its old life back. Kept as the fallback
---- for a build that does not expose the direct setter.
+--- Three routes, in order of how much of the game they disturb.
+---
+--- XP first. It is how the game levels a character normally, and how vanilla's
+--- /addxp works - a command that had just been run on the very character this
+--- was killing, with no ill effect at all. setPerkLevelDebug is the debug
+--- menu's route. LevelPerk once per level is the last resort and the most
+--- violent: it runs the whole level-up cascade - XP maths, sound, screen flash,
+--- character-screen refresh - every single time, so a dozen perks restored at
+--- once is forty of them in one frame.
 ---@param player IsoPlayer
+---@param perk any
 ---@param perkType any
 ---@param current integer
 ---@param level integer
-local function setPerkLevel(player, perkType, current, level)
+---@return string how which route was taken, for the log
+local function setPerkLevel(player, perk, perkType, current, level)
+    local xp = nil
+    if player.getXp ~= nil then xp = player:getXp() end
+
+    if xp ~= nil and xp.AddXPNoMultiplier ~= nil and perk.getTotalXpForLevel ~= nil then
+        local target = perk:getTotalXpForLevel(level)
+        local have = xp:getXP(perkType) or 0
+        if target ~= nil and target > have then
+            xp:AddXPNoMultiplier(perkType, target - have)
+            return "xp"
+        end
+        return "xp, already there"
+    end
+
     if player.setPerkLevelDebug ~= nil then
         player:setPerkLevelDebug(perkType, level)
-        return
+        return "setPerkLevelDebug"
     end
 
     for _ = current + 1, level do
         player:LevelPerk(perkType)
     end
+    return "LevelPerk x" .. (level - current)
 end
 
 --- Give a character the levels from a snapshot. Levels already held are kept,
@@ -193,28 +218,69 @@ end
 ---@param skills table<string, integer>
 ---@return integer restored perks now held at the recorded level
 ---@return string[] missing perk keys that could not be resolved
+---@return boolean completed false when it stopped part way
+---@return string? killedBy the perk being applied when the character died
 function Store.applySkills(player, skills)
     local restored, missing = 0, {}
-    if player == nil or skills == nil then return restored, missing end
+    if player == nil or skills == nil then return restored, missing, false, nil end
 
     local index = perksByKey()
 
-    for name, level in pairs(skills) do
+    -- A stable order, with the physical perks last. pairs() order is arbitrary,
+    -- which makes two runs of the same restore produce different logs and hides
+    -- exactly the pattern worth seeing.
+    local names = {}
+    for name in pairs(skills) do names[#names + 1] = name end
+    table.sort(names, function(a, b)
+        local pa, pb = PHYSICAL[a] == true, PHYSICAL[b] == true
+        if pa ~= pb then return pb end
+        return a < b
+    end)
+
+    for _, name in ipairs(names) do
+        local level = skills[name]
         local perk = index[name]
         if perk == nil or level == nil then
             missing[#missing + 1] = tostring(name)
         else
             local perkType = perk:getType()
-            local current = player:getPerkLevel(perkType) or 0
-            if current < level then
-                setPerkLevel(player, perkType, current, level)
+            local body = nil
+
+            -- Fitness and Strength participate in body-condition calculations.
+            -- Put the character at full health before and after changing either
+            -- one so a recalculation cannot inherit a half-initialised spawn's
+            -- transient health value.
+            if PHYSICAL[name] and player.getBodyDamage ~= nil then
+                body = player:getBodyDamage()
+                if body ~= nil then body:RestoreToFullHealth() end
             end
+
+            local current = player:getPerkLevel(perkType) or 0
+            local how = "already at " .. current
+            if current < level then
+                how = setPerkLevel(player, perk, perkType, current, level)
+            end
+
+            if player:isDead() then
+                print("[PermadeathLock] ERROR: restore killed the character while applying "
+                    .. name .. "; the restore remains pending.")
+                table.sort(missing)
+                return restored, missing, false, name
+            end
+
+            if body ~= nil then body:RestoreToFullHealth() end
+
+            -- One line per perk, on purpose. A restore that kills the character
+            -- part way through leaves the last perk it managed as the final
+            -- line in the log, which names the culprit outright.
+            print("[PermadeathLock]   restore " .. name .. " -> " .. tostring(level)
+                .. " (" .. how .. ")")
             restored = restored + 1
         end
     end
 
     table.sort(missing)
-    return restored, missing
+    return restored, missing, true, nil
 end
 
 ---------------------------------------------------------------
@@ -431,6 +497,28 @@ function Store.revive(username)
     record.pendingRestore = true
     Store.save()
     return record
+end
+
+--- Forget one perk from a player's snapshot, and write it out.
+---
+--- Used when restoring that perk is what killed the character. Keeping the
+--- rescue pending after a failed restore is right - the player has not had what
+--- they were owed - but keeping the perk that did the killing in it hands the
+--- same one to their next character, and the one after that. They then die on
+--- every spawn, forever. Losing one skill is the cheaper failure by a mile.
+---@param username string
+---@param perkName string
+---@return boolean dropped
+function Store.dropSkill(username, perkName)
+    ensureLoaded()
+    local key = PL.key(username)
+    local record = key and records[key]
+    if record == nil or record.skills == nil then return false end
+    if record.skills[perkName] == nil then return false end
+
+    record.skills[perkName] = nil
+    Store.save()
+    return true
 end
 
 --- Called once the queued skills have been applied to a live character.

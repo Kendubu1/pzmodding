@@ -20,8 +20,14 @@ Run from the **repository root**:
 lua5.1 PZMods/PermadeathLock/tests/test_store.lua
 lua5.1 PZMods/PermadeathLock/tests/test_server.lua
 lua5.1 PZMods/PermadeathLock/tests/test_layout.lua
+lua5.1 PZMods/PermadeathLock/tests/test_commands.lua
 sh      PZMods/PermadeathLock/tests/test_gating.sh
 ```
+
+`test_commands.lua` drives the `/permadeath` chat parser against a stubbed
+ISChat. Usernames may contain spaces and people quote them, and the parser took
+only the first word after the subcommand — so `pardon Willy Guggenheim`
+addressed `Willy` and `pardon "Willy Guggenheim"` addressed `"Willy`.
 
 `test_layout.lua` builds the admin panel against stubbed UI classes and checks
 that no band lands on another: the status line clears the title bar, the column

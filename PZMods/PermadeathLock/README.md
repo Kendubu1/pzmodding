@@ -114,14 +114,27 @@ spawn, carried out by their own client:
    kill anything — see **Nothing happens during the spawn handshake** below.
 2. Four seconds later, the client tells the server it has settled. The server
    re-reads the death list; a pardon in that window calls the kill off entirely.
-3. If the block still stands, the client kills its own character. That side owns
-   and simulates it; a kill applied to a remote player from the server is the
-   same class of desync that made items pushed into a remote inventory
-   unreliable.
-4. If a client never goes through with it, the server kills them fifteen real
+3. If the block still stands, **the server** kills the character.
+4. If a client never reports in, the server kills them anyway fifteen real
    seconds after the notice. That deadline is in real seconds, not sweeps —
    a sweep is one *in-game* minute and how long that lasts depends on the
    server's day length.
+
+1.7.0 had step 3 the other way round: the server asked the client to kill
+itself, to avoid a remote-kill desync. That produced the desync in the other
+direction — the client died, **the server went on believing the character was
+alive**, the admin panel showed them alive, and the death was never recorded.
+There is one authority for whether somebody is dead and it is the server.
+
+**Every kill the lock performs says so**, on screen and in chat:
+
+> Permadeath Lock: your character has been killed — you are on the death list
+> and made a new character. An admin can pardon you, or revive you and give back
+> what you learned.
+
+and in the log as `KILLED <name> - <why>`. If you die and see no such message,
+this mod did not kill you. That is the point of it: "I just suddenly died" was
+impossible to attribute to anything.
 
 ### Nothing happens during the spawn handshake
 
@@ -138,9 +151,14 @@ dozen perk levels in one go, on a body that is not finished loading. Reported as
 So the handshake now only ever *sends*: a notice, or a request for the client to
 say when it has settled. Four seconds later the client says so, the server
 re-reads the death list, and only then does anything happen — kill, restore, or
-nothing at all because an admin stepped in. The once-a-minute sweep applies a
-pending restore too, so a client that never reports in still gets what it is
-owed.
+nothing at all because an admin stepped in.
+
+The sweep is the backstop for a client that never reports in, and it waits too:
+it will only restore someone a *previous* sweep already saw alive. That is not
+belt and braces, it is load-bearing — **a sweep is one in-game minute, which at
+the default day length is two or three real seconds**, so an unguarded sweep
+beat the client's four-second signal nearly every time and put the restore right
+back into the moment it was moved out of.
 
 Turn `KillOnSpawn` off for the older behaviour: the player is shown a notice and
 their client disconnects itself after twelve seconds, with `EnforceKill` as the
@@ -174,6 +192,7 @@ Type these in chat as an admin (`/pd` is a shorthand):
 
 ```
 /permadeath status          is the lock on, and how many are locked out
+/permadeath status <user>   everything the mod knows about one player
 /permadeath ui              open the admin panel
 /permadeath list            show the death list
 /permadeath revive <user>   bring a player back, keeping their skills
@@ -185,7 +204,42 @@ Type these in chat as an admin (`/pd` is a shorthand):
 /permadeath reload          re-read the death list from disk
 ```
 
-Usernames are matched case-insensitively.
+Usernames are matched case-insensitively, may contain **spaces**, and may be
+quoted:
+
+```
+/permadeath pardon Willy Guggenheim
+/permadeath pardon "Willy Guggenheim"
+```
+
+Both work. Until 1.9.1 neither did: the parser took only the next word, so the
+first addressed a player called `Willy` and the second one called `"Willy`. Each
+answered "X is not on the death list", which reads as the death list being wrong
+rather than the name never having arrived.
+
+### Reading a status dump
+
+`awaiting restore=true` means the mod owes your **next** character the skills of
+the one that died — it is a promise, not a block. `locked=true` is the one that
+stops you playing. A token save sets `locked=false, awaiting restore=true`: you
+are free to make a new character, and it collects the old one's skills.
+
+### When nothing seems to be happening
+
+`/permadeath status <user>` answers it in one go: are they online, are they
+dead, are they **exempt**, how many Fate Tokens are they carrying, are they on
+the death list, are they owed a restore, and which sandbox switches are on.
+
+Reach for it first. Almost every "the mod is broken" report has been one of
+those lines. An exempt player's death in particular does nothing at all — not
+recorded, no token spent, nothing locked — which from the inside is
+indistinguishable from a fault. The server log now says so explicitly when it
+happens:
+
+```
+[PermadeathLock] Willy died, but is EXEMPT (an admin, with ExemptAdmins on):
+not recorded, no Fate Token spent, not locked out.
+```
 
 ### The admin panel
 
@@ -300,10 +354,45 @@ A perk in an old snapshot that the game no longer knows about (a mod removed
 since the death, a renamed vanilla perk) is skipped and named in the server log
 rather than being dropped in silence.
 
-Levels are set in one call each (`setPerkLevelDebug`) rather than by calling
-`LevelPerk` once per level. A dozen perks restored at once is otherwise forty
-level-up cascades — XP maths, sound, screen flash, character-screen refresh —
-inside a single frame.
+Levels are restored by **adding XP**, which is how the game levels a character
+normally and what vanilla's `/addxp` does. Two fallbacks sit behind it for a
+build that does not expose the XP object: `setPerkLevelDebug`, then `LevelPerk`
+once per level — the last being the most violent, since it runs the whole
+level-up cascade (XP maths, sound, screen flash, character-screen refresh) every
+single time, so a dozen perks is forty of them in one frame.
+
+**Fitness and Strength are restored last**, and each perk is logged as it lands:
+
+```
+[PermadeathLock] restoring Willy...
+[PermadeathLock]   restore Aiming -> 3 (xp)
+[PermadeathLock]   restore Woodwork -> 6 (xp)
+[PermadeathLock]   restore Fitness -> 5 (xp)
+[PermadeathLock] ...restore of Willy finished.
+```
+
+Those two are what the body's condition is computed from, so they are the
+likeliest to hurt a character that has only just spawned. Doing them last means
+everything else has already landed, and if the restore takes the character down
+part way through, **the last line in the log names the perk it stopped at**. The
+character is healed to full immediately afterwards for the same reason.
+
+**A restore that kills the character does not spend the rescue** — the player
+has not had what they were owed. But the perk that did the killing is dropped
+from their snapshot first, and that part matters: keeping it hands the same perk
+to their next character, and the one after that, so they die on every spawn
+forever. Losing one skill is by far the cheaper failure. Each retry drops one
+more, so it converges.
+
+When a restore fails with nothing to blame — it raised rather than killing
+anyone — the rescue is kept and retried, and abandoned after three attempts. At
+that point something is wrong that dropping perks will not converge on, and a
+player who dies on every spawn is worse off than one who lost their skills.
+Either way they are told on screen that they are **not** locked out.
+
+If a restore is killing characters on your server, `RestoreSkillsOnRevive` off
+is the switch that isolates it: Fate Tokens still save people, they just come
+back without their old skills.
 
 The player is told **on screen**, not only in chat. A restore lands seconds
 after a death screen and nobody is reading the chat window then: players spent a

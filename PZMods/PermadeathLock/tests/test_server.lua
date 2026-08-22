@@ -55,7 +55,11 @@ local function makePerk(id, displayName)
         getType = function() return "TYPE_" .. id end,
     }
 end
-local perkList = { makePerk("Woodwork", "Carpentry"), makePerk("Aiming", "Aiming") }
+local perkList = {
+    makePerk("Woodwork", "Carpentry"),
+    makePerk("Aiming", "Aiming"),
+    makePerk("Fitness", "Fitness"),
+}
 PerkFactory = {
     PerkList = { size = function() return #perkList end, get = function(_, i) return perkList[i + 1] end },
     getPerkFromName = function(name)
@@ -142,8 +146,17 @@ local function makePlayer(username, opts)
         getSteamID = function() return "7656119800000000" end,
         isDead = function() return self._dead end,
         isAccessLevel = function(_, level) return opts.admin == true and level == "admin" end,
-        getPerkLevel = function(_, t) return held[t] or 0 end,
-        LevelPerk = function(_, t) held[t] = (held[t] or 0) + 1 end,
+        getPerkLevel = function(_, t)
+            -- A restore that blows up rather than killing anyone: there is then
+            -- no perk to blame, and nothing for the retry to drop.
+            if opts.perkError then error("perk lookup exploded") end
+            return held[t] or 0
+        end,
+        LevelPerk = function(_, t)
+            held[t] = (held[t] or 0) + 1
+            if opts.dieOnPerk == t then self._dead = true end
+            if opts.dieWhenUnhealedPerk == t and not self._healed then self._dead = true end
+        end,
         Kill = function() self._dead = true end,
         getBodyDamage = function()
             return { RestoreToFullHealth = function() self._healed = true end }
@@ -260,6 +273,7 @@ Store.record(adminDead, "test")          -- recorded while not exempt
 Store.revive("Boss")
 local adminBack = makePlayer("Boss", { admin = true })
 online = { adminBack }
+sweep()   -- first sweep: still could be loading, so only noted as alive
 sweep()
 check("exempt admin still gets a queued restore", adminBack._levels.TYPE_Aiming, 3)
 check("admin record cleared after restore", Store.get("Boss"), nil)
@@ -285,10 +299,79 @@ Store.revive("Dee")
 local deeNew = makePlayer("Dee", {})
 online = { deeNew }
 sweep()
+sweep()
 check("restore applied", deeNew._levels.TYPE_Woodwork, 2)
 deeNew._dead = true
 sweep()
 check("second death re-locks them", Store.isLocked("Dee"), true)
+
+--------------------------------------------------------------------------------
+io.write("\n-- a restore that kills the character --\n")
+
+-- REGRESSION: not spending the rescue when a restore kills the character is
+-- right, but leaving the lethal perk in the snapshot hands it to the next
+-- character too, and the next. The player then dies on every spawn, forever,
+-- which is a worse failure than losing one skill.
+reset()
+local zed = makePlayer("Zed", { levels = { TYPE_Aiming = 4, TYPE_Fitness = 3 } })
+Store.record(zed, "test")
+Store.revive("Zed")
+
+local zedOne = makePlayer("Zed", { dieOnPerk = "TYPE_Fitness" })
+online = { zedOne }
+onClientCommand(MODULE, "spawnSettled", zedOne, {})
+check("the restore kills the first character", zedOne._dead, true)
+check("and the rescue is not spent", Store.get("Zed") ~= nil, true)
+check("the perk that did it is dropped", Store.get("Zed").skills.Fitness, nil)
+check("the harmless ones are kept", Store.get("Zed").skills.Aiming, 4)
+
+local zedTwo = makePlayer("Zed", { dieOnPerk = "TYPE_Fitness" })
+online = { zedTwo }
+onClientCommand(MODULE, "spawnSettled", zedTwo, {})
+check("the next character survives", zedTwo._dead, false)
+check("and gets what was left", zedTwo._levels.TYPE_Aiming, 4)
+check("the rescue is spent now", Store.get("Zed"), nil)
+
+-- and when there is nothing to blame, it gives up rather than loop forever
+reset()
+local yara = makePlayer("Yara", { levels = { TYPE_Aiming = 2 } })
+Store.record(yara, "test")
+Store.revive("Yara")
+
+local function yaraSpawns()
+    local body = makePlayer("Yara", { perkError = true })
+    online = { body }
+    onClientCommand(MODULE, "spawnSettled", body, {})
+    return body
+end
+
+yaraSpawns()
+check("a blameless failure keeps the rescue", Store.get("Yara") ~= nil, true)
+yaraSpawns()
+check("and still keeps it on the second try", Store.get("Yara") ~= nil, true)
+yaraSpawns()
+check("but the third abandons it rather than loop forever", Store.get("Yara"), nil)
+
+--------------------------------------------------------------------------------
+io.write("\n-- the sweep waits for a character to finish loading --\n")
+
+-- REGRESSION: deferring the restore off the spawn handshake achieved nothing
+-- while the sweep still applied it the instant it saw a living character. A
+-- sweep is one IN-GAME minute - two or three real seconds at the default day
+-- length - so it beat the client's four-second settle signal nearly every time,
+-- and the restore landed on a character that was still loading anyway.
+reset()
+local opal = makePlayer("Opal", { levels = { TYPE_Aiming = 5 } })
+Store.record(opal, "test")
+Store.revive("Opal")
+local opalNew = makePlayer("Opal", {})
+online = { opalNew }
+sweep()
+check("the first sweep does not restore", opalNew._levels.TYPE_Aiming, nil)
+check("and the restore is still owed", Store.get("Opal") ~= nil, true)
+sweep()
+check("the second one does", opalNew._levels.TYPE_Aiming, 5)
+check("and clears the record", Store.get("Opal"), nil)
 
 --------------------------------------------------------------------------------
 io.write("\n-- spending a token and coming back --\n")
@@ -331,6 +414,34 @@ end
 check("the notice names the token that paid for it", toldOnScreen, true)
 
 --------------------------------------------------------------------------------
+io.write("\n-- a restore cannot consume its own rescue --\n")
+
+reset()
+local orla = makePlayer("Orla", { levels = { TYPE_Fitness = 6 }, dead = true, tokens = 1 })
+online = { orla }
+sweep()
+
+local orlaNew = makePlayer("Orla", { dieWhenUnhealedPerk = "TYPE_Fitness" })
+online = { orlaNew }
+sweep()
+sweep()
+check("physical perks are healed before restoration", orlaNew._dead, false)
+check("a successful guarded restore clears the record", Store.get("Orla"), nil)
+
+reset()
+local pax = makePlayer("Pax", { levels = { TYPE_Fitness = 6 }, dead = true, tokens = 1 })
+online = { pax }
+sweep()
+
+local paxNew = makePlayer("Pax", { dieOnPerk = "TYPE_Fitness" })
+online = { paxNew }
+sweep()
+sweep()
+check("the harness can reproduce a restore-time death", paxNew._dead, true)
+check("a failed restore remains queued", Store.get("Pax").pendingRestore, true)
+check("a failed restore never locks the saved player", Store.get("Pax").locked, false)
+
+--------------------------------------------------------------------------------
 io.write("\n-- the notice sent at the moment of death --\n")
 
 reset()
@@ -368,11 +479,20 @@ check("the spawn handshake does not kill", umaNew._dead, false)
 check("it tells them instead", lastCommandTo("Uma"), "blocked")
 check("and says the character is forfeit", sent[#sent].args.kill, true)
 
--- the client finishes loading, asks again, and is told to go ahead
+-- the client finishes loading and reports in; the kill happens then, here
 sent = {}
 onClientCommand(MODULE, "spawnSettled", umaNew, {})
-check("the confirmed block is answered", lastCommandTo("Uma"), "killNow")
-check("but the server does not kill it itself", umaNew._dead, false)
+check("settling is when the character dies", umaNew._dead, true)
+
+-- REGRESSION: the kill used to be relayed to the client, which killed itself.
+-- The server then went on believing the character was alive - the admin panel
+-- showed them alive and the death was never recorded. One authority for who is
+-- dead, and it is this side.
+local warned = false
+for _, entry in ipairs(sent) do
+    if entry.user == "Uma" and entry.command == "notice" then warned = true end
+end
+check("and they are told, on screen, that the lock did it", warned, true)
 
 -- REGRESSION: a pardon during the client's grace period must call it off.
 -- Killing anyway is a bug the player experiences as the pardon not working.
@@ -522,6 +642,7 @@ check("skills captured before the save", Store.get("Gil").skills["Woodwork"], 7)
 -- the saved player walks straight back in and collects their skills
 local gilNew = makePlayer("Gil", {})
 online = { gilNew }
+sweep()
 sent = {}
 sweep()
 check("saved player is not blocked", lastCommandTo("Gil"), "message")
@@ -705,6 +826,31 @@ online = { tokenAdmin }
 sent = {}
 onClientCommand(MODULE, "admin", tokenAdmin, { sub = "take", target = "Ghosty" })
 check("offline target is refused", lastCommandTo("Admin"), "message")
+
+--------------------------------------------------------------------------------
+io.write("\n-- what the mod knows about one player --\n")
+
+reset()
+local dumpAdmin = makePlayer("Admin", { admin = true })
+local pia = makePlayer("Pia", { tokens = 2 })
+online = { pia, dumpAdmin }
+sent = {}
+onClientCommand(MODULE, "admin", dumpAdmin, { sub = "status", target = "Pia" })
+
+local dump = ""
+for _, entry in ipairs(sent) do
+    if entry.user == "Admin" and entry.text ~= nil then dump = dump .. entry.text .. "\n" end
+end
+check("it names them", string.find(dump, "Pia") ~= nil, true)
+check("it reports their tokens", string.find(dump, "carrying 2 Fate Token") ~= nil, true)
+check("it says they are not listed", string.find(dump, "not on the death list") ~= nil, true)
+check("and it prints the settings that decide behaviour",
+    string.find(dump, "ExemptAdmins=") ~= nil and string.find(dump, "KillOnSpawn=") ~= nil, true)
+
+-- the plain status is unchanged when no target is given
+sent = {}
+onClientCommand(MODULE, "admin", dumpAdmin, { sub = "status" })
+check("bare status still reports the lock", string.find(sent[1].text or "", "Permadeath Lock") ~= nil, true)
 
 --------------------------------------------------------------------------------
 io.write("\n-- disabling the mod --\n")
