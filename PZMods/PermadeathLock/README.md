@@ -379,12 +379,19 @@ A perk in an old snapshot that the game no longer knows about (a mod removed
 since the death, a renamed vanilla perk) is skipped and named in the server log
 rather than being dropped in silence.
 
-Levels are restored by **adding XP**, which is how the game levels a character
-normally and what vanilla's `/addxp` does. Two fallbacks sit behind it for a
-build that does not expose the XP object: `setPerkLevelDebug`, then `LevelPerk`
-once per level — the last being the most violent, since it runs the whole
-level-up cascade (XP maths, sound, screen flash, character-screen refresh) every
-single time, so a dozen perks is forty of them in one frame.
+Levels are set with `setPerkLevelDebug`, falling back to `LevelPerk` once per
+level — and **each perk is then read back to check the level actually moved**.
+
+That check is not paranoia. A version of this restored by adding XP
+(`AddXPNoMultiplier`), which is how the game levels a character normally. The
+call was accepted, no error was raised, and **the level never moved**. Ten perks
+were logged as applied, "Restored (10 skills)" was reported to the player, and
+the next death's snapshot a minute later found three. The game's own PerkLog
+recorded no level change at all.
+
+The logging was as much at fault as the API: it printed what was *attempted*,
+not what *happened*. A perk that resists every route now reads `FAILED, still at
+0` in the log, is not counted, and is listed as missing.
 
 **Fitness and Strength are restored last**, and each perk is logged as it lands:
 

@@ -165,46 +165,46 @@ end
 -- at.
 local PHYSICAL = { Fitness = true, Strength = true }
 
---- Put one perk at a level.
+--- Put one perk at a level, and then CHECK that it took.
 ---
---- Three routes, in order of how much of the game they disturb.
+--- The checking is the point. An earlier version preferred adding XP -
+--- getTotalXpForLevel minus the character's current XP, through
+--- AddXPNoMultiplier - on the theory that it was the gentlest route, being how
+--- the game levels a character normally. It added the XP and the level never
+--- moved. The mod cheerfully logged "restore Woodwork -> 4 (xp)" for ten perks,
+--- reported "Restored (10 skills)", and the next snapshot a minute later found
+--- three. The game's own PerkLog recorded no level change at all.
 ---
---- XP first. It is how the game levels a character normally, and how vanilla's
---- /addxp works - a command that had just been run on the very character this
---- was killing, with no ill effect at all. setPerkLevelDebug is the debug
---- menu's route. LevelPerk once per level is the last resort and the most
---- violent: it runs the whole level-up cascade - XP maths, sound, screen flash,
---- character-screen refresh - every single time, so a dozen perks restored at
---- once is forty of them in one frame.
+--- That is on the logging as much as the API: it printed what was *attempted*,
+--- not what *happened*. Now each route is tried and then verified against
+--- getPerkLevel, the next is tried if it did not take, and a perk that resists
+--- every route says FAILED in the log instead of passing for success.
 ---@param player IsoPlayer
 ---@param perk any
 ---@param perkType any
----@param current integer
 ---@param level integer
----@return string how which route was taken, for the log
-local function setPerkLevel(player, perk, perkType, current, level)
-    local xp = nil
-    if player.getXp ~= nil then xp = player:getXp() end
-
-    if xp ~= nil and xp.AddXPNoMultiplier ~= nil and perk.getTotalXpForLevel ~= nil then
-        local target = perk:getTotalXpForLevel(level)
-        local have = xp:getXP(perkType) or 0
-        if target ~= nil and target > have then
-            xp:AddXPNoMultiplier(perkType, target - have)
-            return "xp"
-        end
-        return "xp, already there"
+---@return string how which route worked, or why none did
+local function setPerkLevel(player, perk, perkType, level)
+    local function reached()
+        return (player:getPerkLevel(perkType) or 0) >= level
     end
 
+    -- One call, no level-up cascade. The debug menu's route.
     if player.setPerkLevelDebug ~= nil then
         player:setPerkLevelDebug(perkType, level)
-        return "setPerkLevelDebug"
+        if reached() then return "set" end
     end
 
+    -- One call per level, running the whole level-up cascade each time. Noisier
+    -- and slower, but it is what the game itself does when you earn a level, so
+    -- it is the one that definitely moves the number.
+    local current = player:getPerkLevel(perkType) or 0
     for _ = current + 1, level do
         player:LevelPerk(perkType)
     end
-    return "LevelPerk x" .. (level - current)
+    if reached() then return "levelled" end
+
+    return "FAILED, still at " .. tostring(player:getPerkLevel(perkType))
 end
 
 --- Give a character the levels from a snapshot. Levels already held are kept,
@@ -256,9 +256,10 @@ function Store.applySkills(player, skills)
             end
 
             local current = player:getPerkLevel(perkType) or 0
-            local how = "already at " .. current
+            local how, landed = "already at " .. current, true
             if current < level then
-                how = setPerkLevel(player, perk, perkType, current, level)
+                how = setPerkLevel(player, perk, perkType, level)
+                landed = (player:getPerkLevel(perkType) or 0) >= level
             end
 
             if player:isDead() then
@@ -275,7 +276,15 @@ function Store.applySkills(player, skills)
             -- line in the log, which names the culprit outright.
             print("[PermadeathLock]   restore " .. name .. " -> " .. tostring(level)
                 .. " (" .. how .. ")")
-            restored = restored + 1
+
+            -- Counted only if the level actually moved. Reporting "10 skills
+            -- restored" for perks that did not budge is how a broken restore
+            -- passed for a working one through several releases.
+            if landed then
+                restored = restored + 1
+            else
+                missing[#missing + 1] = tostring(name)
+            end
         end
     end
 
@@ -545,5 +554,9 @@ end
 -- load as early as the game allows
 --------------------------------------------------------------------------------
 
-Events.OnServerStarted.Add(Store.load)
+-- Both, because either can be first depending on the mode, and ensureLoaded is
+-- a no-op once the other has run. Store.load was on OnServerStarted directly,
+-- which reloaded and logged a second time every boot - a misleading double in
+-- the log while a genuine double-load was being hunted.
+Events.OnServerStarted.Add(ensureLoaded)
 Events.OnInitGlobalModData.Add(ensureLoaded)

@@ -104,7 +104,39 @@ including for server-side checks afterwards — so do what `/additem` does.
 
 ---
 
-## 3. Kahlua is not Lua 5.1
+## 3. Log what happened, not what you attempted
+
+A restore in this repo set perk levels by adding XP. The call was accepted, no
+error was raised, and **the level never moved**. The log said:
+
+```
+restore Woodwork -> 4 (xp)      <- "I called AddXP", not "Woodwork is now 4"
+Restored Willy Guggenheim (10 skills)
+```
+
+so it read as a complete success for several releases, while the next snapshot a
+minute later found three of the ten. The game's own log recorded no level change
+at all, which would have settled it immediately had anyone compared the two.
+
+Engine calls in PZ frequently **accept a write and do nothing** — wrong context,
+wrong ownership, not-yet-synced object, an API that means something subtler than
+its name. They rarely throw.
+
+So: **write, read it back, and log the reading.** One extra line per operation,
+and a whole class of ghost bug stops existing:
+
+```lua
+player:setPerkLevelDebug(perkType, level)
+if (player:getPerkLevel(perkType) or 0) >= level then return "set" end
+-- ...try the next route, and if nothing works, say FAILED in the log
+```
+
+Same rule for counts reported to the player. "10 skills restored" should mean
+ten levels moved, not ten calls made.
+
+---
+
+## 4. Kahlua is not Lua 5.1
 
 The game runs Kahlua, which is close to Lua 5.1 but not the same.
 
@@ -129,7 +161,7 @@ log full of stack traces.
 
 ---
 
-## 4. Load order is alphabetical
+## 5. Load order is alphabetical
 
 Within a folder, the game loads Lua files in **alphabetical order**.
 `MyMod_Server.lua` loads before `MyMod_Store.lua`. So this, at the top of
@@ -147,7 +179,7 @@ loaded Store first, which hid the bug completely.
 
 ---
 
-## 5. Timing traps
+## 6. Timing traps
 
 - **`OnCreatePlayer` fires while the character is still loading into the
   world.** Acting on it at that instant — killing it, applying a dozen perk
@@ -165,7 +197,7 @@ loaded Store first, which hid the bug completely.
 
 ---
 
-## 6. Text and scripts that fail by showing you the key
+## 7. Text and scripts that fail by showing you the key
 
 If a label renders as its own name — `IGUI_ItemCat_Misc`, `Tooltip_MyItem` —
 the game did not find it. Two causes:
@@ -181,7 +213,7 @@ the game did not find it. Two causes:
 
 ---
 
-## 7. Build 42 structure and syntax
+## 8. Build 42 structure and syntax
 
 ```
 MyMod/
@@ -201,7 +233,7 @@ replaces `Type =`, and `craftRecipe` with `inputs`/`outputs` blocks replaces
 
 ---
 
-## 8. How to actually test
+## 9. How to actually test
 
 **Offline, before launching the game.** Stub the globals and `dofile` the real
 mod files. It is far more effective than it sounds, and it is what finally
@@ -236,7 +268,7 @@ and run the new harness against it.
 
 ---
 
-## 9. UI
+## 10. UI
 
 - **Size every band from the font, never from pixels.**
   `getTextManager():getFontHeight(UIFont.Small)` is the number. The UI Scaling

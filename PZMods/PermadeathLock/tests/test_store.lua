@@ -79,32 +79,44 @@ function getFileReader(name, createIfNull)
 end
 
 -- A fake player whose perk levels can be read and written.
-local function makePlayer(username, levels)
+--
+-- opts.deaf makes setPerkLevelDebug accept the call and change nothing, which
+-- is what the real AddXPNoMultiplier did: it took the write, reported no error,
+-- and the level never moved. The restore has to notice that, not trust it.
+---@param username string
+---@param levels table?
+---@param opts table?
+local function makePlayer(username, levels, opts)
+    opts = opts or {}
     local held = {}
     for k, v in pairs(levels or {}) do held[k] = v end
 
-    -- The XP object the restore prefers, mirroring how the game itself levels a
-    -- character and how vanilla /addxp does it. Crossing a hundred points is a
-    -- level, matching the curve on the perk stubs above.
-    local xp = { _points = {}, _order = {} }
-    function xp:getXP(perkType) return self._points[perkType] or 0 end
-    function xp:AddXPNoMultiplier(perkType, amount)
-        self._points[perkType] = (self._points[perkType] or 0) + amount
-        held[perkType] = math.floor(self._points[perkType] / 100)
-        self._order[#self._order + 1] = perkType
-    end
+    local order = {}
 
-    return {
-        _xp = xp,
-        getXp = function() return xp end,
+    local player = {
+        _levels = held,
+        _order = order,
         getUsername = function() return username end,
         getSteamID = function() return "76561198000000001" end,
         isDead = function() return false end,
         isAccessLevel = function(_, level) return level == "nope" end,
         getPerkLevel = function(_, perkType) return held[perkType] or 0 end,
-        LevelPerk = function(_, perkType) held[perkType] = (held[perkType] or 0) + 1 end,
-        _levels = held,
+        LevelPerk = function(_, perkType)
+            if opts.deaf then return end
+            held[perkType] = (held[perkType] or 0) + 1
+            order[#order + 1] = perkType
+        end,
     }
+
+    if not opts.noDebugSetter then
+        player.setPerkLevelDebug = function(_, perkType, level)
+            if opts.deaf then return end
+            held[perkType] = level
+            order[#order + 1] = perkType
+        end
+    end
+
+    return player
 end
 
 dofile("PZMods/PermadeathLock/42/media/lua/shared/PermadeathLock_Shared.lua")
@@ -195,13 +207,24 @@ check("display name resolves too", handEdited._levels.TYPE_Woodwork, 6)
 -- 5d. the physical perks are restored last, whatever order the snapshot is in
 local ordered = makePlayer("Ordered", {})
 Store.applySkills(ordered, { Fitness = 3, Woodwork = 2, Aiming = 1 })
-local touched = ordered._xp._order
-check("everything is restored", #touched, 3)
-check("and Fitness comes last", touched[#touched], "TYPE_Fitness")
+check("everything is restored", #ordered._order, 3)
+check("and Fitness comes last", ordered._order[#ordered._order], "TYPE_Fitness")
+check("at the level the snapshot held", ordered._levels.TYPE_Woodwork, 2)
 
--- 5e. XP is the route taken, not the level-up cascade
-check("levels come from XP", ordered._levels.TYPE_Woodwork, 2)
-check("with the right amount of it", ordered._xp:getXP("TYPE_Woodwork"), 200)
+-- 5e. a build with no direct setter falls back to levelling, and still lands
+local levelled = makePlayer("Levelled", {}, { noDebugSetter = true })
+Store.applySkills(levelled, { Woodwork = 3 })
+check("the fallback route reaches the level too", levelled._levels.TYPE_Woodwork, 3)
+
+-- 5f. REGRESSION: a perk API that accepts the write and changes nothing must be
+-- reported, not counted as a success. Restoring through AddXPNoMultiplier did
+-- exactly this - ten perks logged as applied, none of them actually moved, and
+-- the next snapshot a minute later found three.
+local deaf = makePlayer("Deaf", {}, { deaf = true })
+local deafRestored, deafMissing = Store.applySkills(deaf, { Woodwork = 4 })
+check("nothing actually moved", deaf._levels.TYPE_Woodwork, nil)
+check("and it is not counted as restored", deafRestored, 0)
+check("it is reported instead", deafMissing[1], "Woodwork")
 
 -- 6. manual add / pardon / clear
 Store.addManual("Carl", "added by admin")
