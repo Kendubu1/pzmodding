@@ -228,6 +228,23 @@ Nothing a client sends is trusted. The client parses the line you typed and
 forwards what it means; every decision about whether that is allowed, where it
 lands and who it hurts is made on the server.
 
+## Translations
+
+Project Zomboid decides where to look for a string from the **filename**, and the
+filename decides the table name, and the table name decides the key prefix:
+
+| File | Table | Keys |
+| --- | --- | --- |
+| `IG_UI_EN.txt` | `IGUI_EN` | `IGUI_*` |
+| `Sandbox_EN.txt` | `Sandbox_EN` | `Sandbox_*` |
+
+Note `IG_UI_EN.txt`, with the underscore — `IGUI_EN.txt` is not read at all.
+
+Get any of it wrong and nothing errors, nothing logs: `getText()` hands back the
+key you asked for, and the player sees `IGUI_NukeStrike_Haze` on their screen.
+`tests/test_translations.lua` checks the whole chain, including that a key's
+prefix matches the table it is sitting in.
+
 ## Layout
 
 ```

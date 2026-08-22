@@ -13,6 +13,7 @@ with `dofile`.
 | `test_server.lua` | The server's decisions: admin gating, target resolution, off-map rejection, the d6, the countdown and aborting it, and what the fallout costs a player with and without a mask — and that the haze kills bandits (by either identifying mark) at a player's pace while leaving plain zombies alone. |
 | `test_contextmenu.lua` | The right-click menu: who is offered it, that the measuring pass adds nothing, that ground with no square is skipped, that each option sends the command it says it does, and that an error inside it cannot escape into the game's menu code and take everyone's right-click with it. |
 | `test_client.lua` | The client half, and the one rule it has: that **nothing is ever added to the UI manager**, whatever happens. A full screen element swallows every click behind it and `setConsumeMouseEvents(false)` does not prevent it — it succeeds and the element eats clicks anyway. The overlay is deleted rather than shrunk, and this is the test that keeps it deleted. Also the delayed boom, the rumble at distance, and the cough. |
+| `test_translations.lua` | Translation keys, which fail silently and in public: `getText("IGUI_Foo")` returns the string `IGUI_Foo` when it cannot find the key, so a misfiled entry does not error or log — it puts a raw key on the player's screen. Checks that each file is named something the game reads (`IG_UI_EN.txt`, **with** the underscore), that it calls its table what the filename implies, that every key carries the prefix its table requires, that every `getText` key and every sandbox option label and tooltip exists, and that no key is left over. |
 | `test_gating.sh` | Loads the mod once per game mode and checks which halves come alive against the expected matrix. The guard against the mod silently doing nothing in a mode it should support. |
 
 They cannot test anything the game owns — whether the events actually fire,
@@ -28,6 +29,7 @@ lua5.1 PZMods/NukeStrike/tests/test_blast.lua
 lua5.1 PZMods/NukeStrike/tests/test_server.lua
 lua5.1 PZMods/NukeStrike/tests/test_contextmenu.lua
 lua5.1 PZMods/NukeStrike/tests/test_client.lua
+lua5.1 PZMods/NukeStrike/tests/test_translations.lua
 sh      PZMods/NukeStrike/tests/test_gating.sh
 ```
 

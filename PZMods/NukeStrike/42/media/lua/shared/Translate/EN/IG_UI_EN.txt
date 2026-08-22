@@ -1,0 +1,3 @@
+IGUI_EN = {
+	IGUI_NukeStrike_Haze = "The air here is poison.",
+}
