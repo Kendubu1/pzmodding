@@ -31,9 +31,9 @@ WorkshopItems=
 ```
 
 Every player needs the same folder in their own `Zomboid/mods/` unless it is a
-Workshop item — the client half draws the flash and the haze, so a player without
-it will see a building fall over in silence. Restart after installing; mods are
-not hot-loadable.
+Workshop item — the client half plays the blast, so a player without it will see
+a building fall over in silence. Restart after installing; mods are not
+hot-loadable.
 
 ## Two ways to set one off
 
@@ -82,8 +82,8 @@ on both axes; Muldraugh is around 10600, 9600 and West Point around 11700, 6800.
 
 ## What happens
 
-1. **The sirens.** Everyone is told a strike is inbound and where. A countdown
-   runs on screen for thirty seconds by default, which is enough time to drive
+1. **The sirens.** Everyone is told in chat that a strike is inbound and where,
+   and hears the siren. Thirty seconds by default, which is enough time to drive
    out if you are quick, and not enough if you stop for your bag.
 2. **The sound, late.** The bang lags the light in proportion to distance — four
    seconds at two hundred tiles, and a low rumble instead of a crack for anyone
