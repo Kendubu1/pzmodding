@@ -391,11 +391,20 @@ check("the spawn handshake does not kill", umaNew._dead, false)
 check("it tells them instead", lastCommandTo("Uma"), "blocked")
 check("and says the character is forfeit", sent[#sent].args.kill, true)
 
--- the client finishes loading, asks again, and is told to go ahead
+-- the client finishes loading and reports in; the kill happens then, here
 sent = {}
 onClientCommand(MODULE, "spawnSettled", umaNew, {})
-check("the confirmed block is answered", lastCommandTo("Uma"), "killNow")
-check("but the server does not kill it itself", umaNew._dead, false)
+check("settling is when the character dies", umaNew._dead, true)
+
+-- REGRESSION: the kill used to be relayed to the client, which killed itself.
+-- The server then went on believing the character was alive - the admin panel
+-- showed them alive and the death was never recorded. One authority for who is
+-- dead, and it is this side.
+local warned = false
+for _, entry in ipairs(sent) do
+    if entry.user == "Uma" and entry.command == "notice" then warned = true end
+end
+check("and they are told, on screen, that the lock did it", warned, true)
 
 -- REGRESSION: a pardon during the client's grace period must call it off.
 -- Killing anyway is a bug the player experiences as the pardon not working.

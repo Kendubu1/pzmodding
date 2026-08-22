@@ -91,6 +91,34 @@ end
 --- the world the moment anything happens. Killed, the player stays connected,
 --- reads the notice, and can keep making characters - each of which dies the
 --- same way, which is a rule rather than a fault.
+--- Kill a character because of the lock, and say so where it cannot be missed.
+---
+--- Every kill goes through here. Until now they were silent from the player's
+--- side, which made "I just suddenly died" impossible to attribute: nobody
+--- could tell a lock enforcement from a zombie, a mod conflict or a bug. If you
+--- die and see no message from this function, this mod did not kill you.
+---
+--- Done on the SERVER, not by asking the client to kill itself. 1.7.0 moved it
+--- to the client to avoid a remote-kill desync; the result was the desync in
+--- the other direction - the client died, the server went on believing the
+--- character was alive, the admin panel showed them alive, and the death was
+--- never recorded. Killing here keeps one authority for whether someone is
+--- dead. The spawn handshake still never does it: see spawnSettled.
+---@param player IsoPlayer
+---@param why string
+local function killCharacter(player, why)
+    if player == nil or player:isDead() then return end
+
+    local text = "Permadeath Lock: your character has been killed - " .. why
+        .. " An admin can pardon you, or revive you and give back what you learned."
+
+    sendServerCommand(player, MODULE, "notice", { text = text })
+    tell(player, text)
+
+    player:Kill(player)
+    print("[PermadeathLock] KILLED " .. player:getUsername() .. " - " .. why)
+end
+
 ---@param player IsoPlayer
 ---@param record table?
 local function sendBlocked(player, record)
@@ -194,6 +222,14 @@ local function recordDeath(player, reason)
         token = PL.findToken(player)
         remembered = carriedToken[key] == true
     end
+
+    -- Always logged, both ways. Which branch this took decides whether the
+    -- player is locked out, and working that out from the outside afterwards
+    -- was guesswork.
+    print("[PermadeathLock] death of " .. player:getUsername()
+        .. ": FateTokens=" .. tostring(PL.getOption("FateTokenEnabled", true))
+        .. ", token on body=" .. tostring(token ~= nil)
+        .. ", last seen carrying=" .. tostring(remembered))
 
     if token == nil and not remembered then
         local record = Store.record(player, reason)
@@ -349,11 +385,9 @@ local function checkPlayer(player)
             sendBlocked(player, record)
         elseif getTimestamp() - since > KILL_BACKSTOP_SECONDS
             and PL.getOption("EnforceKill", true) then
-            -- Their client never went through with it.
+            -- Their client never reported in.
             blockedAt[key] = nil
-            player:Kill(player)
-            print("[PermadeathLock] " .. username
-                .. " ignored the block; new character killed server-side.")
+            killCharacter(player, "you are on the death list and made a new character.")
         end
         return
     end
@@ -365,8 +399,7 @@ local function checkPlayer(player)
         sendBlocked(player, record)
         print("[PermadeathLock] " .. username .. " rejoined after death; asked to disconnect.")
     elseif PL.getOption("EnforceKill", true) then
-        player:Kill(player)
-        print("[PermadeathLock] " .. username .. " ignored the block; new character killed.")
+        killCharacter(player, "you are on the death list and did not disconnect.")
     end
 end
 
@@ -819,9 +852,7 @@ local function onClientCommand(module, command, player, args)
         if PL.isExempt(player) then return end
         if not PL.getOption("KillOnSpawn", true) then return end
 
-        sendServerCommand(player, MODULE, "killNow", {})
-        print("[PermadeathLock] " .. player:getUsername()
-            .. " is locked out; their new character was killed.")
+        killCharacter(player, "you are on the death list and made a new character.")
         return
     end
 

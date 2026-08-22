@@ -114,14 +114,27 @@ spawn, carried out by their own client:
    kill anything — see **Nothing happens during the spawn handshake** below.
 2. Four seconds later, the client tells the server it has settled. The server
    re-reads the death list; a pardon in that window calls the kill off entirely.
-3. If the block still stands, the client kills its own character. That side owns
-   and simulates it; a kill applied to a remote player from the server is the
-   same class of desync that made items pushed into a remote inventory
-   unreliable.
-4. If a client never goes through with it, the server kills them fifteen real
+3. If the block still stands, **the server** kills the character.
+4. If a client never reports in, the server kills them anyway fifteen real
    seconds after the notice. That deadline is in real seconds, not sweeps —
    a sweep is one *in-game* minute and how long that lasts depends on the
    server's day length.
+
+1.7.0 had step 3 the other way round: the server asked the client to kill
+itself, to avoid a remote-kill desync. That produced the desync in the other
+direction — the client died, **the server went on believing the character was
+alive**, the admin panel showed them alive, and the death was never recorded.
+There is one authority for whether somebody is dead and it is the server.
+
+**Every kill the lock performs says so**, on screen and in chat:
+
+> Permadeath Lock: your character has been killed — you are on the death list
+> and made a new character. An admin can pardon you, or revive you and give back
+> what you learned.
+
+and in the log as `KILLED <name> - <why>`. If you die and see no such message,
+this mod did not kill you. That is the point of it: "I just suddenly died" was
+impossible to attribute to anything.
 
 ### Nothing happens during the spawn handshake
 
@@ -192,6 +205,13 @@ Type these in chat as an admin (`/pd` is a shorthand):
 ```
 
 Usernames are matched case-insensitively.
+
+### Reading a status dump
+
+`awaiting restore=true` means the mod owes your **next** character the skills of
+the one that died — it is a promise, not a block. `locked=true` is the one that
+stops you playing. A token save sets `locked=false, awaiting restore=true`: you
+are free to make a new character, and it collects the old one's skills.
 
 ### When nothing seems to be happening
 
