@@ -275,7 +275,17 @@ end
 local function applyRestore(player, record)
     local restored, missing = 0, {}
     if PL.getOption("RestoreSkillsOnRevive", true) then
+        print("[PermadeathLock] restoring " .. record.username .. "...")
         restored, missing = Store.applySkills(player, record.skills)
+        print("[PermadeathLock] ...restore of " .. record.username .. " finished.")
+
+        -- Healed straight afterwards. A restore reaches into Fitness and
+        -- Strength, which are what the body's condition is computed from, and a
+        -- character handed those back should not end up worse for it.
+        if player.getBodyDamage ~= nil then
+            local body = player:getBodyDamage()
+            if body ~= nil then body:RestoreToFullHealth() end
+        end
     end
     Store.finishRestore(record.username)
     strikes[PL.key(record.username)] = nil

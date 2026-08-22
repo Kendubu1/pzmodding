@@ -354,10 +354,32 @@ A perk in an old snapshot that the game no longer knows about (a mod removed
 since the death, a renamed vanilla perk) is skipped and named in the server log
 rather than being dropped in silence.
 
-Levels are set in one call each (`setPerkLevelDebug`) rather than by calling
-`LevelPerk` once per level. A dozen perks restored at once is otherwise forty
-level-up cascades — XP maths, sound, screen flash, character-screen refresh —
-inside a single frame.
+Levels are restored by **adding XP**, which is how the game levels a character
+normally and what vanilla's `/addxp` does. Two fallbacks sit behind it for a
+build that does not expose the XP object: `setPerkLevelDebug`, then `LevelPerk`
+once per level — the last being the most violent, since it runs the whole
+level-up cascade (XP maths, sound, screen flash, character-screen refresh) every
+single time, so a dozen perks is forty of them in one frame.
+
+**Fitness and Strength are restored last**, and each perk is logged as it lands:
+
+```
+[PermadeathLock] restoring Willy...
+[PermadeathLock]   restore Aiming -> 3 (xp)
+[PermadeathLock]   restore Woodwork -> 6 (xp)
+[PermadeathLock]   restore Fitness -> 5 (xp)
+[PermadeathLock] ...restore of Willy finished.
+```
+
+Those two are what the body's condition is computed from, so they are the
+likeliest to hurt a character that has only just spawned. Doing them last means
+everything else has already landed, and if the restore takes the character down
+part way through, **the last line in the log names the perk it stopped at**. The
+character is healed to full immediately afterwards for the same reason.
+
+If a restore is killing characters on your server, `RestoreSkillsOnRevive` off
+is the switch that isolates it: Fate Tokens still save people, they just come
+back without their old skills.
 
 The player is told **on screen**, not only in chat. A restore lands seconds
 after a death screen and nobody is reading the chat window then: players spent a

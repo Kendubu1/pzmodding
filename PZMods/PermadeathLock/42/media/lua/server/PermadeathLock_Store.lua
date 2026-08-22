@@ -159,27 +159,52 @@ local function deserialiseSkills(text)
     return skills
 end
 
+-- The two perks the body's condition is computed from. Restored last, so that
+-- if touching them is what has been killing freshly restored characters, every
+-- other skill has already landed by then and the log says which one it stopped
+-- at.
+local PHYSICAL = { Fitness = true, Strength = true }
+
 --- Put one perk at a level.
 ---
---- setPerkLevelDebug does it in a single call. The alternative - LevelPerk once
---- per level - runs the whole level-up cascade every time: XP maths, the sound,
---- the on-screen flash, a character-screen refresh. A restore is a dozen perks
---- at once, so that is easily forty of those cascades inside one frame on a
---- character that has just been handed its old life back. Kept as the fallback
---- for a build that does not expose the direct setter.
+--- Three routes, in order of how much of the game they disturb.
+---
+--- XP first. It is how the game levels a character normally, and how vanilla's
+--- /addxp works - a command that had just been run on the very character this
+--- was killing, with no ill effect at all. setPerkLevelDebug is the debug
+--- menu's route. LevelPerk once per level is the last resort and the most
+--- violent: it runs the whole level-up cascade - XP maths, sound, screen flash,
+--- character-screen refresh - every single time, so a dozen perks restored at
+--- once is forty of them in one frame.
 ---@param player IsoPlayer
+---@param perk any
 ---@param perkType any
 ---@param current integer
 ---@param level integer
-local function setPerkLevel(player, perkType, current, level)
+---@return string how which route was taken, for the log
+local function setPerkLevel(player, perk, perkType, current, level)
+    local xp = nil
+    if player.getXp ~= nil then xp = player:getXp() end
+
+    if xp ~= nil and xp.AddXPNoMultiplier ~= nil and perk.getTotalXpForLevel ~= nil then
+        local target = perk:getTotalXpForLevel(level)
+        local have = xp:getXP(perkType) or 0
+        if target ~= nil and target > have then
+            xp:AddXPNoMultiplier(perkType, target - have)
+            return "xp"
+        end
+        return "xp, already there"
+    end
+
     if player.setPerkLevelDebug ~= nil then
         player:setPerkLevelDebug(perkType, level)
-        return
+        return "setPerkLevelDebug"
     end
 
     for _ = current + 1, level do
         player:LevelPerk(perkType)
     end
+    return "LevelPerk x" .. (level - current)
 end
 
 --- Give a character the levels from a snapshot. Levels already held are kept,
@@ -199,16 +224,34 @@ function Store.applySkills(player, skills)
 
     local index = perksByKey()
 
-    for name, level in pairs(skills) do
+    -- A stable order, with the physical perks last. pairs() order is arbitrary,
+    -- which makes two runs of the same restore produce different logs and hides
+    -- exactly the pattern worth seeing.
+    local names = {}
+    for name in pairs(skills) do names[#names + 1] = name end
+    table.sort(names, function(a, b)
+        local pa, pb = PHYSICAL[a] == true, PHYSICAL[b] == true
+        if pa ~= pb then return pb end
+        return a < b
+    end)
+
+    for _, name in ipairs(names) do
+        local level = skills[name]
         local perk = index[name]
         if perk == nil or level == nil then
             missing[#missing + 1] = tostring(name)
         else
             local perkType = perk:getType()
             local current = player:getPerkLevel(perkType) or 0
+            local how = "already at " .. current
             if current < level then
-                setPerkLevel(player, perkType, current, level)
+                how = setPerkLevel(player, perk, perkType, current, level)
             end
+            -- One line per perk, on purpose. A restore that kills the character
+            -- part way through leaves the last perk it managed as the final
+            -- line in the log, which names the culprit outright.
+            print("[PermadeathLock]   restore " .. name .. " -> " .. tostring(level)
+                .. " (" .. how .. ")")
             restored = restored + 1
         end
     end

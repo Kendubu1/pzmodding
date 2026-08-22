@@ -31,6 +31,9 @@ local function makePerk(id, displayName)
         getId = function() return id end,
         getName = function() return displayName or id end,
         getType = function() return "TYPE_" .. id end,
+        -- A flat curve is enough: the restore only needs the difference between
+        -- where the character is and where the snapshot says they were.
+        getTotalXpForLevel = function(_, level) return level * 100 end,
     }
 end
 local perkList = {
@@ -79,7 +82,21 @@ end
 local function makePlayer(username, levels)
     local held = {}
     for k, v in pairs(levels or {}) do held[k] = v end
+
+    -- The XP object the restore prefers, mirroring how the game itself levels a
+    -- character and how vanilla /addxp does it. Crossing a hundred points is a
+    -- level, matching the curve on the perk stubs above.
+    local xp = { _points = {}, _order = {} }
+    function xp:getXP(perkType) return self._points[perkType] or 0 end
+    function xp:AddXPNoMultiplier(perkType, amount)
+        self._points[perkType] = (self._points[perkType] or 0) + amount
+        held[perkType] = math.floor(self._points[perkType] / 100)
+        self._order[#self._order + 1] = perkType
+    end
+
     return {
+        _xp = xp,
+        getXp = function() return xp end,
         getUsername = function() return username end,
         getSteamID = function() return "76561198000000001" end,
         isDead = function() return false end,
@@ -141,6 +158,12 @@ check("revive state survives reload", Store.get("Bob").pendingRestore, true)
 check("unlocked state survives reload", Store.isLocked("Bob"), false)
 
 -- 5. applying the restore to a fresh character
+--
+-- REGRESSION: the physical perks go last. Restoring a character was killing it
+-- outright - only ever on the two paths that restore, never on a plain death -
+-- and Fitness and Strength are what the body's condition is computed from. Last
+-- means everything else has already landed, and the per-perk log names whatever
+-- it stopped at.
 local newBob = makePlayer("Bob", { TYPE_Aiming = 5 })
 local restored, missing = Store.applySkills(newBob, Store.get("Bob").skills)
 -- REGRESSION: Woodwork is stored by id and its display name is "Carpentry".
@@ -168,6 +191,17 @@ check("unknown perk reported missing", ghostMissing[1], "Sorcery")
 local handEdited = makePlayer("Hand", {})
 Store.applySkills(handEdited, { Carpentry = 6 })
 check("display name resolves too", handEdited._levels.TYPE_Woodwork, 6)
+
+-- 5d. the physical perks are restored last, whatever order the snapshot is in
+local ordered = makePlayer("Ordered", {})
+Store.applySkills(ordered, { Fitness = 3, Woodwork = 2, Aiming = 1 })
+local touched = ordered._xp._order
+check("everything is restored", #touched, 3)
+check("and Fitness comes last", touched[#touched], "TYPE_Fitness")
+
+-- 5e. XP is the route taken, not the level-up cascade
+check("levels come from XP", ordered._levels.TYPE_Woodwork, 2)
+check("with the right amount of it", ordered._xp:getXP("TYPE_Woodwork"), 200)
 
 -- 6. manual add / pardon / clear
 Store.addManual("Carl", "added by admin")
