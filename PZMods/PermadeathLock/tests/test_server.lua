@@ -846,6 +846,9 @@ check("it reports their tokens", string.find(dump, "carrying 2 Fate Token") ~= n
 check("it says they are not listed", string.find(dump, "not on the death list") ~= nil, true)
 check("and it prints the settings that decide behaviour",
     string.find(dump, "ExemptAdmins=") ~= nil and string.find(dump, "KillOnSpawn=") ~= nil, true)
+-- Leaving one out is how someone ends up hunting a bug that is a switch.
+check("including the skill restore switch", string.find(dump, "RestoreSkills=") ~= nil, true)
+check("and which Lua state answered", string.find(dump, "isCoopHost=") ~= nil, true)
 
 -- the plain status is unchanged when no target is given
 sent = {}

@@ -248,7 +248,12 @@ are free to make a new character, and it collects the old one's skills.
 
 `/permadeath status <user>` answers it in one go: are they online, are they
 dead, are they **exempt**, how many Fate Tokens are they carrying, are they on
-the death list, are they owed a restore, and which sandbox switches are on.
+the death list, are they owed a restore, **all seven sandbox switches**, and
+which Lua state answered.
+
+That last line matters on a co-op Host — see *Where it runs*. Getting this
+reply **twice** means the server half is loaded twice, which is a fault in
+itself.
 
 Reach for it first. Almost every "the mod is broken" report has been one of
 those lines. An exempt player's death in particular does nothing at all — not

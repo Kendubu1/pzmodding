@@ -82,15 +82,6 @@ local function tell(player, text)
     sendServerCommand(player, MODULE, "message", { text = text })
 end
 
---- Tell a locked-out player they are locked out, and, in the default mode, kill
---- the character they just made.
----
---- Killing rather than disconnecting is deliberate. Being thrown off the server
---- is indistinguishable from a crash or a connection problem, and it makes the
---- mod much harder to watch while testing: you lose the console, the chat and
---- the world the moment anything happens. Killed, the player stays connected,
---- reads the notice, and can keep making characters - each of which dies the
---- same way, which is a rule rather than a fault.
 --- Kill a character because of the lock, and say so where it cannot be missed.
 ---
 --- Every kill goes through here. Until now they were silent from the player's
@@ -791,11 +782,23 @@ local function commandStatusFor(admin, target)
             .. ", " .. count .. " skill(s) held, reason: " .. (record.reason or "?"))
     end
 
+    -- Every switch that changes behaviour, with none left out. Omitting
+    -- RestoreSkillsOnRevive here sent someone hunting a bug that was the
+    -- setting being off, which is exactly the failure this command exists to
+    -- prevent.
     tell(admin, "settings: Enabled=" .. tostring(PL.isEnabled())
         .. ", ExemptAdmins=" .. tostring(PL.getOption("ExemptAdmins", true))
         .. ", FateTokens=" .. tostring(PL.getOption("FateTokenEnabled", true))
+        .. ", ConsumeTokens=" .. tostring(PL.getOption("FateTokenConsume", true))
+        .. ", RestoreSkills=" .. tostring(PL.getOption("RestoreSkillsOnRevive", true))
         .. ", KillOnSpawn=" .. tostring(PL.getOption("KillOnSpawn", true))
         .. ", EnforceKill=" .. tostring(PL.getOption("EnforceKill", true)))
+
+    -- Which Lua state answered. On a co-op Host there are two, and only one
+    -- should be running this half at all; seeing this reply twice is a fault.
+    tell(admin, "answered by: isServer=" .. tostring(isServer())
+        .. ", isClient=" .. tostring(isClient())
+        .. ", isCoopHost=" .. tostring(PL.isCoopHost()))
 end
 
 ---@param admin IsoPlayer
