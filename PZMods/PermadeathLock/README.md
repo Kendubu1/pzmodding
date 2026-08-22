@@ -204,7 +204,18 @@ Type these in chat as an admin (`/pd` is a shorthand):
 /permadeath reload          re-read the death list from disk
 ```
 
-Usernames are matched case-insensitively.
+Usernames are matched case-insensitively, may contain **spaces**, and may be
+quoted:
+
+```
+/permadeath pardon Willy Guggenheim
+/permadeath pardon "Willy Guggenheim"
+```
+
+Both work. Until 1.9.1 neither did: the parser took only the next word, so the
+first addressed a player called `Willy` and the second one called `"Willy`. Each
+answered "X is not on the death list", which reads as the death list being wrong
+rather than the name never having arrived.
 
 ### Reading a status dump
 

@@ -9,7 +9,7 @@
 PermadeathLock = PermadeathLock or {}
 local PL = PermadeathLock
 
-PL.VERSION = "1.9.0"
+PL.VERSION = "1.9.1"
 
 -- Module name used by sendClientCommand / sendServerCommand.
 PL.MODULE = "PermadeathLock"
@@ -80,8 +80,17 @@ end
 ---@return string? key nil when the username is missing or blank
 function PL.key(username)
     if username == nil then return nil end
-    local trimmed = tostring(username):match("^%s*(.-)%s*$")
+
+    local trimmed = string.match(tostring(username), "^%s*(.-)%s*$")
     if trimmed == nil or trimmed == "" then return nil end
+
+    -- Surrounding quotes are stripped here as well as in the chat parser. Names
+    -- with spaces get quoted by hand, and a lookup for '"Willy Guggenheim"'
+    -- silently missing a record stored as 'Willy Guggenheim' is the kind of
+    -- failure that looks like the death list being broken.
+    local unquoted = string.match(trimmed, '^"(.*)"$') or string.match(trimmed, "^'(.*)'$")
+    if unquoted ~= nil and unquoted ~= "" then trimmed = unquoted end
+
     return string.lower(trimmed)
 end
 

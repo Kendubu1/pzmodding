@@ -26,6 +26,30 @@ local function words(text)
     return out
 end
 
+--- Everything after the subcommand, as one username.
+---
+--- Project Zomboid allows spaces in usernames, and people quote them. Taking
+--- parts[3] on its own got both wrong, in its own way each time:
+---
+---     /permadeath pardon Willy Guggenheim    -> a player called "Willy"
+---     /permadeath pardon "Willy Guggenheim"  -> a player called '"Willy'
+---
+--- Both answered "X is not on the death list", which reads as the death list
+--- being wrong rather than the name never having arrived.
+---@param parts string[]
+---@return string? target
+local function targetFrom(parts)
+    if parts[3] == nil then return nil end
+
+    local rest = {}
+    for i = 3, #parts do rest[#rest + 1] = parts[i] end
+    local target = table.concat(rest, " ")
+
+    -- One matching pair of surrounding quotes, if they typed them.
+    local unquoted = string.match(target, '^"(.*)"$') or string.match(target, "^'(.*)'$")
+    return unquoted or target
+end
+
 local originalOnCommandEntered = ISChat.onCommandEntered
 
 function ISChat:onCommandEntered()
@@ -57,7 +81,7 @@ function ISChat:onCommandEntered()
         else
             sendClientCommand(player, PL.MODULE, "admin", {
                 sub = parts[2],
-                target = parts[3],
+                target = targetFrom(parts),
             })
         end
     end
