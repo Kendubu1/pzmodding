@@ -55,7 +55,11 @@ local function makePerk(id, displayName)
         getType = function() return "TYPE_" .. id end,
     }
 end
-local perkList = { makePerk("Woodwork", "Carpentry"), makePerk("Aiming", "Aiming") }
+local perkList = {
+    makePerk("Woodwork", "Carpentry"),
+    makePerk("Aiming", "Aiming"),
+    makePerk("Fitness", "Fitness"),
+}
 PerkFactory = {
     PerkList = { size = function() return #perkList end, get = function(_, i) return perkList[i + 1] end },
     getPerkFromName = function(name)
@@ -143,7 +147,11 @@ local function makePlayer(username, opts)
         isDead = function() return self._dead end,
         isAccessLevel = function(_, level) return opts.admin == true and level == "admin" end,
         getPerkLevel = function(_, t) return held[t] or 0 end,
-        LevelPerk = function(_, t) held[t] = (held[t] or 0) + 1 end,
+        LevelPerk = function(_, t)
+            held[t] = (held[t] or 0) + 1
+            if opts.dieOnPerk == t then self._dead = true end
+            if opts.dieWhenUnhealedPerk == t and not self._healed then self._dead = true end
+        end,
         Kill = function() self._dead = true end,
         getBodyDamage = function()
             return { RestoreToFullHealth = function() self._healed = true end }
@@ -352,6 +360,34 @@ for _, entry in ipairs(sent) do
     end
 end
 check("the notice names the token that paid for it", toldOnScreen, true)
+
+--------------------------------------------------------------------------------
+io.write("\n-- a restore cannot consume its own rescue --\n")
+
+reset()
+local orla = makePlayer("Orla", { levels = { TYPE_Fitness = 6 }, dead = true, tokens = 1 })
+online = { orla }
+sweep()
+
+local orlaNew = makePlayer("Orla", { dieWhenUnhealedPerk = "TYPE_Fitness" })
+online = { orlaNew }
+sweep()
+sweep()
+check("physical perks are healed before restoration", orlaNew._dead, false)
+check("a successful guarded restore clears the record", Store.get("Orla"), nil)
+
+reset()
+local pax = makePlayer("Pax", { levels = { TYPE_Fitness = 6 }, dead = true, tokens = 1 })
+online = { pax }
+sweep()
+
+local paxNew = makePlayer("Pax", { dieOnPerk = "TYPE_Fitness" })
+online = { paxNew }
+sweep()
+sweep()
+check("the harness can reproduce a restore-time death", paxNew._dead, true)
+check("a failed restore remains queued", Store.get("Pax").pendingRestore, true)
+check("a failed restore never locks the saved player", Store.get("Pax").locked, false)
 
 --------------------------------------------------------------------------------
 io.write("\n-- the notice sent at the moment of death --\n")

@@ -276,12 +276,27 @@ local function applyRestore(player, record)
     local restored, missing = 0, {}
     if PL.getOption("RestoreSkillsOnRevive", true) then
         print("[PermadeathLock] restoring " .. record.username .. "...")
-        restored, missing = Store.applySkills(player, record.skills)
+
+        -- A new character can still carry transient body state even after the
+        -- spawn grace period. Start healthy, and never consume the queued rescue
+        -- when the engine rejects a perk update or the character dies midway.
+        if player.getBodyDamage ~= nil then
+            local body = player:getBodyDamage()
+            if body ~= nil then body:RestoreToFullHealth() end
+        end
+
+        local ok, completed
+        ok, restored, missing, completed = pcall(Store.applySkills, player, record.skills)
+        if not ok or not completed or player:isDead() then
+            local detail = ok and "the character died during skill restoration"
+                or ("skill restoration raised: " .. tostring(restored))
+            print("[PermadeathLock] ERROR: restore of " .. record.username .. " stopped - "
+                .. detail .. ". The restore remains pending.")
+            return
+        end
+
         print("[PermadeathLock] ...restore of " .. record.username .. " finished.")
 
-        -- Healed straight afterwards. A restore reaches into Fitness and
-        -- Strength, which are what the body's condition is computed from, and a
-        -- character handed those back should not end up worse for it.
         if player.getBodyDamage ~= nil then
             local body = player:getBodyDamage()
             if body ~= nil then body:RestoreToFullHealth() end

@@ -220,7 +220,7 @@ end
 ---@return string[] missing perk keys that could not be resolved
 function Store.applySkills(player, skills)
     local restored, missing = 0, {}
-    if player == nil or skills == nil then return restored, missing end
+    if player == nil or skills == nil then return restored, missing, false end
 
     local index = perksByKey()
 
@@ -242,11 +242,32 @@ function Store.applySkills(player, skills)
             missing[#missing + 1] = tostring(name)
         else
             local perkType = perk:getType()
+            local body = nil
+
+            -- Fitness and Strength participate in body-condition calculations.
+            -- Put the character at full health before and after changing either
+            -- one so a recalculation cannot inherit a half-initialised spawn's
+            -- transient health value.
+            if PHYSICAL[name] and player.getBodyDamage ~= nil then
+                body = player:getBodyDamage()
+                if body ~= nil then body:RestoreToFullHealth() end
+            end
+
             local current = player:getPerkLevel(perkType) or 0
             local how = "already at " .. current
             if current < level then
                 how = setPerkLevel(player, perk, perkType, current, level)
             end
+
+            if player:isDead() then
+                print("[PermadeathLock] ERROR: restore killed the character while applying "
+                    .. name .. "; the restore remains pending.")
+                table.sort(missing)
+                return restored, missing, false
+            end
+
+            if body ~= nil then body:RestoreToFullHealth() end
+
             -- One line per perk, on purpose. A restore that kills the character
             -- part way through leaves the last perk it managed as the final
             -- line in the log, which names the culprit outright.
@@ -257,7 +278,7 @@ function Store.applySkills(player, skills)
     end
 
     table.sort(missing)
-    return restored, missing
+    return restored, missing, true
 end
 
 ---------------------------------------------------------------
