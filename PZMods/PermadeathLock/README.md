@@ -377,6 +377,19 @@ everything else has already landed, and if the restore takes the character down
 part way through, **the last line in the log names the perk it stopped at**. The
 character is healed to full immediately afterwards for the same reason.
 
+**A restore that kills the character does not spend the rescue** — the player
+has not had what they were owed. But the perk that did the killing is dropped
+from their snapshot first, and that part matters: keeping it hands the same perk
+to their next character, and the one after that, so they die on every spawn
+forever. Losing one skill is by far the cheaper failure. Each retry drops one
+more, so it converges.
+
+When a restore fails with nothing to blame — it raised rather than killing
+anyone — the rescue is kept and retried, and abandoned after three attempts. At
+that point something is wrong that dropping perks will not converge on, and a
+player who dies on every spawn is worse off than one who lost their skills.
+Either way they are told on screen that they are **not** locked out.
+
 If a restore is killing characters on your server, `RestoreSkillsOnRevive` off
 is the switch that isolates it: Fate Tokens still save people, they just come
 back without their old skills.

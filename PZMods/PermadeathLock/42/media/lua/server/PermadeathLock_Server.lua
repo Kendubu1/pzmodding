@@ -269,6 +269,53 @@ local function recordDeath(player, reason)
     carriedToken[key] = nil
 end
 
+-- How many times a restore has failed for each player without naming a culprit.
+---@type table<string, integer>
+local restoreAttempts = {}
+
+-- After this many blameless failures the snapshot is abandoned. Something is
+-- wrong that dropping one perk at a time will not converge on, and a player who
+-- dies on every spawn forever is worse off than one who lost their skills.
+local MAX_RESTORE_ATTEMPTS = 3
+
+--- Decide what to do with a rescue whose restore killed the character.
+---
+--- The rescue itself is kept: they have not had what they were owed. What must
+--- not be kept is whatever did the killing, or the next character is handed the
+--- same thing and dies too, on and on.
+---@param player IsoPlayer
+---@param record table
+---@param killedBy string? the perk being applied when they died, if known
+local function failedRestore(player, record, killedBy)
+    local key = PL.key(record.username)
+
+    if killedBy ~= nil and Store.dropSkill(record.username, killedBy) then
+        restoreAttempts[key] = nil
+        print("[PermadeathLock] " .. killedBy .. " dropped from " .. record.username
+            .. "'s snapshot. Their next character gets everything else.")
+    else
+        local attempts = (restoreAttempts[key] or 0) + 1
+        restoreAttempts[key] = attempts
+
+        if attempts >= MAX_RESTORE_ATTEMPTS then
+            restoreAttempts[key] = nil
+            Store.finishRestore(record.username)
+            print("[PermadeathLock] " .. record.username .. "'s restore failed "
+                .. attempts .. " times with nothing to blame; the snapshot has been"
+                .. " abandoned. They keep the life, not the skills.")
+        else
+            print("[PermadeathLock] " .. record.username .. "'s restore failed ("
+                .. attempts .. " of " .. MAX_RESTORE_ATTEMPTS .. ") with nothing to blame."
+                .. " It stays pending.")
+        end
+    end
+
+    sendServerCommand(player, MODULE, "notice", {
+        text = "Something went wrong bringing your skills back. You are NOT locked out -"
+            .. " make a new character. An admin can sort the rest out.",
+    })
+end
+
 --- Hand a revived player's queued skills to the character they are now playing.
 ---@param player IsoPlayer
 ---@param record table
@@ -285,15 +332,20 @@ local function applyRestore(player, record)
             if body ~= nil then body:RestoreToFullHealth() end
         end
 
-        local ok, completed
-        ok, restored, missing, completed = pcall(Store.applySkills, player, record.skills)
+        local ok, completed, killedBy
+        ok, restored, missing, completed, killedBy =
+            pcall(Store.applySkills, player, record.skills)
+
         if not ok or not completed or player:isDead() then
             local detail = ok and "the character died during skill restoration"
                 or ("skill restoration raised: " .. tostring(restored))
-            print("[PermadeathLock] ERROR: restore of " .. record.username .. " stopped - "
-                .. detail .. ". The restore remains pending.")
+            print("[PermadeathLock] ERROR: restore of " .. record.username
+                .. " stopped - " .. detail .. ".")
+            failedRestore(player, record, killedBy)
             return
         end
+
+        restoreAttempts[PL.key(record.username)] = nil
 
         print("[PermadeathLock] ...restore of " .. record.username .. " finished.")
 

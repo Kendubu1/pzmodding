@@ -218,9 +218,11 @@ end
 ---@param skills table<string, integer>
 ---@return integer restored perks now held at the recorded level
 ---@return string[] missing perk keys that could not be resolved
+---@return boolean completed false when it stopped part way
+---@return string? killedBy the perk being applied when the character died
 function Store.applySkills(player, skills)
     local restored, missing = 0, {}
-    if player == nil or skills == nil then return restored, missing, false end
+    if player == nil or skills == nil then return restored, missing, false, nil end
 
     local index = perksByKey()
 
@@ -263,7 +265,7 @@ function Store.applySkills(player, skills)
                 print("[PermadeathLock] ERROR: restore killed the character while applying "
                     .. name .. "; the restore remains pending.")
                 table.sort(missing)
-                return restored, missing, false
+                return restored, missing, false, name
             end
 
             if body ~= nil then body:RestoreToFullHealth() end
@@ -278,7 +280,7 @@ function Store.applySkills(player, skills)
     end
 
     table.sort(missing)
-    return restored, missing, true
+    return restored, missing, true, nil
 end
 
 ---------------------------------------------------------------
@@ -495,6 +497,28 @@ function Store.revive(username)
     record.pendingRestore = true
     Store.save()
     return record
+end
+
+--- Forget one perk from a player's snapshot, and write it out.
+---
+--- Used when restoring that perk is what killed the character. Keeping the
+--- rescue pending after a failed restore is right - the player has not had what
+--- they were owed - but keeping the perk that did the killing in it hands the
+--- same one to their next character, and the one after that. They then die on
+--- every spawn, forever. Losing one skill is the cheaper failure by a mile.
+---@param username string
+---@param perkName string
+---@return boolean dropped
+function Store.dropSkill(username, perkName)
+    ensureLoaded()
+    local key = PL.key(username)
+    local record = key and records[key]
+    if record == nil or record.skills == nil then return false end
+    if record.skills[perkName] == nil then return false end
+
+    record.skills[perkName] = nil
+    Store.save()
+    return true
 end
 
 --- Called once the queued skills have been applied to a live character.

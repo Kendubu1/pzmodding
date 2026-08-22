@@ -146,7 +146,12 @@ local function makePlayer(username, opts)
         getSteamID = function() return "7656119800000000" end,
         isDead = function() return self._dead end,
         isAccessLevel = function(_, level) return opts.admin == true and level == "admin" end,
-        getPerkLevel = function(_, t) return held[t] or 0 end,
+        getPerkLevel = function(_, t)
+            -- A restore that blows up rather than killing anyone: there is then
+            -- no perk to blame, and nothing for the retry to drop.
+            if opts.perkError then error("perk lookup exploded") end
+            return held[t] or 0
+        end,
         LevelPerk = function(_, t)
             held[t] = (held[t] or 0) + 1
             if opts.dieOnPerk == t then self._dead = true end
@@ -299,6 +304,53 @@ check("restore applied", deeNew._levels.TYPE_Woodwork, 2)
 deeNew._dead = true
 sweep()
 check("second death re-locks them", Store.isLocked("Dee"), true)
+
+--------------------------------------------------------------------------------
+io.write("\n-- a restore that kills the character --\n")
+
+-- REGRESSION: not spending the rescue when a restore kills the character is
+-- right, but leaving the lethal perk in the snapshot hands it to the next
+-- character too, and the next. The player then dies on every spawn, forever,
+-- which is a worse failure than losing one skill.
+reset()
+local zed = makePlayer("Zed", { levels = { TYPE_Aiming = 4, TYPE_Fitness = 3 } })
+Store.record(zed, "test")
+Store.revive("Zed")
+
+local zedOne = makePlayer("Zed", { dieOnPerk = "TYPE_Fitness" })
+online = { zedOne }
+onClientCommand(MODULE, "spawnSettled", zedOne, {})
+check("the restore kills the first character", zedOne._dead, true)
+check("and the rescue is not spent", Store.get("Zed") ~= nil, true)
+check("the perk that did it is dropped", Store.get("Zed").skills.Fitness, nil)
+check("the harmless ones are kept", Store.get("Zed").skills.Aiming, 4)
+
+local zedTwo = makePlayer("Zed", { dieOnPerk = "TYPE_Fitness" })
+online = { zedTwo }
+onClientCommand(MODULE, "spawnSettled", zedTwo, {})
+check("the next character survives", zedTwo._dead, false)
+check("and gets what was left", zedTwo._levels.TYPE_Aiming, 4)
+check("the rescue is spent now", Store.get("Zed"), nil)
+
+-- and when there is nothing to blame, it gives up rather than loop forever
+reset()
+local yara = makePlayer("Yara", { levels = { TYPE_Aiming = 2 } })
+Store.record(yara, "test")
+Store.revive("Yara")
+
+local function yaraSpawns()
+    local body = makePlayer("Yara", { perkError = true })
+    online = { body }
+    onClientCommand(MODULE, "spawnSettled", body, {})
+    return body
+end
+
+yaraSpawns()
+check("a blameless failure keeps the rescue", Store.get("Yara") ~= nil, true)
+yaraSpawns()
+check("and still keeps it on the second try", Store.get("Yara") ~= nil, true)
+yaraSpawns()
+check("but the third abandons it rather than loop forever", Store.get("Yara"), nil)
 
 --------------------------------------------------------------------------------
 io.write("\n-- the sweep waits for a character to finish loading --\n")
