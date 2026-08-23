@@ -285,6 +285,11 @@ and run the new harness against it.
 - **A full-screen element in the UI manager eats every mouse event behind it**,
   which takes right-click away from the *entire game* — doors, corpses,
   inventory. Make it click-through before it goes on screen, never after.
+- **`ISModalDialog` resizes itself to fit its text**, and does not wrap. Hand it
+  a paragraph and it lays the whole thing on one line and grows sideways; centre
+  it on the size you passed in and the box it actually becomes hangs off to one
+  side. Wrap the text yourself, then ask `ISModalDialog.CalcSize(w, h, text)`
+  what it will really measure, and position from that.
 - **A panel covers the chat window.** If your mod answers an admin in chat and
   they are looking at your panel, you have said nothing. Every refusal needs to
   surface where the action was taken — a button whose failure is invisible is

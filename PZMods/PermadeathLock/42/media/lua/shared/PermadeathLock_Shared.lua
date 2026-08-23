@@ -9,7 +9,7 @@
 PermadeathLock = PermadeathLock or {}
 local PL = PermadeathLock
 
-PL.VERSION = "1.12.1"
+PL.VERSION = "1.12.2"
 
 -- Module name used by sendClientCommand / sendServerCommand.
 PL.MODULE = "PermadeathLock"
@@ -209,6 +209,26 @@ end
 ---@return integer
 function PL.countTokens(player)
     return #PL.findTokens(player)
+end
+
+--- The height of one line of UIFont.Small.
+---
+--- Client-side only in practice, and the single number every piece of this
+--- mod's UI is sized from. The game's UI Scaling setting changes every glyph on
+--- screen, so anything measured in pixels is right on one machine and wrong on
+--- the next: the admin panel had its bands collapse into each other at 2x, and
+--- the death notices had their text overflow a box built for 1x.
+---@return integer
+function PL.textHeight()
+    local FALLBACK = 14
+    if getTextManager == nil then return FALLBACK end
+
+    local manager = getTextManager()
+    if manager == nil then return FALLBACK end
+
+    local height = manager:getFontHeight(UIFont.Small)
+    if height == nil or height <= 0 then return FALLBACK end
+    return height
 end
 
 --- Players the lock never applies to.

@@ -38,18 +38,33 @@ function getText(key)
     return key
 end
 
+-- Every glyph is this wide, so the wrap is arithmetic a test can check.
+local CHAR_W = 10
+local FONT_H = 28
+UIFont = { Small = "small" }
+function getTextManager()
+    return {
+        getFontHeight = function() return FONT_H end,
+        MeasureStringX = function(_, _font, str) return #str * CHAR_W end,
+    }
+end
+
 local shown = {}
 ISModalDialog = {}
-function ISModalDialog:new(_x, _y, _w, _h, message)
-    shown[#shown + 1] = message
+--- The real one resizes itself to fit its text when it is built. Growing here
+--- is what caught the centring being computed from the size passed in.
+function ISModalDialog.CalcSize(w, h, _text) return w, h end
+function ISModalDialog:new(x, y, w, h, message)
+    shown[#shown + 1] = { x = x, y = y, w = w, h = h, text = message }
     return { initialise = function() end, addToUIManager = function() end }
 end
 
 function getSpecificPlayer() return getPlayer() end
 
+local SCREEN_W, SCREEN_H = 1920, 1080
 function getCore()
-    return { getScreenWidth = function() return 1920 end,
-             getScreenHeight = function() return 1080 end }
+    return { getScreenWidth = function() return SCREEN_W end,
+             getScreenHeight = function() return SCREEN_H end }
 end
 function processGeneralMessage() end
 function forceDisconnect() end
@@ -189,6 +204,14 @@ io.write("\n-- what a player is actually shown --\n")
 local function notice(command, args)
     shown = {}
     onServerCommand(PermadeathLock.MODULE, command, args or {})
+    return shown[1] and shown[1].text or nil
+end
+
+--- The box itself, rather than its text.
+---@return table?
+local function box(command, args)
+    shown = {}
+    onServerCommand(PermadeathLock.MODULE, command, args or {})
     return shown[1]
 end
 
@@ -249,6 +272,35 @@ check("a stacked token counts", m.added[1], "Bind your fate here")
 local exploding = setmetatable({}, { __index = function() error("boom") end })
 local ok = pcall(fillMenu, 0, exploding, { item("Base.FateToken") })
 check("a broken menu does not escape the builder", ok, true)
+
+io.write("\n-- the shape of the box --\n")
+
+translationsLoaded = false
+local b = box("tokenSpent")
+
+-- REGRESSION: handed a paragraph on one line, the dialog runs it out sideways
+-- instead of breaking it, and the box ends up the width of the screen.
+check("the text is broken into lines", string.find(b.text, "\n") ~= nil, true)
+
+local longest = 0
+for lineText in string.gmatch(b.text .. "\n", "([^\n]*)\n") do
+    longest = math.max(longest, #lineText * CHAR_W)
+end
+check("and no line overruns the box", longest <= b.w, true)
+
+-- REGRESSION: centring was computed from the size passed in, while the dialog
+-- resizes itself to fit - so a box that grew wider hung off to the right.
+check("the box is centred across", b.x, math.floor((SCREEN_W - b.w) / 2))
+check("and down", b.y, math.floor((SCREEN_H - b.h) / 2))
+check("it fits on the screen", b.x >= 0 and b.x + b.w <= SCREEN_W, true)
+check("top to bottom too", b.y >= 0 and b.y + b.h <= SCREEN_H, true)
+
+-- and it grows with the font rather than staying at some 1x pixel count
+local small = b.h
+FONT_H = 14
+local smaller = box("tokenSpent")
+check("a smaller font gives a shorter box", smaller.h < small, true)
+FONT_H = 28
 
 io.write("\n-- coming back with the old face --\n")
 

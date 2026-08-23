@@ -126,9 +126,15 @@ the player is dead and the chat window is not on screen behind the death UI.
 | Blocked on spawn | Why this character just died, and that an admin can lift it. |
 | Blocked on spawn, `KillOnSpawn` off | The same, then disconnects after 12s. |
 
-The two death-time notices sit *below* the middle of the screen, clear of the
-death screen's own scrolling text and above its "continue with a new character"
-buttons. The block notice is centred; there is nothing behind it.
+All of them are centred, wrapped to fit, and sized from the font. Two things
+have to be right for that and both were wrong: the text is wrapped **here**,
+because handed a paragraph on one line the dialog runs it out sideways rather
+than breaking it; and the centring uses `ISModalDialog.CalcSize`, because the
+dialog resizes itself to fit its text when it is built — centring on the size
+passed in left a box that then grew wider hanging off to the right.
+
+The death-time notices previously sat below centre, clear of the death screen's
+own scrolling text. They are centred again by request.
 
 **Every one of these sentences is also compiled into the mod**, and used
 whenever `getText` hands back the key instead of a translation. That happens

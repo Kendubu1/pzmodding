@@ -133,38 +133,91 @@ local function beginGrace()
     Events.OnTick.Add(graceTick)
 end
 
--- Where the bottom edge of a death-screen notice sits, as a fraction of screen
--- height. Below the death screen's scrolling text, above its "continue with a
--- new character" buttons.
-local LOW_NOTICE_BOTTOM = 0.72
+--- How wide a string renders, in pixels.
+---@param str string
+---@return number
+local function measure(str)
+    local manager = getTextManager ~= nil and getTextManager() or nil
+    if manager ~= nil and manager.MeasureStringX ~= nil then
+        local width = manager:MeasureStringX(UIFont.Small, str)
+        if width ~= nil and width > 0 then return width end
+    end
+    -- Only a floor, for a build that does not expose the measurement.
+    return #str * math.max(4, math.floor(PL.textHeight() * 0.5))
+end
+
+--- Break text into lines that fit a width, at word boundaries.
+---
+--- Done here rather than left to the dialog, which lays a long sentence out on
+--- one line and grows sideways to fit it - a paragraph then becomes a box the
+--- width of the screen.
+---@param str string
+---@param maxWidth number
+---@return string wrapped
+local function wrap(str, maxWidth)
+    local lines, current = {}, ""
+
+    for word in string.gmatch(str, "%S+") do
+        local candidate = current == "" and word or (current .. " " .. word)
+        if current ~= "" and measure(candidate) > maxWidth then
+            lines[#lines + 1] = current
+            current = word
+        else
+            current = candidate
+        end
+    end
+    if current ~= "" then lines[#lines + 1] = current end
+
+    return table.concat(lines, "\n")
+end
 
 --- A modal, not a chat line: these notices land while the player is dead, and
 --- the chat window is not on screen behind the death UI.
 ---
---- Always horizontally centred. The vertical placement is the part that
---- matters: the death screen runs its own scrolling text through the middle of
---- the screen, so a notice shown at that moment is dropped below it rather than
---- on top of it, and the two stop fighting to be read.
----@param text string
+--- Centred, and sized from the font rather than from a pixel count. Two things
+--- had to be got right, and both were wrong:
+---
+---   * The text is wrapped here. Handed a whole paragraph on one line, the
+---     dialog runs it out sideways instead of breaking it.
+---   * The dialog resizes ITSELF to fit its text when it is built, so the
+---     centring has to use the size it will end up at - ISModalDialog.CalcSize
+---     is how you ask. Centring on the size passed in put a box that then grew
+---     wider hanging off to the right.
+---
+--- The death-time notices used to sit below centre, clear of the death screen's
+--- own scrolling text. They are centred again by request; if the two start
+--- fighting to be read, that is what changed.
+---@param body string
 ---@param onClose function?
----@param low boolean? true to sit below centre, clear of the death text
-local function showNotice(text, onClose, low)
-    local width, height = 460, 210
+local function showNotice(body, onClose)
+    local line = PL.textHeight()
     local screenWidth = getCore():getScreenWidth()
     local screenHeight = getCore():getScreenHeight()
 
-    local x = math.max(0, (screenWidth - width) / 2)
+    -- Wide enough for a sentence to breathe, never more than a third or so of
+    -- the screen, and never wider than the screen itself.
+    local width = math.min(math.max(line * 26, math.floor(screenWidth * 0.34)), line * 46)
+    width = math.max(line * 12, math.min(width, screenWidth - line * 4))
 
-    local y
-    if low then
-        y = math.floor(screenHeight * LOW_NOTICE_BOTTOM) - height
-    else
-        y = (screenHeight - height) / 2
+    local wrapped = wrap(body, width - line * 2)
+
+    local breaks = 1
+    for _ in string.gmatch(wrapped, "\n") do breaks = breaks + 1 end
+    local height = math.min((breaks * line) + (line * 5), screenHeight - line * 4)
+
+    -- Ask the dialog what it will actually measure, and centre on that.
+    if ISModalDialog.CalcSize ~= nil then
+        local ok, w, h = pcall(ISModalDialog.CalcSize, width, height, wrapped)
+        if ok then
+            if type(w) == "number" and w > 0 then width = w end
+            if type(h) == "number" and h > 0 then height = h end
+        end
     end
-    -- Never off the top or bottom of a short screen.
-    y = math.max(0, math.min(y, screenHeight - height))
 
-    local modal = ISModalDialog:new(x, y, width, height, text, false, nil, onClose)
+    local modal = ISModalDialog:new(
+        math.max(0, math.floor((screenWidth - width) / 2)),
+        math.max(0, math.floor((screenHeight - height) / 2)),
+        width, height, wrapped, false, nil, onClose)
     modal:initialise()
     modal:addToUIManager()
 end
@@ -176,7 +229,7 @@ local function showBlockNotice(text)
 
     -- Dead centre: this one is a disconnect warning shown on a fresh spawn,
     -- with no death screen behind it to compete with.
-    showNotice(text, onDialogClosed, false)
+    showNotice(text, onDialogClosed)
 
     -- Backstop: leave even if the notice is never dismissed.
     Events.OnTick.Add(bootTick)
@@ -250,7 +303,7 @@ local function onServerCommand(module, command, args)
             -- This character is forfeit rather than us being shown the door, so
             -- stay connected: the notice sits low, over the death screen that
             -- is a few seconds away.
-            showNotice(text("IGUI_PermadeathLock_BlockedKilled"), nil, true)
+            showNotice(text("IGUI_PermadeathLock_BlockedKilled"), nil)
             beginGrace()
         else
             showBlockNotice(text("IGUI_PermadeathLock_Blocked"))
@@ -268,16 +321,16 @@ local function onServerCommand(module, command, args)
         -- Centred: by the time this arrives the death screen is long gone.
         local text = args and args.text
         if text ~= nil and text ~= "" then
-            showNotice(text, nil, false)
+            showNotice(text, nil)
         end
     elseif command == "tokenSpent" then
         -- Arrives at the moment of death, so it has to be a modal, and low.
-        showNotice(text("IGUI_PermadeathLock_TokenSpent"), nil, true)
+        showNotice(text("IGUI_PermadeathLock_TokenSpent"), nil)
     elseif command == "fateSealed" then
         -- The other half of the same moment: died with no token, and the lock
         -- has closed. Says so now instead of leaving them to discover it by
         -- being thrown off the server on their next character.
-        showNotice(text("IGUI_PermadeathLock_FateSealed"), nil, true)
+        showNotice(text("IGUI_PermadeathLock_FateSealed"), nil)
     elseif command == "openUI" then
         if PermadeathLockUI ~= nil then PermadeathLockUI.open() end
     elseif command == "listData" then
