@@ -1085,7 +1085,21 @@ check("and which Lua state answered", string.find(dump, "isCoopHost=") ~= nil, t
 -- the plain status is unchanged when no target is given
 sent = {}
 onClientCommand(MODULE, "admin", dumpAdmin, { sub = "status" })
-check("bare status still reports the lock", string.find(sent[1].text or "", "Permadeath Lock") ~= nil, true)
+-- Against PL.NAME rather than a literal, so a rename cannot leave the panel
+-- and the chat calling the mod two different things without a test noticing.
+check("bare status names the mod", string.find(sent[1].text or "", PermadeathLock.NAME, 1, true) ~= nil, true)
+
+-- Whether the world spawns tokens, said in game. An admin standing in an empty
+-- shop should not have to go and read a boot log to find out it is switched off.
+PermadeathLock.lootSummary = "Fate Tokens do not spawn in the world (hand them out)."
+sent = {}
+onClientCommand(MODULE, "admin", dumpAdmin, { sub = "status" })
+local lootLine = false
+for _, message in ipairs(sent) do
+    if string.find(message.text or "", "do not spawn", 1, true) then lootLine = true end
+end
+check("status repeats the loot setting", lootLine, true)
+PermadeathLock.lootSummary = nil
 
 --------------------------------------------------------------------------------
 io.write("\n-- the bind registry --\n")

@@ -127,7 +127,7 @@ end
 local function killCharacter(player, why)
     if player == nil or player:isDead() then return end
 
-    local text = "Permadeath Lock: your character has been killed - " .. why
+    local text = "Permadeath: your character has been killed - " .. why
         .. " An admin can pardon you, or revive you and give back what you learned."
 
     sendServerCommand(player, MODULE, "notice", { text = text })
@@ -668,7 +668,7 @@ local HELP = {
 
 ---@param player IsoPlayer
 local function sendHelp(player)
-    tell(player, "Permadeath Lock " .. PL.VERSION .. " commands:")
+    tell(player, PL.NAME .. " " .. PL.VERSION .. " commands:")
     for _, line in ipairs(HELP) do tell(player, line) end
 end
 
@@ -1073,7 +1073,8 @@ local function handleAdmin(player, args)
         commandStatusFor(player, target)
     elseif sub == "status" then
         local state = PL.isEnabled() and "ON" or "OFF"
-        tell(player, "Permadeath Lock " .. PL.VERSION .. " is " .. state .. ". " .. Store.count() .. " player(s) on the death list.")
+        tell(player, PL.NAME .. " " .. PL.VERSION .. " is " .. state .. ". "
+            .. Store.count() .. " player(s) on the death list.")
         -- Whether the world spawns tokens, said in game. Otherwise the only
         -- record of it is one line in a boot log, which is no use to an admin
         -- standing in a shop wondering why every till is empty.

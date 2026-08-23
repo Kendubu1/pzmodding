@@ -11,8 +11,15 @@ local PL = PermadeathLock
 
 PL.VERSION = "1.15.0"
 
--- Module name used by sendClientCommand / sendServerCommand.
+-- Module name used by sendClientCommand / sendServerCommand. An internal
+-- wire name, not a label: it does not change when the mod is renamed.
 PL.MODULE = "PermadeathLock"
+
+-- What to call the mod when speaking to a player. Kept apart from MODULE and
+-- from the folder name on purpose: somebody who subscribed to "Fate Token"
+-- and then opened a panel titled "Permadeath Lock" would reasonably wonder
+-- which mod they were looking at.
+PL.NAME = "Fate Token"
 
 -- Death list, written to Zomboid/Lua/ on the server. Plain text so an admin can
 -- read or edit it with the server down, then use /fate reload.

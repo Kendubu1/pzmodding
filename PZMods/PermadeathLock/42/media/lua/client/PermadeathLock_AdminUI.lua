@@ -568,7 +568,7 @@ function PermadeathLockUI:setData(data)
     end
 
     self.status:setName(string.format(
-        "Permadeath Lock %s  -  lock %s, Fate Tokens %s  -  %d online, %d locked out%s   (* = offline)",
+        PL.NAME .. " %s  -  lock %s, Fate Tokens %s  -  %d online, %d locked out%s   (* = offline)",
         data.version or "?",
         data.enabled and "ON" or "OFF",
         data.tokens and "on" or "off",
@@ -710,7 +710,7 @@ function PermadeathLockUI:new(x, y, width, height)
     local window = ISCollapsableWindow:new(x, y, width, height)
     setmetatable(window, self)
     self.__index = self
-    window:setTitle("Permadeath Lock")
+    window:setTitle(PL.NAME)
     window:setResizable(true)
     -- Below this the bands themselves stop fitting. The COLUMNS look after
     -- themselves above it, dropping the least useful one at a time.

@@ -62,11 +62,14 @@ ISLabel = isClass()
 ISModalDialog = isClass()
 function getFileReader() return nil end
 function getFileWriter() return nil end
+function require(_) end
+ProceduralDistributions = { list = {} }
 
 local base = "PZMods/PermadeathLock/42/media/lua/"
 dofile(base .. "shared/PermadeathLock_Shared.lua")
 -- Alphabetical, as the game loads them: Server before Store.
 dofile(base .. "server/PermadeathLock_Binds.lua")
+dofile(base .. "server/PermadeathLock_Loot.lua")
 dofile(base .. "server/PermadeathLock_Server.lua")
 dofile(base .. "server/PermadeathLock_Store.lua")
 dofile(base .. "client/PermadeathLock_AdminUI.lua")
@@ -76,7 +79,13 @@ dofile(base .. "client/PermadeathLock_TokenMenu.lua")
 
 -- The server half is live if it hooked the sweep; the client half if it hooked
 -- the spawn handshake and replaced the chat command handler.
-local serverLive = registered["EveryOneMinute"] == true and registered["OnClientCommand"] == true
+-- Loot injection counts as the server half too. It writes to a shared table
+-- that persists for the life of the process, so a copy of it running in the
+-- client half of a co-op Host would double every drop rate - the same shape of
+-- bug as the one that used to burn a Fate Token twice.
+local serverLive = registered["EveryOneMinute"] == true
+    and registered["OnClientCommand"] == true
+    and registered["OnPreDistributionMerge"] == true
 local clientLive = registered["OnCreatePlayer"] == true and registered["OnServerCommand"] == true
 
 io.write(string.format("%s server=%s client=%s\n", mode, tostring(serverLive), tostring(clientLive)))

@@ -791,6 +791,22 @@ identification only — matching is always by username.
 
 Server-side messages are prefixed `[PermadeathLock]` in the console log.
 
+## Before publishing
+
+Three things this repo cannot verify on its own, because they need the game:
+
+1. **The item's inventory category.** `DisplayCategory = Junk` is a stock Build
+   42 category and needs no label from us, but two earlier attempts at this both
+   shipped showing a raw `IGUI_ItemCat_...` key to the player. Look at a Fate
+   Token in an inventory and confirm the category reads as a word.
+2. **One boot, on a co-op Host.** Count the `Server module ... loaded` lines. Two
+   means the gating has regressed and every mutation is happening twice — see
+   `MODDING-NOTES.md` section 1 for why that is the worst bug in this repo's
+   history.
+3. **The loot log.** Switch loot on, boot, and read the `Fate Tokens added to
+   loot` line. It names every container list it matched. If it says it matched
+   none, the patterns need adjusting to whatever this build calls its tables.
+
 ## Known limits
 
 - Dedicated servers and **co-op Host games**. Single player is deliberately left

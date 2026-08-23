@@ -1,6 +1,6 @@
 version=1
 title=Fate Token - Multiplayer Permadeath
-tags=Build 42;Multiplayer;Balance;Items
+tags=Build 42;Multiplayer;Balance;Items;Hardcore
 visibility=public
 description=Multiplayer permadeath, with one way back. When a player dies they go on a death list and cannot return with a new character - the run ends when it ends, and the world keeps the weight of it.
 description=
@@ -13,5 +13,7 @@ description=
 description=[b]Admins[/b] get an in-game panel ([i]/fate ui[/i]) listing everyone online as well as everyone on the death list, with their state, how long ago they died, the skills held for them, and the Fate Tokens they are carrying. Pardon someone to let them start over, revive them to give their next character the old one's skill levels, or hand out and take back tokens from the same window. Everything the panel does, chat can do too.
 description=
 description=Nothing the client sends is trusted: death reports are checked against the character's real state, and every admin action is re-checked against the sender's access level on the server.
+description=
+description=[b]Tokens do not spawn by default.[/b] Out of the box the only Fate Token in the world is one an admin handed out. Turn on loot spawning and they turn up in cash registers, and more often in banks and vaults - four rarity settings from 'almost never' to 'uncommon', plus a bank multiplier, so you can decide exactly how much of a lifeline the world offers.
 description=
 description=Sandbox options cover all of it - suspend the lock, exempt admins, turn Fate Tokens off, decide whether they are consumed, choose whether a locked-out player's new character is killed or disconnected, and whether revived players keep their skills.
