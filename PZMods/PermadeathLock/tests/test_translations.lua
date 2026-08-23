@@ -14,8 +14,13 @@
 -- Each of those is now a failing test instead of a screenshot.
 
 local ROOT = "PZMods/PermadeathLock/"
+-- Three roots, because which one the Java translator reads is not the same
+-- question as which one the Lua loader reads, and getting it wrong is silent:
+-- the game shows the key instead of the sentence and says nothing. Identical
+-- copies in all three cost a few kilobytes; the checks below keep them in step.
 local COMMON = ROOT .. "common/media/lua/shared/Translate/EN/"
 local VERSIONED = ROOT .. "42/media/lua/shared/Translate/EN/"
+local BARE = ROOT .. "media/lua/shared/Translate/EN/"
 
 local failures = 0
 local function check(label, got, want)
@@ -78,11 +83,12 @@ check("and there is no IGUI_EN.txt to be ignored", read(COMMON .. "IGUI_EN.txt")
 --------------------------------------------------------------------------------
 io.write("\n-- shipped in both places the game might look --\n")
 
--- Which of common/ and the version folder the loader reads is not something
--- this repo can settle, and a sandbox page full of raw keys is what being wrong
--- looks like. Both are shipped; this keeps them from drifting apart.
+-- Nothing here can settle which root the game actually reads, and being wrong
+-- looks like a raw key on a player's screen. All three are shipped; this keeps
+-- them from drifting apart.
 for _, spec in ipairs(FILES) do
     check(spec.file .. " is identical in 42/", read(VERSIONED .. spec.file), read(COMMON .. spec.file))
+    check(spec.file .. " is identical at the mod root", read(BARE .. spec.file), read(COMMON .. spec.file))
 end
 
 --------------------------------------------------------------------------------

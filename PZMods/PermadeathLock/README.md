@@ -79,12 +79,25 @@ PermadeathLock/
         └── lua/{shared,server,client}/
 ```
 
-**The translations are shipped twice**, in `common/` and again in `42/`, as
-identical files. Which of the two the loader reads is not the same answer in
-every context — the dedicated server's *Edit Settings* screen showed every
-sandbox option as a raw `Sandbox_PermadeathLock_...` key while they lived in
-`common/` alone — and duplicating a few kilobytes of text is cheaper than being
-wrong. `test_translations.lua` asserts the two copies stay byte-identical.
+**The translations are shipped three times** — at the mod root, in `common/`,
+and in `42/` — as identical files:
+
+```
+PermadeathLock/media/lua/shared/Translate/EN/
+PermadeathLock/common/media/lua/shared/Translate/EN/
+PermadeathLock/42/media/lua/shared/Translate/EN/
+```
+
+Which root the game reads them from is **not** the same question as which root
+it loads Lua from: the Lua VM and the Java translator walk different paths, and
+a multi-version mod (`mod.info` inside `42/`, with a `common/`) puts three
+plausible answers on the table. Getting it wrong is silent — the game renders
+the key instead of the sentence and logs nothing — which cost this mod a raw
+`Tooltip_FateToken` on the item and a settings page full of
+`Sandbox_PermadeathLock_...`. A few kilobytes of duplicated text is cheaper
+than being wrong; `test_translations.lua` asserts all three stay byte-identical.
+
+Once one is confirmed working in game, the other two can go.
 
 Two rules that are easy to break and invisible until a player sees a raw key:
 
