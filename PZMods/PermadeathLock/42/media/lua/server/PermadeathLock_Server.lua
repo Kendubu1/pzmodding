@@ -415,7 +415,11 @@ local function runPendingTeleport(player, key)
 
     if queued.tries >= TELEPORT_TRIES then
         pendingTeleport[key] = nil
-        tell(player, "Your bound spot could not be reached, so you are where the game put you.")
+        -- With the coordinate in it. They chose the place, so it is theirs to
+        -- know, and an admin chasing this needs it in front of them rather
+        -- than in a server log they have to go and read.
+        tell(player, "Your bound spot (" .. queued.x .. "," .. queued.y
+            .. ") could not be reached, so you are where the game put you.")
         print("[PermadeathLock] " .. player:getUsername() .. "'s bind at " .. queued.x .. ","
             .. queued.y .. " did not hold after " .. queued.tries .. " attempt(s); left at "
             .. player:getX() .. "," .. player:getY() .. ".")

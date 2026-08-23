@@ -146,16 +146,25 @@ local function placeAt(x, y, z)
     local player = getPlayer()
     if player == nil or player:isDead() then return false end
 
-    -- The square has to exist on this machine before anyone can stand on it. A
-    -- bind far from where the game spawned them is in a chunk that has not
-    -- streamed in yet, and this is the honest way to find that out rather than
-    -- moving them into nothing.
+    -- The square, if this machine has streamed it in yet. Looked up on WHOLE
+    -- numbers: the position we are handed is offset to a tile centre, and
+    -- getGridSquare wants tile coordinates - asking it for 1200.5 is not a
+    -- question it can answer.
     local cell = getCell()
-    local square = cell ~= nil and cell:getGridSquare(x, y, z) or nil
+    local square = nil
+    if cell ~= nil then
+        square = cell:getGridSquare(math.floor(x), math.floor(y), math.floor(z))
+    end
+
+    -- Not having the square is NOT a reason to refuse. A bind far from where
+    -- the game spawned you is in a chunk that has not loaded, and it never will
+    -- load until somebody stands there - refusing to move is a teleport that
+    -- can only ever work for places you were already near. Move, and let the
+    -- world stream in around the character, which is what the game's own
+    -- teleport does.
     if square == nil then
-        print("[PermadeathLock] no square at " .. x .. "," .. y .. "," .. z
-            .. " on this client yet; not moving.")
-        return false
+        print("[PermadeathLock] square at " .. math.floor(x) .. "," .. math.floor(y)
+            .. " has not streamed in; moving anyway and letting it load.")
     end
 
     if player.setX ~= nil then
@@ -173,7 +182,9 @@ local function placeAt(x, y, z)
         player:setLy(y)
         player:setLz(z)
     end
-    if player.setCurrent ~= nil then player:setCurrent(square) end
+    -- Only when there is one. Handing the movement code a nil square is worse
+    -- than leaving it holding the old one, which the next tick corrects.
+    if square ~= nil and player.setCurrent ~= nil then player:setCurrent(square) end
 
     return true
 end

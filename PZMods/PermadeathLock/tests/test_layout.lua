@@ -35,7 +35,14 @@ UIFont = { Small = "small" }
 -- row drawn on top of each other and its bottom buttons cut off by the frame.
 local TEXT_HEIGHT = 14
 function getTextManager()
-    return { getFontHeight = function() return TEXT_HEIGHT end }
+    return {
+        getFontHeight = function() return TEXT_HEIGHT end,
+        -- Close enough to a proportional font for layout arithmetic: the panel
+        -- only ever asks how wide a string is relative to the space it has.
+        MeasureStringX = function(_, _, text)
+            return math.floor(#tostring(text) * TEXT_HEIGHT * 0.5)
+        end,
+    }
 end
 
 --------------------------------------------------------------------------------
@@ -287,6 +294,64 @@ check("dragged: the buttons follow the frame",
 check("dragged: the corner button follows the frame",
     dragged.clearBtn.x + dragged.clearBtn.width <= 1400 - 6,
     "button ends at " .. (dragged.clearBtn.x + dragged.clearBtn.width))
+
+--------------------------------------------------------------------------------
+io.write("\n-- columns give themselves up as the window narrows --\n")
+
+TEXT_HEIGHT = 14
+
+---@param width number
+---@return table<string, boolean> shown, number count
+local function shownAt(width)
+    local shown = {}
+    local columns = PermadeathLockUI.columnsFor(width)
+    for _, column in ipairs(columns) do shown[column.key] = true end
+    return shown, #columns
+end
+
+local _, wideCount = shownAt(1400)
+check("everything is shown when there is room", wideCount, 6)
+
+-- The point of the exercise: dragging it narrow must lose columns, not squash
+-- them into each other.
+local _, midCount = shownAt(560)
+local _, tightCount = shownAt(380)
+check("a narrower panel shows fewer", midCount < wideCount, true)
+check("a narrow one fewer still", tightCount < midCount, true)
+
+-- Whatever else goes, these two stay: a roster with no names is not a roster,
+-- and the state is the whole reason an admin opened it.
+local tight = shownAt(380)
+check("the name survives to the narrowest width", tight.name, true)
+check("and so does the state", tight.state, true)
+
+-- Least useful first, and in a stable order - a column must not reappear as
+-- the window gets smaller.
+local previous = select(2, shownAt(1400))
+local ok = true
+for width = 1400, 360, -20 do
+    local _, count = shownAt(width)
+    if count > previous then ok = false end
+    previous = count
+end
+check("columns only ever drop as it shrinks", ok, true)
+
+-- And nothing collides at any width: each column starts after the one before.
+local ordered = true
+for width = 1400, 360, -20 do
+    local last = -1
+    for _, column in ipairs(PermadeathLockUI.columnsFor(width)) do
+        if column.x <= last then ordered = false end
+        last = column.x
+    end
+end
+check("columns stay in order and apart", ordered, true)
+
+-- The panel's own floor must be a width the columns can actually cope with.
+local floor = PermadeathLockUI:new(0, 0, 100, 100).minimumWidth
+local atFloor, floorCount = shownAt(floor)
+check("the minimum width still shows the name", atFloor.name, true)
+check("and shows something beside it", floorCount > 1, true)
 
 io.write("\n")
 if failures == 0 then

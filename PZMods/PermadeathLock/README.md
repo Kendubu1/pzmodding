@@ -319,7 +319,23 @@ than it looks.
 
 The window sizes itself to your screen — about two thirds of its width, within
 sensible bounds — rather than to a pixel count picked on somebody else's
-monitor. It is also freely resizable, and the columns follow when you drag it.
+monitor. It is freely resizable in **both** directions, down to about the width
+of a username.
+
+**The columns give themselves up as you narrow it** rather than colliding. Each
+one is measured from the longest thing it realistically has to show — `awaiting
+restore`, `under an hour ago`, `-> 12000,13000` — and gets at least that much
+room; whatever is spare is then shared out, so a wide panel spreads instead of
+bunching against the left edge. When there is not enough for everything, columns
+are dropped one at a time in this order:
+
+`Skills held` → `Died` → `Bind` → `Tokens` → `State`
+
+`Player` is never dropped, and a column only ever disappears as the window
+shrinks — widen it and everything comes straight back. Fractions of the window
+width, which is what this used to use, were fine while the panel was always wide
+and fell apart the moment it was dragged narrow: 15% of a small number is not
+enough room for "awaiting restore" however you slice it.
 
 Its bands are laid out from both edges inward: the status line and column titles
 down from the title bar, the buttons up from the bottom, and the list takes what
@@ -529,8 +545,8 @@ cause that, and the server log names which:
 
 | In the log | What it means |
 | --- | --- |
-| `no square at x,y,z on this client yet` | The destination chunk has not streamed in. A bind far from where the game spawned you is the usual cause. |
-| `destination square NOT LOADED on the server` | The same thing on the server's side — it only keeps chunks loaded near players. |
+| `square … has not streamed in; moving anyway` | The destination chunk is not loaded on your client. **Not** a failure: the move goes ahead and the world streams in around you. A chunk far from your spawn will never load until somebody stands there, so refusing to move would make the teleport work only for places you were already near. |
+| `destination square NOT LOADED on the server` | The same on the server's side. Also not fatal — noted because it is worth knowing when a bind repeatedly misbehaves. |
 | `server-side raised: …` | `teleportTo` threw. Logged rather than swallowed: a throw and a move that quietly does not hold are different problems, and both used to be reported as "could not be reached". |
 
 ### Finding a bound token that has been lost

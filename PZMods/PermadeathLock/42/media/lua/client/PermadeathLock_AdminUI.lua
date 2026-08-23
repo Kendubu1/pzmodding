@@ -76,7 +76,10 @@ local function minimumSize()
     local m = metrics()
     local height = (m.text + 2) + m.pad + m.status + m.pad + m.header
         + (m.row * 3) + m.pad + (m.button * 2) + m.pad + m.bottom
-    return math.max(720, m.text * 54), height
+    -- Narrow enough to tuck the panel beside something else. The columns give
+    -- themselves up as it shrinks rather than colliding, so the floor is only
+    -- "wide enough for a username and how they stand".
+    return math.max(360, m.text * 26), height
 end
 
 -- Frames between automatic refreshes while the window is open. The roster is
@@ -118,28 +121,119 @@ local function preferredSize()
     return math.min(width, screenWidth - 40), math.min(height, screenHeight - 40)
 end
 
--- Column positions as fractions of the list's width, so they hold together when
--- the window is resized. Fixed pixel offsets assumed short text, and "under an
--- hour ago" ran straight into the state beside it.
+-- The columns, each with the longest thing it realistically has to show. The
+-- widths are MEASURED from those samples rather than guessed as fractions:
+-- fractions of the window were fine while the window was always wide, and fall
+-- apart the moment it is dragged narrow, because 15% of a small number is not
+-- enough room for "awaiting restore" however you slice it.
+--
+-- `grow` is how eagerly a column takes a share of whatever is left over once
+-- every visible column has its minimum.
 local COLUMNS = {
-    { key = "name",   title = "Player",      at = 0.00 },
-    { key = "state",  title = "State",       at = 0.22 },
-    { key = "age",    title = "Died",        at = 0.42 },
-    { key = "skills", title = "Skills held", at = 0.55 },
-    { key = "tokens", title = "Tokens",      at = 0.70 },
-    { key = "bind",   title = "Bind",        at = 0.85 },
+    { key = "name",   title = "Player",      sample = "Willy Guggenheim *", grow = 3 },
+    { key = "state",  title = "State",       sample = "awaiting restore",   grow = 2 },
+    { key = "age",    title = "Died",        sample = "under an hour ago",  grow = 2 },
+    { key = "skills", title = "Skills held", sample = "Skills held",        grow = 1 },
+    { key = "tokens", title = "Tokens",      sample = "3 (1 bound)",        grow = 1 },
+    { key = "bind",   title = "Bind",        sample = "-> 12000,13000",     grow = 2 },
 }
 
----@param width number the list's width
----@param key string
+-- Given away first when the window is too narrow for all of them, least useful
+-- first. `name` is never in this list: a roster with no names is not a roster.
+--
+-- The order is what an admin still needs when the panel is a sliver: who they
+-- are and how they stand, then what they are holding. A dropped column is not
+-- lost - widen the window and it comes straight back.
+local DROP_ORDER = { "skills", "age", "bind", "tokens", "state" }
+
+local GUTTER = 8
+
+---@param text string
 ---@return number
-local function columnX(width, key)
+local function measureText(text)
+    local manager = getTextManager()
+    if manager == nil or manager.MeasureStringX == nil then
+        -- No text manager to ask (a harness, or a build that has moved it):
+        -- fall back to a rough proportional estimate rather than zero, which
+        -- would collapse every column on top of the first.
+        return math.floor(#tostring(text) * PL.textHeight() * 0.5)
+    end
+    return manager:MeasureStringX(UIFont.Small, text)
+end
+
+-- Recomputed only when the width or the font changes. drawRow asks for this
+-- once per row per frame, and measuring six strings each time would be work
+-- done sixty times a second to get the same answer.
+local cachedColumns = nil
+
+--- Which columns fit in this width, and where each one starts.
+---
+--- Every visible column first gets the room it actually needs - the wider of
+--- its title and its longest realistic value - and only then is the leftover
+--- shared out by `grow`. So a narrow panel stays readable by showing fewer
+--- columns properly rather than all of them squeezed into nonsense.
+---@param width number the list's width
+---@return table[] columns each {key, title, x}
+local function columnsFor(width)
+    local text = PL.textHeight()
+    if cachedColumns ~= nil and cachedColumns.width == width and cachedColumns.text == text then
+        return cachedColumns.list
+    end
+
+    local available = width - (GUTTER * 2)
+
+    local shown, need = {}, {}
+    local total = 0
     for _, column in ipairs(COLUMNS) do
-        if column.key == key then
-            return 8 + math.floor((width - 16) * column.at)
+        local size = math.max(measureText(column.title), measureText(column.sample)) + GUTTER
+        need[column.key] = size
+        total = total + size
+        shown[#shown + 1] = column
+    end
+
+    -- Give columns away until what is left fits.
+    for _, key in ipairs(DROP_ORDER) do
+        if total <= available then break end
+        for index, column in ipairs(shown) do
+            if column.key == key then
+                total = total - need[key]
+                table.remove(shown, index)
+                break
+            end
         end
     end
-    return 8
+
+    -- Share out whatever is spare, so a wide panel spreads rather than leaving
+    -- everything bunched against the left edge.
+    local spare = available - total
+    local grow = 0
+    for _, column in ipairs(shown) do grow = grow + column.grow end
+
+    local list, x = {}, GUTTER
+    for _, column in ipairs(shown) do
+        list[#list + 1] = { key = column.key, title = column.title, x = math.floor(x) }
+        local extra = 0
+        if spare > 0 and grow > 0 then extra = spare * (column.grow / grow) end
+        x = x + need[column.key] + extra
+    end
+
+    cachedColumns = { width = width, text = text, list = list }
+    return list
+end
+
+-- Exposed so the offline layout tests can ask what a given width shows without
+-- having to render a frame and read pixels back.
+PermadeathLockUI.columnsFor = columnsFor
+
+--- Where one column starts, or nil when it is not being shown at this width.
+---@param width number the list's width
+---@param key string
+---@return number? x
+local function columnX(width, key)
+    for _, column in ipairs(columnsFor(width)) do
+        if column.key == key then return column.x end
+    end
+    return nil
 end
 
 --------------------------------------------------------------------------------
@@ -330,9 +424,8 @@ function PermadeathLockUI:prerender()
     if list == nil then return end
 
     local y = self.headerY or (list:getY() - metrics().header)
-    for _, column in ipairs(COLUMNS) do
-        self:drawText(column.title,
-            list:getX() + columnX(list:getWidth(), column.key),
+    for _, column in ipairs(columnsFor(list:getWidth())) do
+        self:drawText(column.title, list:getX() + column.x,
             y, 0.6, 0.6, 0.6, 1, UIFont.Small)
     end
 end
@@ -417,15 +510,25 @@ function PermadeathLockUI:drawRow(y, item, alt)
     local width = self:getWidth()
     local textY = y + math.floor((self.itemheight - (self.textHeight or 14)) / 2)
 
-    self:drawText(name, columnX(width, "name"), textY, 1, 1, 1, 1, self.font)
-    self:drawText(state, columnX(width, "state"), textY, r, g, b, 1, self.font)
-    self:drawText(row.age or "", columnX(width, "age"), textY, 0.7, 0.7, 0.7, 1, self.font)
-    self:drawText(skills, columnX(width, "skills"), textY, 0.7, 0.7, 0.7, 1, self.font)
-    self:drawText(tokens, columnX(width, "tokens"), textY,
-        carrying and 0.95 or 0.7, carrying and 0.85 or 0.7, carrying and 0.45 or 0.7, 1, self.font)
-    self:drawText(bind, columnX(width, "bind"), textY,
-        bindBright and 0.55 or 0.7, bindBright and 0.85 or 0.7, bindBright and 0.95 or 0.7,
-        1, self.font)
+    -- Only what is on screen at this width. A column dropped by columnsFor has
+    -- no x, and drawing it at a default one would stack it under the first.
+    local cell = {
+        name   = { name,        1, 1, 1 },
+        state  = { state,       r, g, b },
+        age    = { row.age or "", 0.7, 0.7, 0.7 },
+        skills = { skills,      0.7, 0.7, 0.7 },
+        tokens = { tokens,
+            carrying and 0.95 or 0.7, carrying and 0.85 or 0.7, carrying and 0.45 or 0.7 },
+        bind   = { bind,
+            bindBright and 0.55 or 0.7, bindBright and 0.85 or 0.7, bindBright and 0.95 or 0.7 },
+    }
+
+    for _, column in ipairs(columnsFor(width)) do
+        local text = cell[column.key]
+        if text ~= nil then
+            self:drawText(text[1], column.x, textY, text[2], text[3], text[4], 1, self.font)
+        end
+    end
 
     return y + self.itemheight
 end
@@ -609,7 +712,8 @@ function PermadeathLockUI:new(x, y, width, height)
     self.__index = self
     window:setTitle("Permadeath Lock")
     window:setResizable(true)
-    -- Below this the six columns start colliding and the bands stop fitting.
+    -- Below this the bands themselves stop fitting. The COLUMNS look after
+    -- themselves above it, dropping the least useful one at a time.
     -- Both scale with the font. Drag it larger whenever you like; layout()
     -- re-runs and everything follows.
     window.minimumWidth, window.minimumHeight = minimumSize()
