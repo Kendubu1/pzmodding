@@ -180,6 +180,48 @@ loaded Store first, which hid the bug completely.
 
 ---
 
+## 5b. Build 42 mod folder layout
+
+Build 42 replaced the flat `ModName/media/` layout with **version folders plus a
+shared one**:
+
+```
+ModName/
+    common/
+        media/          <- everything identical on both builds
+    42/
+        mod.info        <- the manifest lives IN the version folder
+        poster.png
+        media/          <- build-specific content
+    41/
+        mod.info
+        media/
+```
+
+Loading is ordered: `common/` first, then the version folder closest to the
+running build, whose files **overwrite** the common ones. So both
+`common/media/...` and `42/media/...` are real media roots, and a path only
+present in `common/` is still found.
+
+Translations therefore go at either of:
+
+```
+ModName/common/media/lua/shared/Translate/EN/
+ModName/42/media/lua/shared/Translate/EN/
+```
+
+A guide-recommended migration is to **copy** (not move) the old `media/`,
+`mod.info` and `poster.png` into `42/`, which leaves the flat layout in place
+for Build 41 players. A B42-only mod does not need the root copy.
+
+Do not reason about B42 layout from a Build 41 mod sitting next to yours. They
+are different shapes, and the older one being correct says nothing.
+
+Sources: [PZ B42 mod template](https://github.com/LabX1/ProjectZomboid-Build42-ModTemplate),
+[updating a mod for B42](https://steamcommunity.com/sharedfiles/filedetails/?id=3391657438).
+
+---
+
 ## 6. Timing traps
 
 - **`OnCreatePlayer` fires while the character is still loading into the

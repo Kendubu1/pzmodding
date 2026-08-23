@@ -1,5 +1,5 @@
 Sandbox_EN = {
-    Sandbox_PermadeathLock = "Permadeath Lock",
+    Sandbox_PermadeathLock = "Fate Token [root]",
 
     Sandbox_PermadeathLock_Enabled = "Enable permadeath lock",
     Sandbox_PermadeathLock_Enabled_tooltip = "When on, a player who dies is added to the death list and cannot return with a new character. Turn off to suspend the lock without uninstalling the mod; the death list is kept.",

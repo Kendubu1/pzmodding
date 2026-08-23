@@ -40,6 +40,20 @@ local function read(path)
     return text
 end
 
+--- The same, with any probe marker removed.
+---
+--- tools/translation_probe.py stamps a different tag into each copy so that one
+--- boot of the game reveals which folder it actually reads. The copies are then
+--- deliberately NOT identical, and the identity checks below still have to mean
+--- something in that state.
+---@param path string
+---@return string?
+local function readUnstamped(path)
+    local text = read(path)
+    if text == nil then return nil end
+    return (string.gsub(text, " ?%[[a-z0-9]+%] ?", " "))
+end
+
 --- Load one translation file and hand back the table it declares.
 ---@param path string
 ---@param name string the global it assigns, e.g. "Sandbox_EN"
@@ -87,8 +101,10 @@ io.write("\n-- shipped in both places the game might look --\n")
 -- looks like a raw key on a player's screen. All three are shipped; this keeps
 -- them from drifting apart.
 for _, spec in ipairs(FILES) do
-    check(spec.file .. " is identical in 42/", read(VERSIONED .. spec.file), read(COMMON .. spec.file))
-    check(spec.file .. " is identical at the mod root", read(BARE .. spec.file), read(COMMON .. spec.file))
+    check(spec.file .. " matches the 42/ copy",
+        readUnstamped(VERSIONED .. spec.file), readUnstamped(COMMON .. spec.file))
+    check(spec.file .. " matches the mod-root copy",
+        readUnstamped(BARE .. spec.file), readUnstamped(COMMON .. spec.file))
 end
 
 --------------------------------------------------------------------------------
