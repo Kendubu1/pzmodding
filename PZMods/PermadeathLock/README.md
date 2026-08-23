@@ -29,6 +29,7 @@ Workshop item. Restart after installing — mods are not hot-loadable.
 
 ```
 PermadeathLock/
+├── common/media/lua/shared/Translate/EN/    every language file
 └── 42/
     ├── mod.info
     ├── poster.png
@@ -38,6 +39,12 @@ PermadeathLock/
         ├── textures/         its inventory icon
         └── lua/{shared,server,client}/
 ```
+
+**The translations sit in `common/`, not in `42/`.** Kept there because the one
+mod nearby whose translations demonstrably load does the same, and ours - in the
+version folder - did not, through several attempts. Nothing about the files
+themselves was wrong; the file names are right and so are the table names. They
+are build-independent text, so `common/` costs nothing either way.
 
 Build 42 only loads files from the version folder matching the running build, and
 `mod.info` lives *inside* that folder. To also ship a Build 41 version, add a
@@ -111,6 +118,15 @@ the player is dead and the chat window is not on screen behind the death UI.
 The two death-time notices sit *below* the middle of the screen, clear of the
 death screen's own scrolling text and above its "continue with a new character"
 buttons. The block notice is centred; there is nothing behind it.
+
+**Every one of these sentences is also compiled into the mod**, and used
+whenever `getText` hands back the key instead of a translation. That happens
+when the game has not read the language files, and it put
+`IGUI_PermadeathLock_TokenSpent` on players' screens at the exact instant they
+died, more than once. The language files still win when they load; this is only
+the floor. There is no equivalent floor for the item's **category** — a script
+cannot fall back — which is why that uses a stock category rather than one of
+ours.
 
 The handshake is the polite path and the sweep is the authoritative one. A player
 running a modified client that never reports its death is still caught by the

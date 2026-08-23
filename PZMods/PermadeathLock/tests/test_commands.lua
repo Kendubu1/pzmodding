@@ -1,4 +1,5 @@
--- Harness: drives the /permadeath chat command parser against a stubbed ISChat.
+-- Harness: the client half - the /permadeath chat command parser, and the text
+-- of the notices players are shown.
 --
 -- It exists for one reason. Project Zomboid allows spaces in usernames, and the
 -- parser took only the first word after the subcommand: "/permadeath pardon
@@ -16,6 +17,40 @@ SandboxVars = { PermadeathLock = {} }
 local typed = ""
 local sentCommands = {}
 local uiOpened = 0
+
+-- Captured event handlers, so the notices can be triggered directly.
+local handlers = {}
+Events = setmetatable({}, { __index = function(t, name)
+    local slot = {
+        Add = function(fn) handlers[name] = handlers[name] or {}; table.insert(handlers[name], fn) end,
+        Remove = function() end,
+    }
+    rawset(t, name, slot)
+    return slot
+end })
+
+-- Whether the translation files loaded. When they have not, getText hands back
+-- the key itself, which is how "IGUI_PermadeathLock_TokenSpent" ends up on a
+-- player's screen at the moment they die.
+local translationsLoaded = false
+function getText(key)
+    if translationsLoaded then return "translated: " .. key end
+    return key
+end
+
+local shown = {}
+ISModalDialog = {}
+function ISModalDialog:new(_x, _y, _w, _h, message)
+    shown[#shown + 1] = message
+    return { initialise = function() end, addToUIManager = function() end }
+end
+
+function getCore()
+    return { getScreenWidth = function() return 1920 end,
+             getScreenHeight = function() return 1080 end }
+end
+function processGeneralMessage() end
+function forceDisconnect() end
 
 ISChat = {}
 ISChat.instance = {
@@ -38,7 +73,10 @@ end
 PermadeathLockUI = { open = function() uiOpened = uiOpened + 1 end }
 
 dofile("PZMods/PermadeathLock/42/media/lua/shared/PermadeathLock_Shared.lua")
+dofile("PZMods/PermadeathLock/42/media/lua/client/PermadeathLock_Client.lua")
 dofile("PZMods/PermadeathLock/42/media/lua/client/PermadeathLock_Commands.lua")
+
+local onServerCommand = handlers["OnServerCommand"][1]
 
 local failures = 0
 local function check(label, got, want)
@@ -119,6 +157,41 @@ check("ordinary chat reaches the original", passedThrough, was + 1)
 typed = "/help"
 ISChat:onCommandEntered()
 check("so do other commands", passedThrough, was + 2)
+
+io.write("\n-- what a player is actually shown --\n")
+
+--- Fire a server command and return the modal text it put on screen.
+---@param command string
+---@param args table?
+---@return string?
+local function notice(command, args)
+    shown = {}
+    onServerCommand(PermadeathLock.MODULE, command, args or {})
+    return shown[1]
+end
+
+-- REGRESSION: getText returns the KEY when it cannot find an entry, so a
+-- translation file the game has not read shows the player
+-- "IGUI_PermadeathLock_TokenSpent" at the instant they die. Whether those files
+-- are read has turned out to depend on things outside this mod; the sentence
+-- has to survive them not being read.
+translationsLoaded = false
+
+local spent = notice("tokenSpent")
+check("no raw key when the files are missing", string.find(spent or "", "IGUI_") == nil, true)
+check("and it says what happened", string.find(spent or "", "Fate Token") ~= nil, true)
+
+local sealed = notice("fateSealed")
+check("the same for a tokenless death", string.find(sealed or "", "IGUI_") == nil, true)
+check("naming the consequence", string.find(sealed or "", "pardon") ~= nil, true)
+
+local killed = notice("blocked", { kill = true })
+check("and for the block", string.find(killed or "", "IGUI_") == nil, true)
+
+-- and a real translation still wins when there is one
+translationsLoaded = true
+local translated = notice("tokenSpent")
+check("a loaded translation is preferred", translated, "translated: IGUI_PermadeathLock_TokenSpent")
 
 io.write("\n")
 if failures == 0 then

@@ -41,6 +41,50 @@ local graceTicks = 0
 local graceTick
 
 --------------------------------------------------------------------------------
+-- text
+--------------------------------------------------------------------------------
+
+-- The English we ship, kept here as well as in the translation files.
+--
+-- getText returns the KEY when it cannot find an entry, so a translation file
+-- the game has not read puts "IGUI_PermadeathLock_TokenSpent" on a player's
+-- screen at the single worst moment - the instant they die. Whether those files
+-- are read has turned out to depend on things outside this mod's control, and
+-- the sentence a player reads at that moment should not.
+--
+-- The files still work and still win when they load; this is only the floor.
+local FALLBACK = {
+    IGUI_PermadeathLock_Blocked =
+        "You died on this server. Permadeath is enabled here, so you cannot create a new"
+        .. " character. If you think this is a mistake, contact an admin - they can bring"
+        .. " you back.",
+    IGUI_PermadeathLock_BlockedKilled =
+        "You died on this server, and permadeath is enabled here. No new character of"
+        .. " yours is allowed to live - this one dies now, and so will the next. An admin"
+        .. " can lift it: they can pardon you, or revive you and give you back what you"
+        .. " learned.",
+    IGUI_PermadeathLock_TokenSpent =
+        "Your Fate Token burns away. You are NOT locked out - reconnect and make a new"
+        .. " character, and the skills this one earned come with you. Your body and"
+        .. " everything on it stay where they fell.",
+    IGUI_PermadeathLock_FateSealed =
+        "Your fate has been decided. You carried no Fate Token, so this world is closed"
+        .. " to you: a new character will not be allowed in. Wait, and pray for a pardon -"
+        .. " only an admin can lift this.",
+}
+
+--- getText, with the shipped English as the floor.
+---@param key string
+---@return string
+local function text(key)
+    local resolved = getText(key)
+    if resolved == nil or resolved == "" or resolved == key then
+        return FALLBACK[key] or key
+    end
+    return resolved
+end
+
+--------------------------------------------------------------------------------
 -- being blocked
 --------------------------------------------------------------------------------
 
@@ -166,10 +210,10 @@ local function onServerCommand(module, command, args)
             -- This character is forfeit rather than us being shown the door, so
             -- stay connected: the notice sits low, over the death screen that
             -- is a few seconds away.
-            showNotice(getText("IGUI_PermadeathLock_BlockedKilled"), nil, true)
+            showNotice(text("IGUI_PermadeathLock_BlockedKilled"), nil, true)
             beginGrace()
         else
-            showBlockNotice(getText("IGUI_PermadeathLock_Blocked"))
+            showBlockNotice(text("IGUI_PermadeathLock_Blocked"))
         end
     elseif command == "settle" then
         -- Something is owed to this character - the skills of the one that
@@ -184,12 +228,12 @@ local function onServerCommand(module, command, args)
         end
     elseif command == "tokenSpent" then
         -- Arrives at the moment of death, so it has to be a modal, and low.
-        showNotice(getText("IGUI_PermadeathLock_TokenSpent"), nil, true)
+        showNotice(text("IGUI_PermadeathLock_TokenSpent"), nil, true)
     elseif command == "fateSealed" then
         -- The other half of the same moment: died with no token, and the lock
         -- has closed. Says so now instead of leaving them to discover it by
         -- being thrown off the server on their next character.
-        showNotice(getText("IGUI_PermadeathLock_FateSealed"), nil, true)
+        showNotice(text("IGUI_PermadeathLock_FateSealed"), nil, true)
     elseif command == "openUI" then
         if PermadeathLockUI ~= nil then PermadeathLockUI.open() end
     elseif command == "listData" then
