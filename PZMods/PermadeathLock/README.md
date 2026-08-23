@@ -512,9 +512,26 @@ undone it. Only once they are confirmed at the spot is it announced, and once
 confirmed it is finished with them: nobody gets teleported again five minutes
 later for having walked off.
 
-If the bound spot cannot be reached — built over since, or in a chunk the server
-does not have loaded — the attempts run out, you are left where the game put you
-and told so. Nobody gets dropped inside a wall.
+**The move itself is done by your own client, not the server.** In Build 42
+multiplayer a player's *position* is owned by their own machine: the server's
+copy is a shadow updated from movement packets, so a server-side move is
+overwritten by the next packet the client sends a fraction of a second later.
+The server asks, the client places the character — setting the position, the
+"last" position the movement code interpolates from, and the square it is
+standing on, because setting only the first makes it snap back on the next step
+— and then reports where it ended up. That report is what confirms arrival: the
+server's own lagging copy of the position is not allowed to fail a teleport the
+player can see worked.
+
+If the bound spot cannot be reached the attempts run out, you are left where the
+game put you and told so. Nobody gets dropped inside a wall. Three things can
+cause that, and the server log names which:
+
+| In the log | What it means |
+| --- | --- |
+| `no square at x,y,z on this client yet` | The destination chunk has not streamed in. A bind far from where the game spawned you is the usual cause. |
+| `destination square NOT LOADED on the server` | The same thing on the server's side — it only keeps chunks loaded near players. |
+| `server-side raised: …` | `teleportTo` threw. Logged rather than swallowed: a throw and a move that quietly does not hold are different problems, and both used to be reported as "could not be reached". |
 
 ### Finding a bound token that has been lost
 

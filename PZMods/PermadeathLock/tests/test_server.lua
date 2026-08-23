@@ -922,6 +922,55 @@ advance(10)
 sweep()
 check("a confirmed arrival is not repeated", math.floor(robNew._x), 1)
 
+-- The client is asked to do the move, because in multiplayer its copy of the
+-- position is the one that counts.
+reset()
+local ask = makePlayer("Ask", { tokens = 1, x = 640, y = 650 })
+online = { ask }
+onClientCommand(MODULE, "bind", ask, { x = 640, y = 650, z = 0 })
+ask._dead = true
+sweep()
+
+local askNew = makePlayer("Ask", { x = 3, y = 3, noTeleport = true })
+online = { askNew }
+onClientCommand(MODULE, "spawnSettled", askNew, {})
+sent = {}
+advance(10)
+sweep()
+check("the client is asked to place the character", lastCommandTo("Ask"), "returnTo")
+
+-- And its word settles it. A client that reports itself at the bind has moved,
+-- whatever the server's own lagging copy of the position says - failing a
+-- teleport the player can plainly see worked is the worse mistake.
+sent = {}
+onClientCommand(MODULE, "bindMoved", askNew, { moved = true, x = 640.5, y = 650.5 })
+check("the client's report counts as arrival", lastCommandTo("Ask"), "notice")
+
+sent = {}
+advance(10)
+sweep()
+check("and nothing is retried afterwards", lastCommandTo("Ask"), nil)
+
+-- A client reporting it could not move is not arrival, and the retry stands.
+reset()
+local nope = makePlayer("Nope", { tokens = 1, x = 700, y = 710 })
+online = { nope }
+onClientCommand(MODULE, "bind", nope, { x = 700, y = 710, z = 0 })
+nope._dead = true
+sweep()
+
+local nopeNew = makePlayer("Nope", { x = 4, y = 4, noTeleport = true })
+online = { nopeNew }
+onClientCommand(MODULE, "spawnSettled", nopeNew, {})
+advance(10)
+sweep()
+sent = {}
+onClientCommand(MODULE, "bindMoved", nopeNew, { moved = false, x = 4, y = 4 })
+check("a client that could not move is not arrival", lastCommandTo("Nope"), nil)
+advance(10)
+sweep()
+check("so it is asked again", lastCommandTo("Nope"), "returnTo")
+
 -- But a teleport the game undoes before it was ever confirmed is tried again.
 -- This is the whole point of checking rather than assuming.
 reset()

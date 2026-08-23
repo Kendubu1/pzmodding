@@ -367,11 +367,6 @@ local function returnToBind(player, record)
     local bind = record.bind
     if bind == nil then return end
 
-    if player.teleportTo == nil then
-        print("[PermadeathLock] this build has no teleportTo; bind point ignored.")
-        return
-    end
-
     local key = PL.key(player:getUsername())
     if key == nil then return end
 
@@ -429,10 +424,46 @@ local function runPendingTeleport(player, key)
 
     queued.tries = queued.tries + 1
     queued.after = getTimestamp() + TELEPORT_RETRY_SECONDS
-    pcall(function() player:teleportTo(queued.x + 0.5, queued.y + 0.5, queued.z) end)
+
+    local x, y, z = queued.x + 0.5, queued.y + 0.5, queued.z
+
+    -- Ask the client to do it. In multiplayer THIS is the move that counts: a
+    -- player's position is owned by their own machine, and a server-side one is
+    -- overwritten by their next movement packet.
+    sendServerCommand(player, MODULE, "returnTo", { x = x, y = y, z = z })
+
+    -- And try from here as well, which is what works in single player and is
+    -- harmless when the client's move wins. Any error is LOGGED rather than
+    -- swallowed: a throw here and a move that quietly does not hold are
+    -- different problems, and both used to be reported as "could not be
+    -- reached".
+    local serverMoved = "no teleportTo on this build"
+    if player.teleportTo ~= nil then
+        local ok, err = pcall(function() player:teleportTo(x, y, z) end)
+        if ok then
+            serverMoved = "called, now at " .. math.floor(player:getX())
+                .. "," .. math.floor(player:getY())
+        else
+            serverMoved = "raised: " .. tostring(err)
+        end
+    end
+
+    -- Whether the destination is even loaded here. An unloaded chunk is a real
+    -- and separate blocker, and it looks identical from the outside.
+    local square = "unknown"
+    if getCell ~= nil then
+        local cell = getCell()
+        if cell ~= nil and cell.getGridSquare ~= nil then
+            square = cell:getGridSquare(queued.x, queued.y, queued.z) ~= nil
+                and "loaded" or "NOT LOADED on the server"
+        end
+    end
+
     print("[PermadeathLock] moving " .. player:getUsername() .. " to the bind at "
         .. queued.x .. "," .. queued.y .. "," .. queued.z
-        .. " (attempt " .. queued.tries .. " of " .. TELEPORT_TRIES .. ").")
+        .. " (attempt " .. queued.tries .. " of " .. TELEPORT_TRIES
+        .. "; asked the client; server-side " .. serverMoved
+        .. "; destination square " .. square .. ").")
 end
 
 --- Hand a revived player's queued skills to the character they are now playing.
@@ -1173,6 +1204,33 @@ local function onClientCommand(module, command, player, args)
             .. " will come back here.")
         print("[PermadeathLock] " .. player:getUsername() .. " bound a Fate Token to "
             .. math.floor(x) .. "," .. math.floor(y) .. "," .. math.floor(z or 0) .. ".")
+        return
+    end
+
+    if command == "bindMoved" then
+        -- The client has reported where it actually put the character. Its word
+        -- beats ours: the server's copy of a player's position lags behind
+        -- their machine, so waiting to see the move here can fail a teleport
+        -- that plainly worked on the player's screen.
+        local key = PL.key(player:getUsername())
+        local queued = key and pendingTeleport[key]
+        local x, y = tonumber(args.x), tonumber(args.y)
+
+        print("[PermadeathLock] " .. player:getUsername() .. " client reports moved="
+            .. tostring(args.moved) .. " at " .. tostring(x) .. "," .. tostring(y)
+            .. "; server sees " .. math.floor(player:getX()) .. "," .. math.floor(player:getY()) .. ".")
+
+        if queued ~= nil and x ~= nil and y ~= nil
+            and math.abs(x - queued.x) < TELEPORT_TOLERANCE
+            and math.abs(y - queued.y) < TELEPORT_TOLERANCE then
+            pendingTeleport[key] = nil
+            sendServerCommand(player, MODULE, "notice", {
+                text = "Your Fate Token brings you back to the place it was bound.",
+            })
+            print("[PermadeathLock] " .. player:getUsername() .. " is at the bind ("
+                .. queued.x .. "," .. queued.y .. "," .. queued.z .. ") after "
+                .. queued.tries .. " attempt(s), confirmed by their client.")
+        end
         return
     end
 

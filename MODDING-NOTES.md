@@ -94,6 +94,7 @@ is *silence*, not an error.
 | Inventory | **Server** | Client adds an item, reports success; the server never sees it, so any server-side check finds nothing |
 | Death | **Server** | Client kills its own player; the server thinks they are alive, the death is never recorded, admin tools show them fine |
 | Perk levels | Server, synced | A server-side read of a *just-spawned* remote player can disagree with the client |
+| Player position | **That player's client** | Server moves them, reads back the new coordinate, believes it worked; the client's next movement packet puts them back |
 | UI, notices, input | **Client** | Nothing happens at all |
 
 Ask: *"if I do this on the wrong side, what silently doesn't happen?"* That is
@@ -189,6 +190,13 @@ loaded Store first, which hid the bug completely.
 - **`EveryOneMinute` is one *in-game* minute.** At the default day length that
   is two or three real seconds, not sixty. Any deadline you want in real seconds
   must be measured with `getTimestamp()`, not counted in sweeps.
+- **A player's position is owned by their own client.** Add it to the ownership
+  table in §2: a server-side `teleportTo` on a remote player moves the server's
+  shadow and is then overwritten by that client's next movement packet. The
+  server reads back the new coordinate and believes itself; the player sees the
+  destination for a blink. Send the move to the owning client and let it report
+  back — and set the "last" position and the current square too, not just x/y/z,
+  or the character snaps back on its first step.
 - **The game keeps placing a spawning character after you have moved it.**
   `teleportTo` during or just after the spawn handshake appears to work — the
   character *is* at the new coordinate when you read it back on the same tick —

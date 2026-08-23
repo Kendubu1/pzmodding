@@ -125,6 +125,59 @@ graceTick = function()
     sendClientCommand(player, MODULE, "spawnSettled", {})
 end
 
+--- Put this character on a square, from the machine that owns its position.
+---
+--- Done here rather than on the server, and that is the whole point. In Build 42
+--- multiplayer a player's POSITION is owned by their own client: the server's
+--- copy is a shadow updated from movement packets, so a server-side move is
+--- overwritten by the next packet the client sends, a fraction of a second
+--- later. That is exactly what a bind teleport looked like - the right place for
+--- a blink, then dragged back to where the game spawned them.
+---
+--- Setting x/y/z alone is not enough either. The movement code interpolates
+--- from a separate "last" position and holds a reference to the square the
+--- character is standing on; leave those behind and the character snaps back on
+--- the first step they take.
+---@param x number
+---@param y number
+---@param z number
+---@return boolean moved
+local function placeAt(x, y, z)
+    local player = getPlayer()
+    if player == nil or player:isDead() then return false end
+
+    -- The square has to exist on this machine before anyone can stand on it. A
+    -- bind far from where the game spawned them is in a chunk that has not
+    -- streamed in yet, and this is the honest way to find that out rather than
+    -- moving them into nothing.
+    local cell = getCell()
+    local square = cell ~= nil and cell:getGridSquare(x, y, z) or nil
+    if square == nil then
+        print("[PermadeathLock] no square at " .. x .. "," .. y .. "," .. z
+            .. " on this client yet; not moving.")
+        return false
+    end
+
+    if player.setX ~= nil then
+        player:setX(x)
+        player:setY(y)
+        player:setZ(z)
+    end
+    -- Where the movement code thinks it is coming from.
+    if player.setLastX ~= nil then
+        player:setLastX(x)
+        player:setLastY(y)
+    end
+    if player.setLx ~= nil then
+        player:setLx(x)
+        player:setLy(y)
+        player:setLz(z)
+    end
+    if player.setCurrent ~= nil then player:setCurrent(square) end
+
+    return true
+end
+
 --- Start the countdown to whatever the server has waiting for this character.
 local function beginGrace()
     if awaitingKill then return end
@@ -287,6 +340,24 @@ local function onServerCommand(module, command, args)
         -- has closed. Says so now instead of leaving them to discover it by
         -- being thrown off the server on their next character.
         showNotice(text("IGUI_PermadeathLock_FateSealed"), nil)
+    elseif command == "returnTo" then
+        -- The server has a bind waiting and cannot make it stick from its side.
+        -- Place the character here, then report back what actually happened -
+        -- the server logs both views, so "the client moved and the server did
+        -- not see it" is a distinguishable outcome rather than a mystery.
+        local x, y, z = tonumber(args and args.x), tonumber(args and args.y),
+            tonumber(args and args.z)
+        if x ~= nil and y ~= nil then
+            local moved = placeAt(x, y, z or 0)
+            local player = getPlayer()
+            if player ~= nil then
+                sendClientCommand(player, MODULE, "bindMoved", {
+                    moved = moved,
+                    x = player:getX(),
+                    y = player:getY(),
+                })
+            end
+        end
     elseif command == "openUI" then
         if PermadeathLockUI ~= nil then PermadeathLockUI.open() end
     elseif command == "listData" then
