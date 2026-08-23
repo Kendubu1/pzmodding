@@ -34,24 +34,16 @@ a second, separate Workshop item instead of updating the first. It is also what
 fills the **WorkshopID** row in the mod panel, which stays blank while the mod
 is only a local folder.
 
-`author` is written twice, as both `author=` and `authors=`. The panel's
-**Author** row came back blank with only the plural spelled out, and one extra
-line is cheaper than working out which spelling this build wants. `url=` fills
-the **Homepage** row.
-
-`art/make_art.py` is the source for all three images and is committed alongside
-them, so a change to the palette or the wording is an edit and a re-run rather
-than a lost original. It is seeded: the same script always yields the same coin.
+`author` is written twice, as both `author=` and `authors=`, since builds differ
+on which they read. `url=` fills the **Homepage** row.
 
 | File | Size | What it is for |
 | --- | --- | --- |
 | `preview.png` | 512×512 | The Workshop thumbnail. Carries the name, because the grid renders it small. |
-| `42/poster.png` | 512×512 | Shown larger in the in-game mod panel, so it has room for a line of pitch. |
+| `42/poster.png` | 512×512 | Shown larger in the in-game mod panel. |
 | `42/icon.png` | 128×128 | The mod list. The token alone — it still reads at 32px, which is what that list gives it. |
 
-Each slot gets its own cut rather than one image reused three times: the
-thumbnail needs the name on it, the icon needs to survive being shrunk to a
-tab-sized square, and the poster has room for a line of pitch.
+Each slot gets its own cut rather than one image reused three times.
 
 ## Install
 
