@@ -23,6 +23,7 @@ if not PermadeathLock.isServerSide() then return end
 
 local PL = PermadeathLock
 local Store = PL.Store
+local Binds = PL.Binds
 local MODULE = PL.MODULE
 
 -- How many sweeps a locked-out player has survived since we asked them to leave.
@@ -71,6 +72,32 @@ local exemptNoted = {}
 -- character, and any death after it counts normally.
 ---@type table<string, boolean>
 local forgiven = {}
+
+-- Bind points waiting to be applied, keyed by player: {x, y, z, after, tries,
+-- announced}.
+--
+-- Teleporting the moment a restore finishes does not stick. The game is still
+-- placing the freshly spawned character, and whatever it decides lands *after*
+-- our teleport - which is exactly what it looks like from the player's side:
+-- they appear at their bound spot for an instant and are then dragged to the
+-- game's spawn. So the teleport waits, and then checks it actually took,
+-- retrying a few times before giving up.
+---@type table<string, table>
+local pendingTeleport = {}
+
+-- How long to leave the game alone with a newly spawned character before moving
+-- it, and how long between retries when the move does not stick. Real seconds,
+-- for the same reason KILL_BACKSTOP_SECONDS is.
+local TELEPORT_DELAY_SECONDS = 6
+local TELEPORT_RETRY_SECONDS = 3
+
+-- How many times to try before leaving them where the game put them. Each retry
+-- is a visible jump, so this is deliberately small.
+local TELEPORT_TRIES = 4
+
+-- How close counts as arrived. The teleport is offset to a tile centre and the
+-- character may take a step, so an exact comparison would never match.
+local TELEPORT_TOLERANCE = 2
 
 --------------------------------------------------------------------------------
 -- helpers
@@ -244,11 +271,17 @@ local function recordDeath(player, reason)
     -- Read before it is burned: the coordinate lives on the token, and in a
     -- moment the token will not exist.
     local bind = PL.getTokenBind(token)
+    local tokenId = PL.getTokenId(token)
 
     local burned = false
     if token ~= nil and PL.getOption("FateTokenConsume", true) then
         burned = consumeFateToken(token)
     end
+
+    -- The place has been used, so it comes off the list of recoverable ones.
+    -- Only once the token really went: a token still lying on the body can be
+    -- picked up, and its bind with it.
+    if burned then Binds.forget(tokenId) end
 
     local record = Store.record(player, PL.REASON_TOKEN, true, bind)
     if record ~= nil then
@@ -339,20 +372,67 @@ local function returnToBind(player, record)
         return
     end
 
-    local before = { x = player:getX(), y = player:getY() }
-    pcall(function() player:teleportTo(bind.x + 0.5, bind.y + 0.5, bind.z) end)
+    local key = PL.key(player:getUsername())
+    if key == nil then return end
 
-    if math.abs(player:getX() - bind.x) < 2 and math.abs(player:getY() - bind.y) < 2 then
+    pendingTeleport[key] = {
+        x = bind.x,
+        y = bind.y,
+        z = bind.z,
+        after = getTimestamp() + TELEPORT_DELAY_SECONDS,
+        tries = 0,
+    }
+
+    tell(player, "Your Fate Token remembers where it was bound. Hold still.")
+    print("[PermadeathLock] " .. player:getUsername() .. " will be returned to the bind at "
+        .. bind.x .. "," .. bind.y .. "," .. bind.z .. " in "
+        .. TELEPORT_DELAY_SECONDS .. "s.")
+end
+
+--- Carry out a queued bind teleport, one sweep at a time.
+---
+--- Called for every living player, and does nothing at all unless that player
+--- has a bind waiting. The work is spread over sweeps rather than done in one
+--- go on purpose: the only reliable way to know a teleport survived the game's
+--- own spawn placement is to look again afterwards.
+---@param player IsoPlayer
+---@param key string
+local function runPendingTeleport(player, key)
+    local queued = pendingTeleport[key]
+    if queued == nil then return end
+
+    local arrived = math.abs(player:getX() - queued.x) < TELEPORT_TOLERANCE
+        and math.abs(player:getY() - queued.y) < TELEPORT_TOLERANCE
+
+    if arrived then
+        pendingTeleport[key] = nil
         sendServerCommand(player, MODULE, "notice", {
             text = "Your Fate Token brings you back to the place it was bound.",
         })
-        print("[PermadeathLock] " .. player:getUsername() .. " returned to the bind at "
-            .. bind.x .. "," .. bind.y .. "," .. bind.z .. ".")
-    else
-        tell(player, "Your bound spot could not be reached, so you are where the game put you.")
-        print("[PermadeathLock] " .. player:getUsername() .. "'s bind at " .. bind.x .. ","
-            .. bind.y .. " could not be reached; left at " .. before.x .. "," .. before.y .. ".")
+        print("[PermadeathLock] " .. player:getUsername() .. " is at the bind ("
+            .. queued.x .. "," .. queued.y .. "," .. queued.z .. ") after "
+            .. queued.tries .. " attempt(s).")
+        return
     end
+
+    -- Still inside the settling window: leave the game to finish placing them.
+    if getTimestamp() < queued.after then return end
+
+    if queued.tries >= TELEPORT_TRIES then
+        pendingTeleport[key] = nil
+        tell(player, "Your bound spot could not be reached, so you are where the game put you.")
+        print("[PermadeathLock] " .. player:getUsername() .. "'s bind at " .. queued.x .. ","
+            .. queued.y .. " did not hold after " .. queued.tries .. " attempt(s); left at "
+            .. player:getX() .. "," .. player:getY() .. ".")
+        return
+    end
+
+    queued.tries = queued.tries + 1
+    queued.after = getTimestamp() + TELEPORT_RETRY_SECONDS
+    pcall(function() player:teleportTo(queued.x + 0.5, queued.y + 0.5, queued.z) end)
+    print("[PermadeathLock] moving " .. player:getUsername() .. " to the bind at "
+        .. queued.x .. "," .. queued.y .. "," .. queued.z
+        .. " (attempt " .. queued.tries .. " of " .. TELEPORT_TRIES .. ").")
 end
 
 --- Hand a revived player's queued skills to the character they are now playing.
@@ -441,6 +521,14 @@ local function checkPlayer(player)
 
     local record = Store.get(username)
     local alive = not player:isDead()
+
+    -- Before anything else, and for exempt players too: an admin who spent a
+    -- token has still earned the trip back.
+    if alive then
+        runPendingTeleport(player, key)
+    else
+        pendingTeleport[key] = nil
+    end
 
     -- Alive, and an admin has cleared them: this is the new character. Checked
     -- before the exemption, because a queued restore is owed to the player
@@ -543,6 +631,7 @@ local HELP = {
     "/permadeath status            - is the lock on, and how many are locked out",
     "/permadeath status <user>     - everything the mod knows about one player",
     "/permadeath list              - show the death list",
+    "/permadeath binds             - every place a Fate Token is bound to",
     "/permadeath ui                - open the admin panel",
     "/permadeath give <user>       - hand a player a Fate Token",
     "/permadeath take <user>       - take a Fate Token back",
@@ -657,6 +746,12 @@ local function commandListData(admin)
             row.locked = record.locked == true
             row.pendingRestore = record.pendingRestore == true
             row.skills = count
+            -- Where the spent token will bring them back to. Not the same as a
+            -- bind still on a token in their pocket, and far more urgent: this
+            -- is the one about to be used.
+            if record.bind ~= nil then
+                row.returnTo = { x = record.bind.x, y = record.bind.y, z = record.bind.z }
+            end
         end
     end
 
@@ -681,7 +776,15 @@ local function commandListData(admin)
                     -- are meaningfully different things to an admin.
                     local bound = 0
                     for _, token in ipairs(carried) do
-                        if PL.getTokenBind(token) ~= nil then bound = bound + 1 end
+                        local at = PL.getTokenBind(token)
+                        if at ~= nil then
+                            bound = bound + 1
+                            -- The first one is what the panel shows; the count
+                            -- tells the admin there are others behind it.
+                            if row.bind == nil then
+                                row.bind = { x = at.x, y = at.y, z = at.z }
+                            end
+                        end
                     end
                     row.bound = bound
                 end
@@ -722,6 +825,10 @@ local function commandListData(admin)
         version = PL.VERSION,
         enabled = PL.isEnabled(),
         tokens = PL.getOption("FateTokenEnabled", true) == true,
+        -- How many bound places are on record at all, including tokens nobody
+        -- online is holding. The panel can only show a coordinate for someone
+        -- it can see; this is the hint that /permadeath binds knows about more.
+        binds = Binds.count(),
         rows = rows,
     })
 end
@@ -891,6 +998,34 @@ local function commandList(admin)
     end
 end
 
+--- Every place a Fate Token points at, whether or not anyone can find the
+--- token any more.
+---
+--- The point of this list is the coordinates. A token dropped in a bag on the
+--- far side of the map is unreachable and unfindable - the game keeps no index
+--- of items - but the place it was bound to is right here, and an admin can put
+--- someone back there by hand.
+---@param admin IsoPlayer
+local function commandBinds(admin)
+    local all = Binds.all()
+    if #all == 0 then
+        tell(admin, "No Fate Token has been bound to anywhere.")
+        return
+    end
+
+    tell(admin, #all .. " bound Fate Token(s):")
+    for _, entry in ipairs(all) do
+        -- "not seen" and not "lost": the server can only read online players'
+        -- inventories, so an offline player's pocket, a crate and the floor are
+        -- genuinely indistinguishable from here. Saying which it is would be
+        -- making it up.
+        local where = entry.heldBy and ("held by " .. entry.heldBy) or "not seen"
+        tell(admin, " - #" .. entry.id .. " at " .. entry.x .. "," .. entry.y .. "," .. entry.z
+            .. " (bound by " .. (entry.boundBy ~= "" and entry.boundBy or "?")
+            .. ", " .. describeAge(entry.time) .. ", " .. where .. ")")
+    end
+end
+
 ---@param player IsoPlayer
 ---@param args table
 local function handleAdmin(player, args)
@@ -917,6 +1052,8 @@ local function handleAdmin(player, args)
         tell(player, "Permadeath Lock " .. PL.VERSION .. " is " .. state .. ". " .. Store.count() .. " player(s) on the death list.")
     elseif sub == "list" then
         commandList(player)
+    elseif sub == "binds" then
+        commandBinds(player)
     elseif sub == "listdata" then
         commandListData(player)
     elseif sub == "ui" then
@@ -1017,6 +1154,17 @@ local function onClientCommand(module, command, player, args)
         end
 
         PL.setTokenBind(chosen, x, y, z or 0)
+
+        -- The same place, written down a second time in the registry. The copy
+        -- on the item is the one that works; this is the one that survives the
+        -- item being dropped somewhere nobody goes back to.
+        local id = PL.getTokenId(chosen)
+        if id == nil then
+            id = Binds.claimId()
+            PL.setTokenId(chosen, id)
+        end
+        Binds.set(id, x, y, z or 0, player:getUsername())
+
         -- Written to the item on this side, so the change has to be broadcast
         -- or only the server knows about it.
         if syncItemFields ~= nil then syncItemFields(player, chosen) end

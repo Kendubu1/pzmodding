@@ -76,7 +76,7 @@ local function minimumSize()
     local m = metrics()
     local height = (m.text + 2) + m.pad + m.status + m.pad + m.header
         + (m.row * 3) + m.pad + (m.button * 2) + m.pad + m.bottom
-    return math.max(640, m.text * 46), height
+    return math.max(720, m.text * 54), height
 end
 
 -- Frames between automatic refreshes while the window is open. The roster is
@@ -85,7 +85,7 @@ end
 local REFRESH_FRAMES = 300
 
 -- The window sizes itself to the screen rather than to a number picked on one
--- monitor. Five columns of text need real width, and a fixed 900px is roomy at
+-- monitor. Six columns of text need real width, and a fixed 900px is roomy at
 -- 1280 wide and cramped at 3440. The bounds stop it becoming unreadable on a
 -- small screen or absurd on a very large one.
 local SCREEN_FRACTION_W = 0.66
@@ -123,10 +123,11 @@ end
 -- hour ago" ran straight into the state beside it.
 local COLUMNS = {
     { key = "name",   title = "Player",      at = 0.00 },
-    { key = "state",  title = "State",       at = 0.28 },
-    { key = "age",    title = "Died",        at = 0.52 },
-    { key = "skills", title = "Skills held", at = 0.68 },
-    { key = "tokens", title = "Tokens",      at = 0.85 },
+    { key = "state",  title = "State",       at = 0.22 },
+    { key = "age",    title = "Died",        at = 0.42 },
+    { key = "skills", title = "Skills held", at = 0.55 },
+    { key = "tokens", title = "Tokens",      at = 0.70 },
+    { key = "bind",   title = "Bind",        at = 0.85 },
 }
 
 ---@param width number the list's width
@@ -356,6 +357,17 @@ local function describeState(row)
     return "alive", 0.85, 0.85, 0.85
 end
 
+--- A coordinate an admin can act on: the two numbers they would type into a
+--- teleport, and the floor only when it is not the ground one.
+---@param at table? {x, y, z}
+---@return string
+local function describePoint(at)
+    if at == nil then return "-" end
+    local text = math.floor(at.x or 0) .. "," .. math.floor(at.y or 0)
+    if (at.z or 0) ~= 0 then text = text .. " z" .. math.floor(at.z) end
+    return text
+end
+
 --- One row: who they are, how they stand, and what they are holding.
 function PermadeathLockUI:drawRow(y, item, alt)
     local row = item.item
@@ -385,6 +397,21 @@ function PermadeathLockUI:drawRow(y, item, alt)
         if (row.bound or 0) > 0 then tokens = tokens .. " (" .. row.bound .. " bound)" end
     end
 
+    -- Where a Fate Token would put them. An owed restore is shown with an
+    -- arrow and in front of anything still in their pocket: that coordinate is
+    -- the one about to be used, and it is the one an admin is asking about when
+    -- someone says they came back in the wrong place.
+    local bind, bindBright = "-", false
+    if row.returnTo ~= nil then
+        bind = "-> " .. describePoint(row.returnTo)
+        bindBright = true
+    elseif row.bind ~= nil then
+        bind = describePoint(row.bind)
+        -- More than one bound token: only the first has room to be shown.
+        if (row.bound or 0) > 1 then bind = bind .. " +" .. (row.bound - 1) end
+        bindBright = true
+    end
+
     -- Centred in the row rather than a fixed three pixels down, which only
     -- looked right while the row height was a fixed number too.
     local width = self:getWidth()
@@ -396,6 +423,9 @@ function PermadeathLockUI:drawRow(y, item, alt)
     self:drawText(skills, columnX(width, "skills"), textY, 0.7, 0.7, 0.7, 1, self.font)
     self:drawText(tokens, columnX(width, "tokens"), textY,
         carrying and 0.95 or 0.7, carrying and 0.85 or 0.7, carrying and 0.45 or 0.7, 1, self.font)
+    self:drawText(bind, columnX(width, "bind"), textY,
+        bindBright and 0.55 or 0.7, bindBright and 0.85 or 0.7, bindBright and 0.95 or 0.7,
+        1, self.font)
 
     return y + self.itemheight
 end
@@ -427,13 +457,21 @@ function PermadeathLockUI:setData(data)
         if row.online then online = online + 1 end
     end
 
+    -- Bound tokens are counted from the registry, not from this list: a token
+    -- lying in a crate has a place on record and no row here to show it on.
+    local binds = ""
+    if (data.binds or 0) > 0 then
+        binds = string.format(", %d bound (/permadeath binds)", data.binds)
+    end
+
     self.status:setName(string.format(
-        "Permadeath Lock %s  -  lock %s, Fate Tokens %s  -  %d online, %d locked out   (* = offline)",
+        "Permadeath Lock %s  -  lock %s, Fate Tokens %s  -  %d online, %d locked out%s   (* = offline)",
         data.version or "?",
         data.enabled and "ON" or "OFF",
         data.tokens and "on" or "off",
         online,
-        locked))
+        locked,
+        binds))
 end
 
 --- Put a line in the panel's status bar.
@@ -571,7 +609,7 @@ function PermadeathLockUI:new(x, y, width, height)
     self.__index = self
     window:setTitle("Permadeath Lock")
     window:setResizable(true)
-    -- Below this the five columns start colliding and the bands stop fitting.
+    -- Below this the six columns start colliding and the bands stop fitting.
     -- Both scale with the font. Drag it larger whenever you like; layout()
     -- re-runs and everything follows.
     window.minimumWidth, window.minimumHeight = minimumSize()

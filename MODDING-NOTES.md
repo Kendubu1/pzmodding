@@ -189,6 +189,15 @@ loaded Store first, which hid the bug completely.
 - **`EveryOneMinute` is one *in-game* minute.** At the default day length that
   is two or three real seconds, not sixty. Any deadline you want in real seconds
   must be measured with `getTimestamp()`, not counted in sweeps.
+- **The game keeps placing a spawning character after you have moved it.**
+  `teleportTo` during or just after the spawn handshake appears to work — the
+  character *is* at the new coordinate when you read it back on the same tick —
+  and then the game's own placement lands a second later and drags them back.
+  The player sees the destination for a blink and then somewhere else, which
+  reads as the teleport being ignored. Wait several real seconds, teleport, and
+  then **check again on a later tick** that they are still there; retry a
+  bounded number of times before giving up. A read-back on the same tick proves
+  nothing about where they end up.
 - **There is no pre-death hook.** You cannot veto a killing blow. Insurance
   that pays out afterwards is the only shape available.
 - **There is no server-side "player connected" event and no kick function** in

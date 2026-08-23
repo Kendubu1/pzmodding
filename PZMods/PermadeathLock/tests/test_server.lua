@@ -198,10 +198,12 @@ end
 dofile("PZMods/PermadeathLock/42/media/lua/shared/PermadeathLock_Shared.lua")
 -- Loaded in the order the game loads them: alphabetically, so Server.lua runs
 -- BEFORE Store.lua. Loading Store first here would hide load-order bugs.
+dofile("PZMods/PermadeathLock/42/media/lua/server/PermadeathLock_Binds.lua")
 dofile("PZMods/PermadeathLock/42/media/lua/server/PermadeathLock_Server.lua")
 dofile("PZMods/PermadeathLock/42/media/lua/server/PermadeathLock_Store.lua")
 
 local Store = PermadeathLock.Store
+local Binds = PermadeathLock.Binds
 local MODULE = PermadeathLock.MODULE
 local sweep = handlers["EveryOneMinute"][1]
 local onClientCommand = handlers["OnClientCommand"][1]
@@ -226,6 +228,8 @@ local function reset()
     files, sent, online = {}, {}, {}
     Store.load()
     Store.clear()
+    Binds.load()
+    Binds.clear()
 end
 
 --------------------------------------------------------------------------------
@@ -891,7 +895,53 @@ check("and the record carries the place it pointed at", Store.get("Rob").bind.x,
 local robNew = makePlayer("Rob", { x = 1, y = 1 })
 online = { robNew }
 onClientCommand(MODULE, "spawnSettled", robNew, {})
-check("they wake at the bound spot", math.floor(robNew._x), 500)
+
+-- Not immediately. Teleporting the instant the restore lands is exactly the bug
+-- this delay exists for: the game is still placing the character and puts them
+-- back a moment later, so the player sees their bind for a blink and is then
+-- dragged away.
+check("the restore does not move them at once", math.floor(robNew._x), 1)
+sweep()
+check("nor does the very next sweep", math.floor(robNew._x), 1)
+
+advance(10)
+sweep()
+check("once the game has settled, they are moved", math.floor(robNew._x), 500)
+
+-- and only then is it announced, having been checked a sweep later
+sent = {}
+sweep()
+check("arrival is confirmed, not assumed", lastCommandTo("Rob"), "notice")
+check("and they are still there", math.floor(robNew._x), 500)
+
+-- Once confirmed, it is finished with them. A player teleported again minutes
+-- later, having walked away under their own steam, would rightly call that a
+-- bug.
+robNew._x, robNew._y = 1, 1
+advance(10)
+sweep()
+check("a confirmed arrival is not repeated", math.floor(robNew._x), 1)
+
+-- But a teleport the game undoes before it was ever confirmed is tried again.
+-- This is the whole point of checking rather than assuming.
+reset()
+local stub = makePlayer("Stub", { tokens = 1, x = 300, y = 400 })
+online = { stub }
+onClientCommand(MODULE, "bind", stub, { x = 300, y = 400, z = 0 })
+stub._dead = true
+sweep()
+
+local stubNew = makePlayer("Stub", { x = 2, y = 2 })
+online = { stubNew }
+onClientCommand(MODULE, "spawnSettled", stubNew, {})
+advance(10)
+sweep()
+check("the first attempt lands", math.floor(stubNew._x), 300)
+
+stubNew._x, stubNew._y = 2, 2          -- the game puts them back
+advance(10)
+sweep()
+check("a teleport the game undid is retried", math.floor(stubNew._x), 300)
 
 -- a second bind takes an UNBOUND token rather than moving the one already placed
 reset()
@@ -910,6 +960,8 @@ Store.revive("Sal")
 local salNew = makePlayer("Sal", { x = 5, y = 5 })
 online = { salNew }
 onClientCommand(MODULE, "spawnSettled", salNew, {})
+advance(10)
+sweep()
 check("a revive does not move anyone", math.floor(salNew._x), 5)
 
 -- a spot that cannot be reached leaves them where the game put them
@@ -923,8 +975,21 @@ local timNew = makePlayer("Tim", { x = 5, y = 5, noTeleport = true })
 online = { timNew }
 sent = {}
 onClientCommand(MODULE, "spawnSettled", timNew, {})
+
+-- Every attempt is made before giving up, and each one waits its turn.
+for _ = 1, 6 do
+    advance(10)
+    sweep()
+end
 check("an unreachable bind strands nobody", math.floor(timNew._x), 5)
 check("and says so rather than failing silently", lastCommandTo("Tim"), "message")
+
+-- Having given up, it stops trying: a player quietly teleported minutes later
+-- by something they no longer connect to the token is worse than not moving.
+sent = {}
+advance(10)
+sweep()
+check("and then leaves them alone", lastCommandTo("Tim"), nil)
 
 -- the bind survives being written out and read back
 reset()
@@ -972,6 +1037,76 @@ check("and which Lua state answered", string.find(dump, "isCoopHost=") ~= nil, t
 sent = {}
 onClientCommand(MODULE, "admin", dumpAdmin, { sub = "status" })
 check("bare status still reports the lock", string.find(sent[1].text or "", "Permadeath Lock") ~= nil, true)
+
+--------------------------------------------------------------------------------
+io.write("\n-- the bind registry --\n")
+
+-- The point of the registry: the COORDINATE survives the token. A token in a
+-- bag on the floor is unreachable and unfindable - the game keeps no index of
+-- items - but where it points is still answerable.
+reset()
+SandboxVars.PermadeathLock.FateBinding = true
+
+local reg = makePlayer("Reg", { tokens = 1, x = 1200, y = 1300 })
+online = { reg }
+onClientCommand(MODULE, "bind", reg, { x = 1200, y = 1300, z = 0 })
+
+check("the bind is on record", Binds.count(), 1)
+check("with the place on it", Binds.all()[1].x, 1200)
+check("and who put it there", Binds.all()[1].boundBy, "Reg")
+check("and it is known to be in hand", Binds.all()[1].heldBy, "Reg")
+
+-- Nobody online holding it: the entry stays, and stops claiming a holder. This
+-- is the dropped-token case, and it is the reason the registry exists.
+online = {}
+check("a token nobody is holding is still on record", Binds.count(), 1)
+check("its place is still readable", Binds.all()[1].y, 1300)
+check("but it is honest about not finding it", Binds.all()[1].heldBy, nil)
+
+-- Two tokens get two entries with their own numbers, not one shared one.
+reset()
+local two = makePlayer("Two", { tokens = 2, x = 10, y = 20 })
+online = { two }
+onClientCommand(MODULE, "bind", two, { x = 10, y = 20, z = 0 })
+onClientCommand(MODULE, "bind", two, { x = 30, y = 40, z = 0 })
+check("two tokens, two entries", Binds.count(), 2)
+check("each with its own number", Binds.all()[1].id ~= Binds.all()[2].id, true)
+
+-- Re-binding the SAME token moves its entry rather than adding another.
+reset()
+local one = makePlayer("One", { tokens = 1, x = 50, y = 60 })
+online = { one }
+onClientCommand(MODULE, "bind", one, { x = 50, y = 60, z = 0 })
+one._x, one._y = 70, 80
+onClientCommand(MODULE, "bind", one, { x = 70, y = 80, z = 0 })
+check("re-binding does not pile up entries", Binds.count(), 1)
+check("it moves the one that is there", Binds.all()[1].x, 70)
+
+-- Spending the token retires its entry: that place has been used, and leaving
+-- it on a list of recoverable coordinates would be a lie.
+reset()
+local spend = makePlayer("Spend", { tokens = 1, x = 400, y = 500 })
+online = { spend }
+onClientCommand(MODULE, "bind", spend, { x = 400, y = 500, z = 0 })
+check("bound before dying", Binds.count(), 1)
+spend._dead = true
+sweep()
+check("a spent token leaves the registry", Binds.count(), 0)
+check("but the death record kept the place", Store.get("Spend").bind.x, 400)
+
+-- It survives a restart, which is the whole point of writing it to disk.
+reset()
+local disk = makePlayer("Disk", { tokens = 1, x = 888, y = 999 })
+online = { disk }
+onClientCommand(MODULE, "bind", disk, { x = 888, y = 999, z = 0 })
+Binds.load()
+check("the registry is read back from disk", Binds.count(), 1)
+check("with the place intact", Binds.all()[1].x, 888)
+
+-- And numbers are not handed out twice after a reload, or a log line naming
+-- token #3 would stop meaning one particular token.
+local reused = Binds.claimId()
+check("numbers carry on past a reload", reused > Binds.all()[1].id, true)
 
 --------------------------------------------------------------------------------
 io.write("\n-- disabling the mod --\n")

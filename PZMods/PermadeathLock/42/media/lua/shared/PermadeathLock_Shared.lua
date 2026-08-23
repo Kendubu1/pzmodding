@@ -9,7 +9,7 @@
 PermadeathLock = PermadeathLock or {}
 local PL = PermadeathLock
 
-PL.VERSION = "1.13.0"
+PL.VERSION = "1.14.0"
 
 -- Module name used by sendClientCommand / sendServerCommand.
 PL.MODULE = "PermadeathLock"
@@ -25,6 +25,13 @@ PL.DEATH_FILE = "PermadeathLock_deaths.txt"
 -- and blow up on the first sweep. Creating the table in shared - which loads
 -- before both - means every file captures the same table whatever the order.
 PL.Store = PL.Store or {}
+
+-- The bind registry's table, created here for exactly the same reason.
+PL.Binds = PL.Binds or {}
+
+-- Where the bind registry is written, next to the death list and in the same
+-- readable plain text.
+PL.BIND_FILE = "PermadeathLock_binds.txt"
 
 -- The Fate Token. Dying while carrying one spends it instead of locking you out.
 PL.FATE_TOKEN = "Base.FateToken"
@@ -184,6 +191,32 @@ function PL.getTokenBind(item)
     local x, y = tonumber(data.pdlBindX), tonumber(data.pdlBindY)
     if x == nil or y == nil then return nil end
     return { x = x, y = y, z = tonumber(data.pdlBindZ) or 0 }
+end
+
+--- The registry number written on one token, if it has been given one.
+---
+--- A bind lives in two places: on the item, and in the server's registry. The
+--- item is the copy that matters while someone is holding it; the registry is
+--- the copy that survives the item being dropped in a bag in a house nobody
+--- goes back to. This number is what ties the two together.
+---@param item InventoryItem?
+---@return number? id
+function PL.getTokenId(item)
+    if item == nil or item.getModData == nil then return nil end
+
+    local data = item:getModData()
+    if data == nil then return nil end
+    return tonumber(data.pdlTokenId)
+end
+
+---@param item InventoryItem
+---@param id number
+function PL.setTokenId(item, id)
+    if item == nil or item.getModData == nil then return end
+
+    local data = item:getModData()
+    if data == nil then return end
+    data.pdlTokenId = id
 end
 
 ---@param item InventoryItem

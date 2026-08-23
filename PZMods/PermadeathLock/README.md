@@ -249,6 +249,7 @@ Type these in chat as an admin (`/pd` is a shorthand):
 /permadeath status <user>   everything the mod knows about one player
 /permadeath ui              open the admin panel
 /permadeath list            show the death list
+/permadeath binds           every place a Fate Token is bound to
 /permadeath revive <user>   bring a player back, keeping their skills
 /permadeath pardon <user>   let a player back in, from scratch
 /permadeath give <user>     hand a player a Fate Token
@@ -313,7 +314,8 @@ than it looks.
 | State | `LOCKED OUT`, `awaiting restore`, `alive`, `alive (exempt)`, `dead, not listed`, `offline` |
 | Died | How long ago, for anyone on the list |
 | Skills held | How many perk levels are being kept for their next character |
-| Tokens | Fate Tokens they are carrying right now |
+| Tokens | Fate Tokens they are carrying right now, and how many are bound |
+| Bind | Where a token would put them: `1200,1300`, with `+2` when other bound tokens are behind it, and `-> 1200,1300` when a spent token is already owed them |
 
 The window sizes itself to your screen — about two thirds of its width, within
 sensible bounds — rather than to a pixel count picked on somebody else's
@@ -500,9 +502,44 @@ moving the one you already placed. The admin panel shows it as `3 (1 bound)`.
 Only a token pays for this. An admin **revive** has no token, and so nothing to
 read: it never moves anyone.
 
+**The teleport waits, and then checks it took.** Moving the character the moment
+the restore finishes does not stick: the game is still placing the freshly
+spawned character and puts them back a second later, which from the player's
+side looks like appearing at the bound spot for a blink and then being dragged
+away. So the move waits about six seconds, and every sweep afterwards checks
+whether they are actually there — retrying up to four times if the game has
+undone it. Only once they are confirmed at the spot is it announced, and once
+confirmed it is finished with them: nobody gets teleported again five minutes
+later for having walked off.
+
 If the bound spot cannot be reached — built over since, or in a chunk the server
-does not have loaded — you are left where the game put you and told so. Nobody
-gets dropped inside a wall.
+does not have loaded — the attempts run out, you are left where the game put you
+and told so. Nobody gets dropped inside a wall.
+
+### Finding a bound token that has been lost
+
+Every bind is written down twice: on the item, and in a registry the server
+keeps in `PermadeathLock_binds.txt`. `/permadeath binds` lists all of them.
+
+```
+3 bound Fate Token(s):
+ - #1 at 1200,1300,0 (bound by Willy, 2 hours ago, held by Willy)
+ - #2 at 10800,9400,0 (bound by Rae, 3 days ago, not seen)
+```
+
+The registry exists for the case the item copy cannot cover. A token dropped in
+a bag, left in a crate, or in the pocket of somebody who has not logged in for a
+month is unreachable — **the game keeps no index of items**, and a search would
+have to walk the loaded squares, which is the corner of the map somebody happens
+to be standing in. What can always be recovered is the *coordinate*, which is
+the thing people actually want, and an admin can put someone back there by hand.
+
+So the list is deliberately honest about what it does not know. `held by X` is
+only ever said for a player who is online, because that is the only inventory
+the server can read; an offline player's pocket, a crate and the floor are
+indistinguishable from here and are all reported as `not seen`. Spending a token
+retires its entry — that place has been used, and leaving it on a list of
+recoverable coordinates would be a lie.
 
 The entry lives on the **item**, not on the ground. A world context-menu entry is
 offered to every player on every right-click whether they own a token or not,
@@ -626,6 +663,9 @@ Server-side messages are prefixed `[PermadeathLock]` in the console log.
 - The sweep runs once per in-game minute, so a locked-out player may be in the
   world for up to two of those before their character is killed. They cannot get a
   meaningful head start, but they are not blocked instantly either.
+- The bind registry records **coordinates, not items**. Where a lost token
+  points can always be recovered; where the token itself physically is cannot,
+  because the game keeps no index of items in the world.
 
 ## Tests
 
