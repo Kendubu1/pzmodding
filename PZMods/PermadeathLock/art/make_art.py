@@ -255,16 +255,18 @@ def text_at(img, xy, s, font, fill, anchor="mm", spacing=0):
         d.text(xy, s, font=font, fill=fill, anchor=anchor)
 
 
-def save(img, path):
+def save(img, path, size=OUT):
     img = grain(img)
-    img.convert("RGB").resize((OUT, OUT), Image.LANCZOS).save(path)
-    print("wrote", path)
+    img.convert("RGB").resize((size, size), Image.LANCZOS).save(path, optimize=True)
+    print("wrote", path, "%dx%d" % (size, size))
 
 
 # --- icon: the token alone, has to survive being shrunk to 32px -------------
 icon = ground(S)
 icon = Image.alpha_composite(icon, coin(S, S / 2, S / 2, S * 0.395))
-save(icon, "icon.png")
+# Smaller than the rest on purpose: the in-game mod list draws this at a size
+# where half a megapixel is weight for nothing.
+save(icon, "icon.png", size=128)
 
 # --- preview: the storefront thumbnail, so it carries the name --------------
 prev = ground(S)
@@ -286,6 +288,6 @@ pline = ImageFont.truetype(SANS, int(S * 0.0295))
 text_at(post, (S / 2, S * 0.735), "FATE TOKEN", ptitle, INK + (255,), spacing=S * 0.0055)
 text_at(post, (S / 2, S * 0.805), "One death, bought back.", pline, DIM + (255,))
 text_at(post, (S / 2, S * 0.856), "Bind it to a place and wake there.", pline, DIM + (255,))
-text_at(post, (S / 2, S * 0.925), "kendubu1", ImageFont.truetype(SANS, int(S * 0.026)),
+text_at(post, (S / 2, S * 0.925), "saint_kendrick", ImageFont.truetype(SANS, int(S * 0.026)),
         (92, 90, 84, 255), spacing=S * 0.006)
 save(post, "poster.png")
