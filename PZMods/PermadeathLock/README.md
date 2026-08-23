@@ -364,6 +364,12 @@ It is only a face on the chat commands. Every button sends the same message the
 typed command does, and the server re-checks the sender's access level before
 acting, so the panel grants nothing.
 
+Whatever the server says back appears in the panel's status line as well as in
+chat. It has to: every refusal the mod can give — not online, no token to take,
+not on the death list — is written to chat, and **the panel sits on top of the
+chat window**. A refused action was indistinguishable from a button that does
+nothing, and was reported as exactly that.
+
 ### What this deliberately does not do
 
 An earlier version could put a revived player back at their body, clear the
@@ -505,6 +511,12 @@ The face is written down with `getLastStandString` at the moment of death and
 applied by the player's **own client** on the way back — a character's
 appearance is rendered and networked by the machine that owns it, and this mod
 has twice learned what happens when the server writes state the client owns.
+
+It is applied to the **descriptor** as well as the live character, and that is
+the whole trick. Setting only the live visual works and looks right until the
+first thing that rebuilds the model — one tick of damage will do it — at which
+point the game re-derives the model from the descriptor and the old face comes
+straight back.
 
 It shows in the inventory under **Junk**, which is a stock Build 42 category and
 where the game files oddments.

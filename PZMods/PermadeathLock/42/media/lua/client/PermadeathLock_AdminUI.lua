@@ -429,6 +429,17 @@ function PermadeathLockUI:setData(data)
         locked))
 end
 
+--- Put a line in the panel's status bar.
+---
+--- Every refusal this mod can give an admin - not online, no token to take, not
+--- on the death list - is written to chat, and the panel sits on top of the
+--- chat. A refused action was therefore indistinguishable from a button that
+--- does nothing, which is exactly how it was reported.
+---@param message string
+function PermadeathLockUI:setStatus(message)
+    if self.status ~= nil then self.status:setName(message) end
+end
+
 ---@return table? row
 function PermadeathLockUI:selectedRow()
     local item = self.list.items[self.list.selected]

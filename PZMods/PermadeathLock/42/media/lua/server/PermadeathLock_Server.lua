@@ -889,6 +889,14 @@ local function handleAdmin(player, args)
     local sub = string.lower(tostring(args.sub or "status"))
     local target = args.target
 
+    -- Logged whatever it is. The panel and the chat command reach here by
+    -- different routes, and "it works typed but not from the panel" is not
+    -- answerable without seeing what each one actually sent.
+    if sub ~= "listdata" then
+        print("[PermadeathLock] " .. player:getUsername() .. " ran: " .. sub
+            .. " [" .. tostring(target) .. "]")
+    end
+
     if sub == "status" and target ~= nil then
         commandStatusFor(player, target)
     elseif sub == "status" then

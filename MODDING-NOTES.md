@@ -285,6 +285,14 @@ and run the new harness against it.
 - **A full-screen element in the UI manager eats every mouse event behind it**,
   which takes right-click away from the *entire game* — doors, corpses,
   inventory. Make it click-through before it goes on screen, never after.
+- **A panel covers the chat window.** If your mod answers an admin in chat and
+  they are looking at your panel, you have said nothing. Every refusal needs to
+  surface where the action was taken — a button whose failure is invisible is
+  reported as a button that does nothing.
+- **Appearance lives on the descriptor, not the live character.** Write
+  `getHumanVisual():loadLastStandString()` on the player alone and it looks
+  right until anything rebuilds the model — a tick of damage — and then the game
+  re-derives it from `getDescriptor()` and your change is gone. Write both.
 - **An error thrown while building a context menu takes the whole menu down.**
   Guard the builder. And prefer the *inventory* context menu over the world one
   where you can: a world entry is built for every player on every right-click,

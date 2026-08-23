@@ -4,4 +4,4 @@ authors=kendubu1
 description=Permadeath for multiplayer - dedicated servers and co-op Host games alike. When a player dies they go on a death list and cannot return with a new character. Carrying a Fate Token buys back one death, and admins can pardon or revive from an in-game panel (/permadeath ui) or from chat. Single player is left alone by design.
 poster=poster.png
 icon=icon.png
-modversion=1.12.0
+modversion=1.12.1

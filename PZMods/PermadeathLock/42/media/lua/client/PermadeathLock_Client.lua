@@ -183,6 +183,46 @@ local function showBlockNotice(text)
 end
 
 --------------------------------------------------------------------------------
+-- wearing the old face
+--------------------------------------------------------------------------------
+
+--- Load a saved appearance onto this character.
+---
+--- Written to the DESCRIPTOR as well as the live character, and that is the
+--- whole trick. Setting only the live HumanVisual works and looks right until
+--- the first thing that rebuilds the model - a tick of damage will do it - at
+--- which point the game re-derives the model from the descriptor and the old
+--- face comes back. The descriptor is where a character's appearance actually
+--- lives; the live visual is a copy of it.
+---@param visual string?
+local function applyLook(visual)
+    if visual == nil or visual == "" then return end
+
+    local player = getPlayer()
+    if player == nil then return end
+
+    ---@param holder any
+    local function write(holder)
+        if holder == nil or holder.getHumanVisual == nil then return end
+        local look = holder:getHumanVisual()
+        if look == nil or look.loadLastStandString == nil then return end
+        look:loadLastStandString(visual)
+    end
+
+    -- The persistent one first, then the one on screen.
+    if player.getDescriptor ~= nil then write(player:getDescriptor()) end
+    write(player)
+
+    -- Without this the strings are set and the model on screen is still the one
+    -- the character was created with.
+    if player.resetModelNextFrame ~= nil then
+        player:resetModelNextFrame()
+    elseif player.resetModel ~= nil then
+        player:resetModel()
+    end
+end
+
+--------------------------------------------------------------------------------
 -- events
 --------------------------------------------------------------------------------
 
@@ -222,21 +262,7 @@ local function onServerCommand(module, command, args)
     elseif command == "restoreLook" then
         -- Applied here, by the machine that owns and renders this character.
         -- The server holds the string; it does not write the face.
-        local visual = args and args.visual
-        local player = getPlayer()
-        if visual ~= nil and visual ~= "" and player ~= nil and player.getHumanVisual ~= nil then
-            local look = player:getHumanVisual()
-            if look ~= nil and look.loadLastStandString ~= nil then
-                look:loadLastStandString(visual)
-                -- Without this the string is set and the model on screen is
-                -- still the one the character was created with.
-                if player.resetModelNextFrame ~= nil then
-                    player:resetModelNextFrame()
-                elseif player.resetModel ~= nil then
-                    player:resetModel()
-                end
-            end
-        end
+        applyLook(args and args.visual)
     elseif command == "notice" then
         -- Server-composed text, shown on screen rather than only in chat.
         -- Centred: by the time this arrives the death screen is long gone.
@@ -263,6 +289,12 @@ local function onServerCommand(module, command, args)
         local text = args and args.text
         if text ~= nil and text ~= "" then
             processGeneralMessage(text)
+            -- And on the panel, if it is open: it covers the chat window, so
+            -- anything said to an admin while they are looking at it is said
+            -- into a box they cannot see.
+            if PermadeathLockUI ~= nil and PermadeathLockUI.instance ~= nil then
+                PermadeathLockUI.instance:setStatus(text)
+            end
         end
     end
 end
