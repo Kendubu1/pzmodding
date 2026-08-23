@@ -543,11 +543,17 @@ If the bound spot cannot be reached the attempts run out, you are left where the
 game put you and told so. Nobody gets dropped inside a wall. Three things can
 cause that, and the server log names which:
 
-| In the log | What it means |
-| --- | --- |
-| `square … has not streamed in; moving anyway` | The destination chunk is not loaded on your client. **Not** a failure: the move goes ahead and the world streams in around you. A chunk far from your spawn will never load until somebody stands there, so refusing to move would make the teleport work only for places you were already near. |
-| `destination square NOT LOADED on the server` | The same on the server's side. Also not fatal — noted because it is worth knowing when a bind repeatedly misbehaves. |
-| `server-side raised: …` | `teleportTo` threw. Logged rather than swallowed: a throw and a move that quietly does not hold are different problems, and both used to be reported as "could not be reached". |
+An **unloaded destination chunk is not a failure** and is not checked for. It is
+the normal case for anywhere you are not already standing, and the game handles
+being moved into one by streaming the world in around you — a chunk far from
+your spawn would never load until somebody stood there, so refusing to move
+would make the teleport work only for places you were already near.
+
+What the log does say, per attempt: what the client reported, where the server
+thinks the character is, and — as `server-side raised: …` — any error thrown by
+`teleportTo`, which is logged rather than swallowed. A throw and a move that
+quietly does not hold are different problems, and both used to arrive as "could
+not be reached".
 
 ### Finding a bound token that has been lost
 

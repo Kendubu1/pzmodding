@@ -452,22 +452,10 @@ local function runPendingTeleport(player, key)
         end
     end
 
-    -- Whether the destination is even loaded here. An unloaded chunk is a real
-    -- and separate blocker, and it looks identical from the outside.
-    local square = "unknown"
-    if getCell ~= nil then
-        local cell = getCell()
-        if cell ~= nil and cell.getGridSquare ~= nil then
-            square = cell:getGridSquare(queued.x, queued.y, queued.z) ~= nil
-                and "loaded" or "NOT LOADED on the server"
-        end
-    end
-
     print("[PermadeathLock] moving " .. player:getUsername() .. " to the bind at "
         .. queued.x .. "," .. queued.y .. "," .. queued.z
         .. " (attempt " .. queued.tries .. " of " .. TELEPORT_TRIES
-        .. "; asked the client; server-side " .. serverMoved
-        .. "; destination square " .. square .. ").")
+        .. "; asked the client; server-side " .. serverMoved .. ").")
 end
 
 --- Hand a revived player's queued skills to the character they are now playing.

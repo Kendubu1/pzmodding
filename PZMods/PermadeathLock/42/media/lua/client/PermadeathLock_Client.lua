@@ -146,25 +146,18 @@ local function placeAt(x, y, z)
     local player = getPlayer()
     if player == nil or player:isDead() then return false end
 
-    -- The square, if this machine has streamed it in yet. Looked up on WHOLE
-    -- numbers: the position we are handed is offset to a tile centre, and
-    -- getGridSquare wants tile coordinates - asking it for 1200.5 is not a
-    -- question it can answer.
+    -- The square, only if this machine happens to have it. An unloaded chunk
+    -- is the normal case for anywhere you are not already standing, and the
+    -- game handles being moved into one - it streams the world in around you.
+    -- So this is looked up to hand to setCurrent when it is there, and is not
+    -- a condition on going.
+    --
+    -- On WHOLE numbers, though: the position is offset to a tile centre, and
+    -- 1200.5 is not a question getGridSquare can answer.
     local cell = getCell()
     local square = nil
     if cell ~= nil then
         square = cell:getGridSquare(math.floor(x), math.floor(y), math.floor(z))
-    end
-
-    -- Not having the square is NOT a reason to refuse. A bind far from where
-    -- the game spawned you is in a chunk that has not loaded, and it never will
-    -- load until somebody stands there - refusing to move is a teleport that
-    -- can only ever work for places you were already near. Move, and let the
-    -- world stream in around the character, which is what the game's own
-    -- teleport does.
-    if square == nil then
-        print("[PermadeathLock] square at " .. math.floor(x) .. "," .. math.floor(y)
-            .. " has not streamed in; moving anyway and letting it load.")
     end
 
     if player.setX ~= nil then
@@ -186,7 +179,10 @@ local function placeAt(x, y, z)
     -- than leaving it holding the old one, which the next tick corrects.
     if square ~= nil and player.setCurrent ~= nil then player:setCurrent(square) end
 
-    return true
+    -- Report where the character ACTUALLY is, not that the setters were called.
+    -- A build without setX would otherwise have this claiming success having
+    -- done nothing at all.
+    return math.abs(player:getX() - x) < 1 and math.abs(player:getY() - y) < 1
 end
 
 --- Start the countdown to whatever the server has waiting for this character.
