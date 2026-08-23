@@ -79,10 +79,21 @@ PermadeathLock/
         └── lua/{shared,server,client}/
 ```
 
-**The translations sit in `common/`, not in `42/`.** That is where they load
-reliably from, and they are build-independent text, so the version folder buys
-nothing. Note also that an `IGUI_EN = {...}` table must live in a file named
-`IG_UI_EN.txt` — a file called `IGUI_EN.txt` is never read.
+**The translations are shipped twice**, in `common/` and again in `42/`, as
+identical files. Which of the two the loader reads is not the same answer in
+every context — the dedicated server's *Edit Settings* screen showed every
+sandbox option as a raw `Sandbox_PermadeathLock_...` key while they lived in
+`common/` alone — and duplicating a few kilobytes of text is cheaper than being
+wrong. `test_translations.lua` asserts the two copies stay byte-identical.
+
+Two rules that are easy to break and invisible until a player sees a raw key:
+
+- An `IGUI_EN = {...}` table must be in a file named **`IG_UI_EN.txt`**. A file
+  called `IGUI_EN.txt` is never read.
+- A key containing a dot must be **bracketed**:
+  `["ItemName_Base.FateToken"] = "Fate Token"`. Written bare it is not valid
+  table syntax, and it takes the whole file down with it — every other string in
+  that file falls back to its key too.
 
 Build 42 only loads files from the version folder matching the running build, and
 `mod.info` lives *inside* that folder. To also ship a Build 41 version, add a
@@ -785,14 +796,15 @@ Server-side messages are prefixed `[PermadeathLock]` in the console log.
 Three things this repo cannot verify on its own, because they need the game:
 
 1. **The item's inventory category.** `DisplayCategory = Junk` is a stock Build
-   42 category and needs no label from us, but two earlier attempts at this both
-   shipped showing a raw `IGUI_ItemCat_...` key to the player. Look at a Fate
-   Token in an inventory and confirm the category reads as a word.
-2. **One boot, on a co-op Host.** Count the `Server module ... loaded` lines. Two
+   42 category and needs no label from us. Look at a Fate Token in an inventory
+   and confirm the category reads as a word rather than `IGUI_ItemCat_...`.
+2. **The sandbox page.** Open a server's *Edit Settings* → Sandbox and confirm
+   the options read as sentences rather than `Sandbox_PermadeathLock_...` keys.
+3. **One boot, on a co-op Host.** Count the `Server module ... loaded` lines. Two
    means the gating has regressed and every mutation is happening twice — see
    `MODDING-NOTES.md` section 1 for why that is the worst bug in this repo's
    history.
-3. **The loot log.** Switch loot on, boot, and read the `Fate Tokens added to
+4. **The loot log.** Switch loot on, boot, and read the `Fate Tokens added to
    loot` line. It names every container list it matched. If it says it matched
    none, the patterns need adjusting to whatever this build calls its tables.
 

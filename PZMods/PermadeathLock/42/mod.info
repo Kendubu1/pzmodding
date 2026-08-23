@@ -6,4 +6,4 @@ url=https://github.com/Kendubu1/pzmodding
 description=Multiplayer permadeath, with one way back. When a player dies they go on a death list and cannot return with a new character. A Fate Token buys back one death and keeps the skills the dead character earned - and a token bound to a place brings you back there. Admins pardon, revive and hand out tokens from an in-game panel (/fate ui) or from chat. Dedicated servers and co-op Host games; single player is left alone by design.
 poster=poster.png
 icon=icon.png
-modversion=1.15.1
+modversion=1.15.2

@@ -20,6 +20,7 @@ Run from the **repository root**:
 lua5.1 PZMods/PermadeathLock/tests/test_store.lua
 lua5.1 PZMods/PermadeathLock/tests/test_server.lua
 lua5.1 PZMods/PermadeathLock/tests/test_loot.lua
+lua5.1 PZMods/PermadeathLock/tests/test_translations.lua
 lua5.1 PZMods/PermadeathLock/tests/test_layout.lua
 lua5.1 PZMods/PermadeathLock/tests/test_commands.lua
 sh      PZMods/PermadeathLock/tests/test_gating.sh
@@ -36,6 +37,13 @@ else in the world grows one, that the rarity scale and bank multiplier do what
 they say, and that a second merge does not double the drop rate. Its loudest
 check is that matching **no** containers is a warning — that failure has no
 in-game symptom, and looks exactly like bad luck.
+
+`test_translations.lua` loads every translation file as data and checks that it
+parses, that each sandbox option and enum value has a label and a tooltip, that
+each `IGUI_` key the Lua asks for is written, and that the `common/` and `42/`
+copies are identical. Every failure it catches looks the same in game — a raw
+key where a sentence should be — which is invisible from the repo and obvious to
+a player.
 
 `test_layout.lua` builds the admin panel against stubbed UI classes and checks
 that no band lands on another: the status line clears the title bar, the column
