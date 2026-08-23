@@ -64,11 +64,3 @@ option PermadeathLock.FateBinding
     page = PermadeathLock,
     translation = PermadeathLock_FateBinding,
 }
-
-option PermadeathLock.RestoreAppearance
-{
-    type = boolean,
-    default = true,
-    page = PermadeathLock,
-    translation = PermadeathLock_RestoreAppearance,
-}

@@ -375,8 +375,15 @@ function PermadeathLockUI:drawRow(y, item, alt)
     -- only knowable for someone online. A dash means "not applicable", which is
     -- a different thing from zero and should not be dressed up as one.
     local skills = row.listed and tostring(row.skills or 0) or "-"
-    local tokens = row.online and tostring(row.tokens or 0) or "-"
     local carrying = (row.tokens or 0) > 0
+
+    -- "3 (1 bound)" rather than "3". Each token carries its own return point,
+    -- so how many of them have one is the thing an admin actually wants.
+    local tokens = "-"
+    if row.online then
+        tokens = tostring(row.tokens or 0)
+        if (row.bound or 0) > 0 then tokens = tokens .. " (" .. row.bound .. " bound)" end
+    end
 
     -- Centred in the row rather than a fixed three pixels down, which only
     -- looked right while the row height was a fixed number too.

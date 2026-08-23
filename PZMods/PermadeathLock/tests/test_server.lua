@@ -38,6 +38,14 @@ Events = setmetatable({}, { __index = function(t, name)
     return slot
 end })
 
+-- REGRESSION: adding to the server's copy of a container is only half of it.
+-- Without the broadcast the item exists server-side, the admin panel counts it,
+-- and the player's inventory never shows it.
+local broadcast = { added = 0, removed = 0 }
+function sendAddItemToContainer() broadcast.added = broadcast.added + 1 end
+function sendRemoveItemFromContainer() broadcast.removed = broadcast.removed + 1 end
+function syncItemFields() end
+
 function sendServerCommand(player, module, command, args)
     sent[#sent + 1] = { user = player:getUsername(), command = command, text = args and args.text, args = args }
 end
@@ -110,7 +118,9 @@ local function makeInventory(owner, tokens, nativeLookupBlind)
         end,
     }
     container.AddItem = function(_, fullType)
+        local data = {}
         local item = {
+            getModData = function() return data end,
             getFullType = function() return fullType end,
             getContainer = function() return container end,
             IsInventoryContainer = function() return false end,
@@ -120,7 +130,9 @@ local function makeInventory(owner, tokens, nativeLookupBlind)
         return item
     end
     for _ = 1, tokens or 0 do
+        local data = {}
         items[#items + 1] = {
+            getModData = function() return data end,
             getFullType = function() return "Base.FateToken" end,
             getContainer = function() return container end,
             -- Raises if touched: the mod must ask IsInventoryContainer first,
@@ -789,8 +801,12 @@ online = { tara, tokenAdmin }
 -- same inventory, so a token handed out through the panel saved nobody. Players
 -- died carrying three of them and were locked out.
 sent = {}
+broadcast = { added = 0, removed = 0 }
 onClientCommand(MODULE, "admin", tokenAdmin, { sub = "give", target = "tara" })
 check("the token is really in their inventory", #tara._items, 1)
+-- REGRESSION: without the broadcast the item exists here, the panel counts it,
+-- and the player's own inventory never shows it.
+check("and the client is told about it", broadcast.added, 1)
 check("the admin is told, and gets a fresh roster", lastCommandTo("Admin"), "listData")
 
 onClientCommand(MODULE, "admin", tokenAdmin, { sub = "give", target = "tara" })
@@ -813,8 +829,10 @@ check("and the granted token is what was spent", #tara._items, 1)
 reset()
 local ursa = makePlayer("Ursa", { tokens = 2 })
 online = { ursa, tokenAdmin }
+broadcast = { added = 0, removed = 0 }
 onClientCommand(MODULE, "admin", tokenAdmin, { sub = "take", target = "Ursa" })
 check("take removes one", #ursa._items, 1)
+check("and that is broadcast too", broadcast.removed, 1)
 onClientCommand(MODULE, "admin", tokenAdmin, { sub = "take", target = "Ursa" })
 check("and then the last one", #ursa._items, 0)
 sent = {}
@@ -848,54 +866,51 @@ io.write("\n-- binding a Fate Token to a place --\n")
 
 reset()
 SandboxVars.PermadeathLock.FateBinding = true
-SandboxVars.PermadeathLock.RestoreAppearance = true
 
 -- binding needs a token actually in hand, whatever the menu offered
 local broke = makePlayer("Broke", { tokens = 0, x = 500, y = 600 })
 online = { broke }
 sent = {}
 onClientCommand(MODULE, "bind", broke, { x = 500, y = 600, z = 0 })
-check("no token, no binding", Store.getBind("Broke"), nil)
-check("and they are told why", lastCommandTo("Broke"), "message")
+check("no token, no binding", lastCommandTo("Broke"), "message")
 
--- with one, the spot is remembered
-local rob = makePlayer("Rob", { tokens = 1, x = 500, y = 600, visual = "FACE-DATA" })
+-- the coordinate goes on the token itself
+local rob = makePlayer("Rob", { tokens = 1, x = 500, y = 600 })
 online = { rob }
 onClientCommand(MODULE, "bind", rob, { x = 500, y = 600, z = 0 })
-check("the bind is stored", Store.getBind("Rob") ~= nil, true)
-check("at the right place", Store.getBind("Rob").x, 500)
+check("the token carries the bind", PermadeathLock.getTokenBind(rob._items[1]) ~= nil, true)
+check("at the right place", PermadeathLock.getTokenBind(rob._items[1]).x, 500)
 
 -- die on it, come back to it
 rob._dead = true
+online = { rob }
 sweep()
 check("the token saved them", Store.isLocked("Rob"), false)
-check("and the face was captured", Store.get("Rob").visual, "FACE-DATA")
+check("and the record carries the place it pointed at", Store.get("Rob").bind.x, 500)
 
 local robNew = makePlayer("Rob", { x = 1, y = 1 })
 online = { robNew }
-sent = {}
 onClientCommand(MODULE, "spawnSettled", robNew, {})
 check("they wake at the bound spot", math.floor(robNew._x), 500)
-check("and the same face is sent to their client", (function()
-    for _, e in ipairs(sent) do
-        if e.command == "restoreLook" and e.args.visual == "FACE-DATA" then return true end
-    end
-    return false
-end)(), true)
-check("the binding is spent with the token", Store.getBind("Rob"), nil)
 
--- an admin revive is not that bargain: no teleport
+-- a second bind takes an UNBOUND token rather than moving the one already placed
 reset()
-local sal = makePlayer("Sal", { tokens = 1, x = 700, y = 800 })
-online = { sal }
-onClientCommand(MODULE, "bind", sal, { x = 700, y = 800, z = 0 })
+local pair = makePlayer("Pair", { tokens = 2, x = 10, y = 20 })
+online = { pair }
+onClientCommand(MODULE, "bind", pair, { x = 10, y = 20, z = 0 })
+onClientCommand(MODULE, "bind", pair, { x = 30, y = 40, z = 0 })
+check("the first token keeps its place", PermadeathLock.getTokenBind(pair._items[1]).x, 10)
+check("and the second gets its own", PermadeathLock.getTokenBind(pair._items[2]).x, 30)
+
+-- an admin revive has no token and so nothing to read
+reset()
+local sal = makePlayer("Sal", { x = 700, y = 800 })
 Store.record(sal, "test")
 Store.revive("Sal")
 local salNew = makePlayer("Sal", { x = 5, y = 5 })
 online = { salNew }
 onClientCommand(MODULE, "spawnSettled", salNew, {})
-check("a revive does not use the bind", math.floor(salNew._x), 5)
-check("and leaves it for the token that paid for it", Store.getBind("Sal") ~= nil, true)
+check("a revive does not move anyone", math.floor(salNew._x), 5)
 
 -- a spot that cannot be reached leaves them where the game put them
 reset()
@@ -911,14 +926,23 @@ onClientCommand(MODULE, "spawnSettled", timNew, {})
 check("an unreachable bind strands nobody", math.floor(timNew._x), 5)
 check("and says so rather than failing silently", lastCommandTo("Tim"), "message")
 
--- both switches off, both features stay out of the way
+-- the bind survives being written out and read back
+reset()
+local van = makePlayer("Van", { tokens = 1, x = 111, y = 222 })
+online = { van }
+onClientCommand(MODULE, "bind", van, { x = 111, y = 222, z = 0 })
+van._dead = true
+sweep()
+Store.load()
+check("the bind survives a reload", Store.get("Van").bind.y, 222)
+
+-- switched off, binding is refused
 reset()
 SandboxVars.PermadeathLock.FateBinding = false
 local urs = makePlayer("Urs", { tokens = 1, x = 300, y = 300 })
 online = { urs }
-sent = {}
 onClientCommand(MODULE, "bind", urs, { x = 300, y = 300, z = 0 })
-check("binding switched off is refused", Store.getBind("Urs"), nil)
+check("binding switched off is refused", PermadeathLock.getTokenBind(urs._items[1]), nil)
 SandboxVars.PermadeathLock.FateBinding = true
 
 --------------------------------------------------------------------------------

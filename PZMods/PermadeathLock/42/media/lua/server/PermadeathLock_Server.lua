@@ -195,7 +195,12 @@ end
 local function consumeFateToken(item)
     local container = item:getContainer()
     if container == nil then return false end
+
     container:Remove(item)
+    -- Broadcast, or the token stays on the player's screen having been spent.
+    if sendRemoveItemFromContainer ~= nil then
+        sendRemoveItemFromContainer(container, item)
+    end
     return true
 end
 
@@ -236,12 +241,16 @@ local function recordDeath(player, reason)
         return
     end
 
+    -- Read before it is burned: the coordinate lives on the token, and in a
+    -- moment the token will not exist.
+    local bind = PL.getTokenBind(token)
+
     local burned = false
     if token ~= nil and PL.getOption("FateTokenConsume", true) then
         burned = consumeFateToken(token)
     end
 
-    local record = Store.record(player, PL.REASON_TOKEN, true)
+    local record = Store.record(player, PL.REASON_TOKEN, true, bind)
     if record ~= nil then
         -- A modal, not a chat line: this lands as the player dies, and the chat
         -- window is not on screen behind the death UI.
@@ -307,27 +316,23 @@ local function failedRestore(player, record, killedBy)
     })
 end
 
---- Put a restored character where their Fate Token said to.
+--- Put a restored character where the token they spent said to.
 ---
---- Only for a token, never for an admin revive: a bind is something the player
---- paid for and placed, and a pardon or a revive is not that bargain.
+--- The coordinate came off that token when it burned, so this only ever happens
+--- for a token - an admin revive is a favour, not the bargain the player paid
+--- for, and has nothing to read.
 ---
 --- Done here on the server, which is what vanilla's own teleport does, and then
---- read back - a square that has since been built over, or is in a chunk the
---- server has not got loaded, must not strand anyone. The spawn the game
---- already chose is a perfectly good outcome; being dropped inside a wall is
---- not.
+--- read back: a square built over since, or in a chunk the server has not got
+--- loaded, must not strand anyone. The spawn the game already chose is a fine
+--- outcome; being dropped inside a wall is not.
 ---@param player IsoPlayer
 ---@param record table
 local function returnToBind(player, record)
-    if record.reason ~= PL.REASON_TOKEN then return end
     if not PL.getOption("FateBinding", true) then return end
 
-    local bind = Store.getBind(player:getUsername())
+    local bind = record.bind
     if bind == nil then return end
-
-    -- Spent along with the token that paid for it.
-    Store.clearBind(player:getUsername())
 
     if player.teleportTo == nil then
         print("[PermadeathLock] this build has no teleportTo; bind point ignored.")
@@ -335,35 +340,19 @@ local function returnToBind(player, record)
     end
 
     local before = { x = player:getX(), y = player:getY() }
-    local ok = pcall(function() player:teleportTo(bind.x + 0.5, bind.y + 0.5, bind.z) end)
+    pcall(function() player:teleportTo(bind.x + 0.5, bind.y + 0.5, bind.z) end)
 
-    local moved = ok and math.abs(player:getX() - bind.x) < 2 and math.abs(player:getY() - bind.y) < 2
-    if moved then
+    if math.abs(player:getX() - bind.x) < 2 and math.abs(player:getY() - bind.y) < 2 then
         sendServerCommand(player, MODULE, "notice", {
-            text = "Your Fate Token brings you back to the place you bound it. That binding is"
-                .. " spent - bind another token if you want to come back here again.",
+            text = "Your Fate Token brings you back to the place it was bound.",
         })
-        print("[PermadeathLock] " .. player:getUsername() .. " returned to their bind at "
+        print("[PermadeathLock] " .. player:getUsername() .. " returned to the bind at "
             .. bind.x .. "," .. bind.y .. "," .. bind.z .. ".")
     else
         tell(player, "Your bound spot could not be reached, so you are where the game put you.")
         print("[PermadeathLock] " .. player:getUsername() .. "'s bind at " .. bind.x .. ","
             .. bind.y .. " could not be reached; left at " .. before.x .. "," .. before.y .. ".")
     end
-end
-
---- Give a restored character the face the dead one had.
----
---- Applied by the owning client, not from here. A character's appearance is
---- rendered and networked by the machine that owns it, and this mod has already
---- learned twice what happens when the server writes state the client owns.
----@param player IsoPlayer
----@param record table
-local function restoreLook(player, record)
-    if record.visual == nil or record.visual == "" then return end
-    if not PL.getOption("RestoreAppearance", true) then return end
-
-    sendServerCommand(player, MODULE, "restoreLook", { visual = record.visual })
 end
 
 --- Hand a revived player's queued skills to the character they are now playing.
@@ -426,7 +415,6 @@ local function applyRestore(player, record)
     sendServerCommand(player, MODULE, "notice", { text = source .. " " .. detail })
     tell(player, source .. " " .. detail)
 
-    restoreLook(player, record)
     returnToBind(player, record)
 
     print("[PermadeathLock] Restored " .. record.username .. " (" .. restored .. " skills).")
@@ -685,7 +673,17 @@ local function commandListData(admin)
                     -- Read from the server's own view of the inventory, not
                     -- reported by the client. Offline players are left with no
                     -- token count at all rather than a made-up zero.
-                    row.tokens = PL.countTokens(player)
+                    local carried = PL.findTokens(player)
+                    row.tokens = #carried
+
+                    -- How many of them have somewhere to bring the holder back
+                    -- to. Each token carries its own, so "3" and "3 (1 bound)"
+                    -- are meaningfully different things to an admin.
+                    local bound = 0
+                    for _, token in ipairs(carried) do
+                        if PL.getTokenBind(token) ~= nil then bound = bound + 1 end
+                    end
+                    row.bound = bound
                 end
             end
         end
@@ -771,10 +769,20 @@ local function commandToken(admin, target, give)
     end
 
     if give then
-        if inventory:AddItem(PL.FATE_TOKEN) == nil then
+        local item = inventory:AddItem(PL.FATE_TOKEN)
+        if item == nil then
             tell(admin, "Could not give " .. name .. " a Fate Token.")
             return
         end
+
+        -- Adding it to the server's copy of the container is only half of it.
+        -- Without this the item exists here, the panel counts it, and the
+        -- player's inventory never shows it - which is exactly how it was
+        -- reported. sendAddItemToContainer is the broadcast.
+        if sendAddItemToContainer ~= nil then
+            sendAddItemToContainer(inventory, item)
+        end
+
         sendServerCommand(player, MODULE, "message", {
             text = "An admin handed you a Fate Token. Die carrying it and it burns away in your place.",
         })
@@ -785,7 +793,12 @@ local function commandToken(admin, target, give)
             tell(admin, name .. " has no Fate Token to take.")
             return
         end
+
         container:Remove(token)
+        if sendRemoveItemFromContainer ~= nil then
+            sendRemoveItemFromContainer(container, token)
+        end
+
         sendServerCommand(player, MODULE, "message", {
             text = "An admin took back one of your Fate Tokens.",
         })
@@ -987,18 +1000,30 @@ local function onClientCommand(module, command, player, args)
             tell(player, "Binding a Fate Token is switched off on this server.")
             return
         end
-        if PL.findToken(player) == nil then
+        local x, y, z = tonumber(args.x), tonumber(args.y), tonumber(args.z)
+        if x == nil or y == nil then return end
+
+        -- An UNBOUND token by preference, so binding twice gives you two bound
+        -- tokens rather than moving the one you already placed.
+        local chosen = nil
+        for _, token in ipairs(PL.findTokens(player)) do
+            if PL.getTokenBind(token) == nil then chosen = token break end
+            chosen = chosen or token
+        end
+
+        if chosen == nil then
             tell(player, "You need a Fate Token in hand to bind your fate.")
             return
         end
 
-        local x, y, z = tonumber(args.x), tonumber(args.y), tonumber(args.z)
-        if x == nil or y == nil then return end
+        PL.setTokenBind(chosen, x, y, z or 0)
+        -- Written to the item on this side, so the change has to be broadcast
+        -- or only the server knows about it.
+        if syncItemFields ~= nil then syncItemFields(player, chosen) end
 
-        Store.setBind(player:getUsername(), x, y, z or 0)
-        tell(player, "Your fate is bound to this spot. Die carrying a Fate Token and you"
+        tell(player, "This Fate Token is bound to where you stand. Die carrying it and you"
             .. " will come back here.")
-        print("[PermadeathLock] " .. player:getUsername() .. " bound their fate to "
+        print("[PermadeathLock] " .. player:getUsername() .. " bound a Fate Token to "
             .. math.floor(x) .. "," .. math.floor(y) .. "," .. math.floor(z or 0) .. ".")
         return
     end

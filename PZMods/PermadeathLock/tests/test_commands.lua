@@ -82,25 +82,7 @@ ISChat.instance = {
 local passedThrough = 0
 function ISChat:onCommandEntered() passedThrough = passedThrough + 1 end
 
--- Both the live character and its descriptor record what was written to them,
--- because writing only the live one looks right until the model is rebuilt.
-local written = { live = nil, descriptor = nil }
-
-local function visualHolder(slot)
-    return {
-        getHumanVisual = function()
-            return { loadLastStandString = function(_, str) written[slot] = str end }
-        end,
-    }
-end
-
-local modelReset = 0
-local thePlayer = {
-    getUsername = function() return "Tester" end,
-    getHumanVisual = visualHolder("live").getHumanVisual,
-    getDescriptor = function() return visualHolder("descriptor") end,
-    resetModelNextFrame = function() modelReset = modelReset + 1 end,
-}
+local thePlayer = { getUsername = function() return "Tester" end }
 function getPlayer() return thePlayer end
 function sendClientCommand(_, module, command, args)
     sentCommands[#sentCommands + 1] = { module = module, command = command, args = args }
@@ -301,23 +283,6 @@ FONT_H = 14
 local smaller = box("tokenSpent")
 check("a smaller font gives a shorter box", smaller.h < small, true)
 FONT_H = 28
-
-io.write("\n-- coming back with the old face --\n")
-
-written = { live = nil, descriptor = nil }
-modelReset = 0
-onServerCommand(PermadeathLock.MODULE, "restoreLook", { visual = "FACE-DATA" })
-
-check("the face is written to the live character", written.live, "FACE-DATA")
--- REGRESSION: writing only the live visual looked right until the first thing
--- that rebuilt the model - a tick of damage does it - and then the game
--- re-derived the model from the descriptor and the old face came back.
-check("and to the descriptor it is rebuilt from", written.descriptor, "FACE-DATA")
-check("and the model is refreshed", modelReset, 1)
-
-written = { live = nil, descriptor = nil }
-onServerCommand(PermadeathLock.MODULE, "restoreLook", { visual = "" })
-check("an empty face is ignored", written.descriptor, nil)
 
 io.write("\n")
 if failures == 0 then

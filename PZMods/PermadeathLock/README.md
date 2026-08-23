@@ -238,8 +238,7 @@ Under **Permadeath Lock** in the sandbox settings:
 | `RestoreSkillsOnRevive` | on | Revived players get their old skill levels on their next character. |
 | `FateTokenEnabled` | on | Dying with a Fate Token spends it instead of locking you out. |
 | `FateTokenConsume` | on | The token is removed from the body when it saves someone. Off = lootable and reusable. |
-| `FateBinding` | on | Right-clicking a token offers "Bind your fate here", and a spent token returns you there. |
-| `RestoreAppearance` | on | A restored character keeps the face of the one that died. |
+| `FateBinding` | on | Right-clicking a token offers "Bind your fate here", and dying with that token returns you there. |
 
 ## Admin commands
 
@@ -487,13 +486,19 @@ times over in a single death — but the other two are still on the body.
 
 ### Binding a token to a place
 
-Right-click a Fate Token → **Bind your fate here**. Die carrying a token
-afterwards and your next character wakes at that spot instead of wherever the
-game would have put them. The binding is spent along with the token, so coming
-back to the same place twice takes two of them.
+Right-click a Fate Token → **Bind your fate here**. Die carrying *that* token
+and your next character wakes at that spot instead of wherever the game would
+have put them.
 
-Only a token pays for this. An admin **revive** does not use your bind and does
-not consume it — that is a favour, not the bargain you paid for.
+**The binding lives on the token, not on the player.** Each one carries its own
+coordinate, so you can hold several bound to different places, an unbound one is
+simply a token with nothing written on it, and a binding travels with the item —
+drop it, trade it, leave it in a crate, and it goes too. Binding again picks an
+*unbound* token in preference, so you end up with two bound tokens rather than
+moving the one you already placed. The admin panel shows it as `3 (1 bound)`.
+
+Only a token pays for this. An admin **revive** has no token, and so nothing to
+read: it never moves anyone.
 
 If the bound spot cannot be reached — built over since, or in a chunk the server
 does not have loaded — you are left where the game put you and told so. Nobody
@@ -506,23 +511,15 @@ down — doors, corpses, inventory, everything. That happened to a neighbouring
 mod in this repo. On the item it only exists where it means something, and the
 builder is wrapped besides.
 
-### Coming back as yourself
+### Coming back as yourself — backlogged
 
-A restored character keeps the skin tone, hair and beard of the one that died,
-so a Fate Token brings back the same person rather than a stranger with their
-skills. Clothing is not included: those are inventory items and they stay on the
-corpse with everything else.
+Restoring the dead character's face was built and then taken out again. It
+half-worked: the face came back and then reverted at the first tick of damage,
+because the game re-derives the model from the descriptor. Writing both the live
+visual and the descriptor fixed that one case and it still was not reliable.
 
-The face is written down with `getLastStandString` at the moment of death and
-applied by the player's **own client** on the way back — a character's
-appearance is rendered and networked by the machine that owns it, and this mod
-has twice learned what happens when the server writes state the client owns.
-
-It is applied to the **descriptor** as well as the live character, and that is
-the whole trick. Setting only the live visual works and looks right until the
-first thing that rebuilds the model — one tick of damage will do it — at which
-point the game re-derives the model from the descriptor and the old face comes
-straight back.
+The code is gone rather than left switched off. It can come back when there is a
+reason to work through it properly; a half-working cosmetic is worse than none.
 
 It shows in the inventory under **Junk**, which is a stock Build 42 category and
 where the game files oddments.
@@ -546,6 +543,12 @@ Vanilla's `/additem <username> Base.FateToken` also works.
 
 The target has to be **online**: a token is a real item and someone has to be
 there to hold it.
+
+Adding to the server's copy of the container is only **half** of it: the item
+then exists here, the panel counts it, and the player's own inventory never
+shows it. `sendAddItemToContainer` (and `sendRemoveItemFromContainer`, and the
+same on the token the lock spends at death) is the broadcast that makes it real
+for them. That was reported as "the UI says they have one and they don't".
 
 The item is added and removed **server-side**, the same as vanilla's `/additem`.
 1.5.0 relayed it to the target's client instead, reasoning that a player's

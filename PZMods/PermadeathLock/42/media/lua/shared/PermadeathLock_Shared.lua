@@ -9,7 +9,7 @@
 PermadeathLock = PermadeathLock or {}
 local PL = PermadeathLock
 
-PL.VERSION = "1.12.2"
+PL.VERSION = "1.13.0"
 
 -- Module name used by sendClientCommand / sendServerCommand.
 PL.MODULE = "PermadeathLock"
@@ -25,10 +25,6 @@ PL.DEATH_FILE = "PermadeathLock_deaths.txt"
 -- and blow up on the first sweep. Creating the table in shared - which loads
 -- before both - means every file captures the same table whatever the order.
 PL.Store = PL.Store or {}
-
--- Bind points, written alongside the death list. A separate file because a bind
--- belongs to a living player who has no death record yet.
-PL.BIND_FILE = "PermadeathLock_binds.txt"
 
 -- The Fate Token. Dying while carrying one spends it instead of locking you out.
 PL.FATE_TOKEN = "Base.FateToken"
@@ -168,6 +164,41 @@ scanTokens = function(container, depth, found)
             end
         end
     end
+end
+
+--- Where one token brings you back, if it has been bound.
+---
+--- Kept on the ITEM, not against the player. Each token carries its own
+--- coordinate, so a player can hold several bound to different places and know
+--- which is which, and an unbound one is simply a token with nothing written on
+--- it. Item mod data travels with the item - drop it, trade it, leave it in a
+--- crate, and the binding goes with it.
+---@param item InventoryItem?
+---@return table? bind
+function PL.getTokenBind(item)
+    if item == nil or item.getModData == nil then return nil end
+
+    local data = item:getModData()
+    if data == nil then return nil end
+
+    local x, y = tonumber(data.pdlBindX), tonumber(data.pdlBindY)
+    if x == nil or y == nil then return nil end
+    return { x = x, y = y, z = tonumber(data.pdlBindZ) or 0 }
+end
+
+---@param item InventoryItem
+---@param x number
+---@param y number
+---@param z number?
+function PL.setTokenBind(item, x, y, z)
+    if item == nil or item.getModData == nil then return end
+
+    local data = item:getModData()
+    if data == nil then return end
+
+    data.pdlBindX = math.floor(x)
+    data.pdlBindY = math.floor(y)
+    data.pdlBindZ = math.floor(z or 0)
 end
 
 --- Every Fate Token on a character, bags included.

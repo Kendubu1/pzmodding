@@ -236,46 +236,6 @@ local function showBlockNotice(text)
 end
 
 --------------------------------------------------------------------------------
--- wearing the old face
---------------------------------------------------------------------------------
-
---- Load a saved appearance onto this character.
----
---- Written to the DESCRIPTOR as well as the live character, and that is the
---- whole trick. Setting only the live HumanVisual works and looks right until
---- the first thing that rebuilds the model - a tick of damage will do it - at
---- which point the game re-derives the model from the descriptor and the old
---- face comes back. The descriptor is where a character's appearance actually
---- lives; the live visual is a copy of it.
----@param visual string?
-local function applyLook(visual)
-    if visual == nil or visual == "" then return end
-
-    local player = getPlayer()
-    if player == nil then return end
-
-    ---@param holder any
-    local function write(holder)
-        if holder == nil or holder.getHumanVisual == nil then return end
-        local look = holder:getHumanVisual()
-        if look == nil or look.loadLastStandString == nil then return end
-        look:loadLastStandString(visual)
-    end
-
-    -- The persistent one first, then the one on screen.
-    if player.getDescriptor ~= nil then write(player:getDescriptor()) end
-    write(player)
-
-    -- Without this the strings are set and the model on screen is still the one
-    -- the character was created with.
-    if player.resetModelNextFrame ~= nil then
-        player:resetModelNextFrame()
-    elseif player.resetModel ~= nil then
-        player:resetModel()
-    end
-end
-
---------------------------------------------------------------------------------
 -- events
 --------------------------------------------------------------------------------
 
@@ -312,10 +272,6 @@ local function onServerCommand(module, command, args)
         -- Something is owed to this character - the skills of the one that
         -- died. Tell the server once the world has finished loading around us.
         beginGrace()
-    elseif command == "restoreLook" then
-        -- Applied here, by the machine that owns and renders this character.
-        -- The server holds the string; it does not write the face.
-        applyLook(args and args.visual)
     elseif command == "notice" then
         -- Server-composed text, shown on screen rather than only in chat.
         -- Centred: by the time this arrives the death screen is long gone.
