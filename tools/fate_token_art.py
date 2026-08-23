@@ -1,14 +1,18 @@
-"""Fate Token artwork for the Steam Workshop listing and the in-game mod list.
+"""Rebuild the Fate Token artwork in place.
 
-Drawn rather than photographed, at 4x and downsampled, so the edges stay clean
-at the sizes Steam actually renders these: a small grid thumbnail and a larger
-item page.
+    python3 tools/fate_token_art.py
 
-Palette is Project Zomboid's - desaturated green-grey and tarnished brass. The
-old art was pure red on black, which reads as a warning label rather than a
-game mod.
+Writes straight over the mod's three images. Composed at 4x and downsampled, so
+the edges stay clean at the sizes these are actually rendered: a small grid
+thumbnail on the Workshop, a tab-sized icon in the mod list, and a larger poster
+on the item page.
+
+Palette is Project Zomboid's - desaturated green-grey and tarnished brass.
+
+Needs Pillow: pip install pillow
 """
 import math
+import os
 import random
 from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
@@ -17,6 +21,12 @@ random.seed(20260823)      # the art must come out the same every run
 OUT = 512
 SS = 4                      # supersample factor
 S = OUT * SS
+
+# Resolved from this file rather than the working directory, so the tool can be
+# run from anywhere and still writes to the mod instead of wherever it was
+# invoked.
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MOD = os.path.join(ROOT, "PZMods", "PermadeathLock")
 
 SERIF = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"
 SANS = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
@@ -258,7 +268,7 @@ def text_at(img, xy, s, font, fill, anchor="mm", spacing=0):
 def save(img, path, size=OUT):
     img = grain(img)
     img.convert("RGB").resize((size, size), Image.LANCZOS).save(path, optimize=True)
-    print("wrote", path, "%dx%d" % (size, size))
+    print("wrote %s %dx%d" % (os.path.relpath(path, ROOT), size, size))
 
 
 # --- icon: the token alone, has to survive being shrunk to 32px -------------
@@ -266,7 +276,7 @@ icon = ground(S)
 icon = Image.alpha_composite(icon, coin(S, S / 2, S / 2, S * 0.395))
 # Smaller than the rest on purpose: the in-game mod list draws this at a size
 # where half a megapixel is weight for nothing.
-save(icon, "icon.png", size=128)
+save(icon, os.path.join(MOD, "42", "icon.png"), size=128)
 
 # --- preview: the storefront thumbnail, so it carries the name --------------
 prev = ground(S)
@@ -277,7 +287,7 @@ sub = ImageFont.truetype(SANS, int(S * 0.0335))
 text_at(prev, (S / 2, S * 0.790), "FATE TOKEN", title, INK + (255,), spacing=S * 0.006)
 text_at(prev, (S / 2, S * 0.872), "MULTIPLAYER PERMADEATH", sub, DIM + (255,), spacing=S * 0.011)
 
-save(prev, "preview.png")
+save(prev, os.path.join(MOD, "preview.png"))
 
 # --- poster: shown larger in the mod panel, so it can breathe ---------------
 post = ground(S)
@@ -290,4 +300,4 @@ text_at(post, (S / 2, S * 0.805), "One death, bought back.", pline, DIM + (255,)
 text_at(post, (S / 2, S * 0.856), "Bind it to a place and wake there.", pline, DIM + (255,))
 text_at(post, (S / 2, S * 0.925), "saint_kendrick", ImageFont.truetype(SANS, int(S * 0.026)),
         (92, 90, 84, 255), spacing=S * 0.006)
-save(post, "poster.png")
+save(post, os.path.join(MOD, "42", "poster.png"))
