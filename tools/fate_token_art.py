@@ -26,7 +26,10 @@ S = OUT * SS
 # run from anywhere and still writes to the mod instead of wherever it was
 # invoked.
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MOD = os.path.join(ROOT, "PZMods", "PermadeathLock")
+# preview.png and workshop.txt sit at the upload root; the mod itself is
+# inside the Contents/ wrapper.
+UPLOAD = os.path.join(ROOT, "PZMods", "PermadeathLock")
+MOD = os.path.join(UPLOAD, "Contents", "mods", "PermadeathLock")
 
 SERIF = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"
 SANS = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
@@ -287,7 +290,8 @@ sub = ImageFont.truetype(SANS, int(S * 0.0335))
 text_at(prev, (S / 2, S * 0.790), "FATE TOKEN", title, INK + (255,), spacing=S * 0.006)
 text_at(prev, (S / 2, S * 0.872), "MULTIPLAYER PERMADEATH", sub, DIM + (255,), spacing=S * 0.011)
 
-save(prev, os.path.join(MOD, "preview.png"))
+# 256x256, not larger: the in-game uploader rejects any other size.
+save(prev, os.path.join(UPLOAD, "preview.png"), size=256)
 
 # --- poster: shown larger in the mod panel, so it can breathe ---------------
 post = ground(S)

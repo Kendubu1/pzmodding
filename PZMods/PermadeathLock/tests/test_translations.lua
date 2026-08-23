@@ -13,7 +13,8 @@
 --
 -- Each of those is now a failing test instead of a screenshot.
 
-local ROOT = "PZMods/PermadeathLock/"
+-- The mod itself, inside the Contents/ wrapper the Workshop uploader requires.
+local ROOT = "PZMods/PermadeathLock/Contents/mods/PermadeathLock/"
 local COMMON = ROOT .. "common/media/lua/shared/Translate/EN/"
 local VERSIONED = ROOT .. "42/media/lua/shared/Translate/EN/"
 

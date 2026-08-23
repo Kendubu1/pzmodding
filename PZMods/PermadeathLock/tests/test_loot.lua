@@ -32,7 +32,7 @@ function isCoopHost() return false end
 function getTimestamp() return 1700000000 end
 function require(_) end
 
-dofile("PZMods/PermadeathLock/42/media/lua/shared/PermadeathLock_Shared.lua")
+dofile("PZMods/PermadeathLock/Contents/mods/PermadeathLock/42/media/lua/shared/PermadeathLock_Shared.lua")
 
 local failures = 0
 local function check(label, got, want)
@@ -74,7 +74,7 @@ local function load(lists)
             return rawget(t, key)
         end,
     })
-    dofile("PZMods/PermadeathLock/42/media/lua/server/PermadeathLock_Loot.lua")
+    dofile("PZMods/PermadeathLock/Contents/mods/PermadeathLock/42/media/lua/server/PermadeathLock_Loot.lua")
     return handlers["OnPreDistributionMerge"] or {}
 end
 

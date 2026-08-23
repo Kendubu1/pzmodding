@@ -90,10 +90,10 @@ end
 
 PermadeathLockUI = { open = function() uiOpened = uiOpened + 1 end }
 
-dofile("PZMods/PermadeathLock/42/media/lua/shared/PermadeathLock_Shared.lua")
-dofile("PZMods/PermadeathLock/42/media/lua/client/PermadeathLock_Client.lua")
-dofile("PZMods/PermadeathLock/42/media/lua/client/PermadeathLock_Commands.lua")
-dofile("PZMods/PermadeathLock/42/media/lua/client/PermadeathLock_TokenMenu.lua")
+dofile("PZMods/PermadeathLock/Contents/mods/PermadeathLock/42/media/lua/shared/PermadeathLock_Shared.lua")
+dofile("PZMods/PermadeathLock/Contents/mods/PermadeathLock/42/media/lua/client/PermadeathLock_Client.lua")
+dofile("PZMods/PermadeathLock/Contents/mods/PermadeathLock/42/media/lua/client/PermadeathLock_Commands.lua")
+dofile("PZMods/PermadeathLock/Contents/mods/PermadeathLock/42/media/lua/client/PermadeathLock_TokenMenu.lua")
 
 local onServerCommand = handlers["OnServerCommand"][1]
 

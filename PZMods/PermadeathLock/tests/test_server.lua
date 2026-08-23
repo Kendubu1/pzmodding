@@ -195,12 +195,12 @@ local function makePlayer(username, opts)
     return self
 end
 
-dofile("PZMods/PermadeathLock/42/media/lua/shared/PermadeathLock_Shared.lua")
+dofile("PZMods/PermadeathLock/Contents/mods/PermadeathLock/42/media/lua/shared/PermadeathLock_Shared.lua")
 -- Loaded in the order the game loads them: alphabetically, so Server.lua runs
 -- BEFORE Store.lua. Loading Store first here would hide load-order bugs.
-dofile("PZMods/PermadeathLock/42/media/lua/server/PermadeathLock_Binds.lua")
-dofile("PZMods/PermadeathLock/42/media/lua/server/PermadeathLock_Server.lua")
-dofile("PZMods/PermadeathLock/42/media/lua/server/PermadeathLock_Store.lua")
+dofile("PZMods/PermadeathLock/Contents/mods/PermadeathLock/42/media/lua/server/PermadeathLock_Binds.lua")
+dofile("PZMods/PermadeathLock/Contents/mods/PermadeathLock/42/media/lua/server/PermadeathLock_Server.lua")
+dofile("PZMods/PermadeathLock/Contents/mods/PermadeathLock/42/media/lua/server/PermadeathLock_Store.lua")
 
 local Store = PermadeathLock.Store
 local Binds = PermadeathLock.Binds

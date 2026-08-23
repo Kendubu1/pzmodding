@@ -17,12 +17,35 @@ exchange for nothing.
 
 ## Publishing
 
+### The upload layout
+
+The in-game uploader refuses a folder without a `Contents/` in it — *"All the
+files and folders to upload must be inside a folder called Contents/"* — so the
+mod proper lives one level down and only the packaging sits at the top:
+
+```
+PermadeathLock/              <- point the uploader here
+    workshop.txt
+    preview.png              <- 256x256, and only 256x256
+    Contents/
+        mods/
+            PermadeathLock/  <- copy THIS into Zomboid/mods/ to test locally
+                42/
+                common/
+    README.md                <- outside Contents, so it is not shipped
+    tests/
+```
+
+`preview.png` must be **256×256**. The uploader rejects anything else, and it is
+the one image with that constraint: `42/poster.png` is 512 and `42/icon.png` is
+128.
+
 Two different files describe this mod, and they are read by different things:
 
 | File | Feeds | When it takes effect |
 | --- | --- | --- |
-| `42/mod.info` | The in-game **Select Mods** panel — name, description, author, icon, version | Read from the mod folder at game start. Edit, restart, done. Steam is not involved. |
-| `workshop.txt` + `preview.png` | The **Steam Workshop page** — title, description, tags, thumbnail | Read by the in-game Workshop uploader when you publish or re-publish. |
+| `Contents/mods/PermadeathLock/42/mod.info` | The in-game **Select Mods** panel — name, description, author, icon, version | Read from the mod folder at game start. Edit, restart, done. Steam is not involved. |
+| `workshop.txt` + `preview.png` (upload root) | The **Steam Workshop page** — title, description, tags, thumbnail | Read by the in-game Workshop uploader when you publish or re-publish. |
 
 So the mod list updates the moment you copy the folder into `Zomboid/mods/` and
 restart; the Workshop page updates when you next run the uploader. Nothing in
@@ -39,7 +62,7 @@ on which they read. `url=` fills the **Homepage** row.
 
 | File | Size | What it is for |
 | --- | --- | --- |
-| `preview.png` | 512×512 | The Workshop thumbnail. Carries the name, because the grid renders it small. |
+| `preview.png` | 256×256 | The Workshop thumbnail. Carries the name, because the grid renders it small. The uploader accepts no other size. |
 | `42/poster.png` | 512×512 | Shown larger in the in-game mod panel. |
 | `42/icon.png` | 128×128 | The mod list. The token alone — it still reads at 32px, which is what that list gives it. |
 
@@ -47,7 +70,7 @@ Each slot gets its own cut rather than one image reused three times.
 
 ## Install
 
-Copy the `PermadeathLock` folder into `Zomboid/mods/`, so that
+Copy `Contents/mods/PermadeathLock` into `Zomboid/mods/`, so that
 `Zomboid/mods/PermadeathLock/42/mod.info` exists. Nesting it one level too deep is
 the most common install mistake.
 

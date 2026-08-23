@@ -26,7 +26,8 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MOD = os.path.join(ROOT, "PZMods", "PermadeathLock")
+# The mod proper, inside the Contents/ wrapper the Workshop uploader wants.
+MOD = os.path.join(ROOT, "PZMods", "PermadeathLock", "Contents", "mods", "PermadeathLock")
 TAIL = os.path.join("media", "lua", "shared", "Translate", "EN")
 SOURCE = os.path.join(MOD, "common", TAIL)
 TARGETS = [os.path.join(MOD, "common", TAIL), os.path.join(MOD, "42", TAIL)]

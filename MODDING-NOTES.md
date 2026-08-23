@@ -217,6 +217,27 @@ for Build 41 players. A B42-only mod does not need the root copy.
 Do not reason about B42 layout from a Build 41 mod sitting next to yours. They
 are different shapes, and the older one being correct says nothing.
 
+### The upload folder is a different shape again
+
+What the game loads from `Zomboid/mods/` is NOT what you hand the Workshop
+uploader. The uploader refuses anything without a `Contents/` wrapper - *"All
+the files and folders to upload must be inside a folder called Contents/"* - so
+the upload root holds the packaging and the mod sits two levels down:
+
+```
+UploadRoot/
+    workshop.txt
+    preview.png          <- 256x256, and the uploader rejects any other size
+    Contents/
+        mods/
+            ModName/     <- this is what goes in Zomboid/mods/
+                common/
+                42/
+```
+
+Only `preview.png` is size-locked. `poster.png` and `icon.png` live inside the
+mod and are whatever suits them.
+
 Sources: [PZ B42 mod template](https://github.com/LabX1/ProjectZomboid-Build42-ModTemplate),
 [updating a mod for B42](https://steamcommunity.com/sharedfiles/filedetails/?id=3391657438).
 

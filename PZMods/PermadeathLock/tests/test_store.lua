@@ -119,8 +119,8 @@ local function makePlayer(username, levels, opts)
     return player
 end
 
-dofile("PZMods/PermadeathLock/42/media/lua/shared/PermadeathLock_Shared.lua")
-dofile("PZMods/PermadeathLock/42/media/lua/server/PermadeathLock_Store.lua")
+dofile("PZMods/PermadeathLock/Contents/mods/PermadeathLock/42/media/lua/shared/PermadeathLock_Shared.lua")
+dofile("PZMods/PermadeathLock/Contents/mods/PermadeathLock/42/media/lua/server/PermadeathLock_Store.lua")
 
 local Store = PermadeathLock.Store
 local failures = 0

@@ -15,8 +15,7 @@ deleted for good.
 
   Fate Token [42]      -> the version folder wins
   Fate Token [common]  -> common/ wins
-  Fate Token [root]    -> the bare mod root wins
-  no marker at all     -> none of them is read, and the cause is elsewhere
+  no marker at all     -> neither is read, and the cause is elsewhere
 
 --clear strips the markers again. Run it before publishing.
 """
@@ -26,21 +25,20 @@ import shutil
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MOD = os.path.join(ROOT, "PZMods", "PermadeathLock")
+MOD = os.path.join(ROOT, "PZMods", "PermadeathLock", "Contents", "mods", "PermadeathLock")
 TAIL = os.path.join("media", "lua", "shared", "Translate", "EN")
 
 # common/ is the canonical copy: the other two are rebuilt from it.
 COPIES = [
     ("common", os.path.join(MOD, "common", TAIL)),
     ("42", os.path.join(MOD, "42", TAIL)),
-    ("root", os.path.join(MOD, TAIL)),
 ]
 CANONICAL = COPIES[0][1]
 
 # Matches with or without a leading space: the page-name marker is appended
 # ("Fate Token [42]") and the tooltip marker is prepended ("[42] Death..."),
 # and a pattern that only caught the first left the second to accumulate.
-MARKER = re.compile(r" ?\[(?:root|common|42)\] ?")
+MARKER = re.compile(r" ?\[(?:common|42)\] ?")
 
 
 def strip(text):

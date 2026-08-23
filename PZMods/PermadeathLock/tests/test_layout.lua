@@ -152,8 +152,8 @@ function ISCollapsableWindow:drawRectBorder() end
 
 --------------------------------------------------------------------------------
 
-dofile("PZMods/PermadeathLock/42/media/lua/shared/PermadeathLock_Shared.lua")
-dofile("PZMods/PermadeathLock/42/media/lua/client/PermadeathLock_AdminUI.lua")
+dofile("PZMods/PermadeathLock/Contents/mods/PermadeathLock/42/media/lua/shared/PermadeathLock_Shared.lua")
+dofile("PZMods/PermadeathLock/Contents/mods/PermadeathLock/42/media/lua/client/PermadeathLock_AdminUI.lua")
 
 local failures = 0
 local function check(label, ok, detail)

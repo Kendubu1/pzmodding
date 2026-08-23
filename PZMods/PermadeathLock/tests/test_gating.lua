@@ -65,7 +65,7 @@ function getFileWriter() return nil end
 function require(_) end
 ProceduralDistributions = { list = {} }
 
-local base = "PZMods/PermadeathLock/42/media/lua/"
+local base = "PZMods/PermadeathLock/Contents/mods/PermadeathLock/42/media/lua/"
 dofile(base .. "shared/PermadeathLock_Shared.lua")
 -- Alphabetical, as the game loads them: Server before Store.
 dofile(base .. "server/PermadeathLock_Binds.lua")
