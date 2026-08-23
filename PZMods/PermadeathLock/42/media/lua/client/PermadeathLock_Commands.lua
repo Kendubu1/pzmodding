@@ -1,5 +1,5 @@
 --[[
-    Permadeath Lock - /permadeath chat commands.
+    Permadeath Lock - /fate chat commands.
 
     The game has no hook for adding server-side chat commands, so the client
     intercepts the typed line and forwards it. Anyone can type it; the server
@@ -11,7 +11,14 @@ if not PermadeathLock.isClientSide() then return end
 
 local PL = PermadeathLock
 
+-- /fate is the one to type; the rest are kept working on purpose.
+--
+-- /permadeath was the command for every release up to now, and it is in every
+-- server's admin notes and every screenshot anyone has taken. Dropping it to
+-- tidy up the naming would break all of that for no gain to anybody - an alias
+-- costs one line.
 local PREFIXES = {
+    ["/fate"] = true,
     ["/permadeath"] = true,
     ["/pd"] = true,
 }
@@ -31,8 +38,8 @@ end
 --- Project Zomboid allows spaces in usernames, and people quote them. Taking
 --- parts[3] on its own got both wrong, in its own way each time:
 ---
----     /permadeath pardon Willy Guggenheim    -> a player called "Willy"
----     /permadeath pardon "Willy Guggenheim"  -> a player called '"Willy'
+---     /fate pardon Willy Guggenheim    -> a player called "Willy"
+---     /fate pardon "Willy Guggenheim"  -> a player called '"Willy'
 ---
 --- Both answered "X is not on the death list", which reads as the death list
 --- being wrong rather than the name never having arrived.

@@ -9,13 +9,13 @@
 PermadeathLock = PermadeathLock or {}
 local PL = PermadeathLock
 
-PL.VERSION = "1.14.3"
+PL.VERSION = "1.15.0"
 
 -- Module name used by sendClientCommand / sendServerCommand.
 PL.MODULE = "PermadeathLock"
 
 -- Death list, written to Zomboid/Lua/ on the server. Plain text so an admin can
--- read or edit it with the server down, then use /permadeath reload.
+-- read or edit it with the server down, then use /fate reload.
 PL.DEATH_FILE = "PermadeathLock_deaths.txt"
 
 -- The death list's table is created here, not in PermadeathLock_Store.lua, and

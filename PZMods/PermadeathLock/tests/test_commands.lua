@@ -1,8 +1,8 @@
--- Harness: the client half - the /permadeath chat command parser, and the text
+-- Harness: the client half - the /fate chat command parser, and the text
 -- of the notices players are shown.
 --
 -- It exists for one reason. Project Zomboid allows spaces in usernames, and the
--- parser took only the first word after the subcommand: "/permadeath pardon
+-- parser took only the first word after the subcommand: "/fate pardon
 -- Willy Guggenheim" pardoned a player called "Willy". Every command answered
 -- "X is not on the death list", which reads as the death list being wrong.
 
@@ -119,49 +119,63 @@ end
 
 io.write("-- usernames with spaces --\n")
 
-local args = enter("/permadeath pardon Willy Guggenheim")
+local args = enter("/fate pardon Willy Guggenheim")
 check("the whole name is sent, not the first word", args and args.target, "Willy Guggenheim")
 check("and the subcommand is right", args and args.sub, "pardon")
 
 args = enter("/pd revive Mary Jane Watson")
 check("however many words it runs to", args and args.target, "Mary Jane Watson")
 
-args = enter("/permadeath status Willy Guggenheim")
+args = enter("/fate status Willy Guggenheim")
 check("status takes a target too", args and args.target, "Willy Guggenheim")
 
 io.write("\n-- quoted names, which is how people actually type them --\n")
 
-args = enter('/permadeath pardon "Willy Guggenheim"')
+args = enter('/fate pardon "Willy Guggenheim"')
 check("double quotes are stripped", args and args.target, "Willy Guggenheim")
 
 args = enter("/pd revive 'Willy Guggenheim'")
 check("single quotes too", args and args.target, "Willy Guggenheim")
 
-args = enter('/permadeath give "Bob"')
+args = enter('/fate give "Bob"')
 check("even round a one-word name", args and args.target, "Bob")
 
-args = enter('/permadeath add Bob"s Friend')
+args = enter('/fate add Bob"s Friend')
 check("a quote in the middle is left alone", args and args.target, 'Bob"s Friend')
 
 io.write("\n-- the ordinary shapes --\n")
 
-args = enter("/permadeath status")
+args = enter("/fate status")
 check("no target is nil, not empty", args and args.target, nil)
 check("bare status still sends", args and args.sub, "status")
 
-args = enter("/permadeath clear confirm")
+args = enter("/fate clear confirm")
 check("the confirm word survives", args and args.target, "confirm")
 
 args = enter("/pd give Bob")
 check("the short prefix works", args and args.sub, "give")
 check("with a one-word name", args and args.target, "Bob")
 
-args = enter("/permadeath   pardon   Willy   Guggenheim  ")
+args = enter("/fate   pardon   Willy   Guggenheim  ")
 check("extra spacing is collapsed", args and args.target, "Willy Guggenheim")
 
 io.write("\n-- the panel and other traffic --\n")
 
-typed = "/permadeath ui"
+-- The old names still have to work. Every server running this before the
+-- rename has /permadeath in its admin notes, and an alias that quietly stopped
+-- being an alias is indistinguishable from the mod being broken.
+for _, prefix in ipairs({ "/permadeath", "/pd", "/FATE", "/Fate" }) do
+    local aliased = enter(prefix .. " pardon Willy Guggenheim")
+    check(prefix .. " still reaches the server", aliased ~= nil and aliased.sub, "pardon")
+    check(prefix .. " still carries the name", aliased ~= nil and aliased.target,
+        "Willy Guggenheim")
+end
+
+-- And something that only looks like the command is left to the game.
+check("an unrelated slash command is passed through", enter("/help"), nil)
+check("a longer word starting with fate too", enter("/fatearrow x"), nil)
+
+typed = "/fate ui"
 sentCommands = {}
 local before = uiOpened
 ISChat:onCommandEntered()

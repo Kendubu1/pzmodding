@@ -17,11 +17,27 @@ exchange for nothing.
 
 ## Publishing
 
-`workshop.txt` and `preview.png` sit at the mod root, matching the layout of an
-already-published mod in this repo. `workshop.txt` has **no `id=` line**: the
-in-game uploader assigns one on first upload and writes it back. Keep that line
-once it appears — losing it publishes a second, separate Workshop item instead
-of updating the first.
+Two different files describe this mod, and they are read by different things:
+
+| File | Feeds | When it takes effect |
+| --- | --- | --- |
+| `42/mod.info` | The in-game **Select Mods** panel — name, description, author, icon, version | Read from the mod folder at game start. Edit, restart, done. Steam is not involved. |
+| `workshop.txt` + `preview.png` | The **Steam Workshop page** — title, description, tags, thumbnail | Read by the in-game Workshop uploader when you publish or re-publish. |
+
+So the mod list updates the moment you copy the folder into `Zomboid/mods/` and
+restart; the Workshop page updates when you next run the uploader. Nothing in
+`mod.info` reaches Steam, and nothing in `workshop.txt` reaches the mod list.
+
+`workshop.txt` starts with **no `id=` line**: the uploader assigns one on first
+upload and writes it back. Keep that line once it appears — losing it publishes
+a second, separate Workshop item instead of updating the first. It is also what
+fills the **WorkshopID** row in the mod panel, which stays blank while the mod
+is only a local folder.
+
+`author` is written twice, as both `author=` and `authors=`. The panel's
+**Author** row came back blank with only the plural spelled out, and one extra
+line is cheaper than working out which spelling this build wants. `url=` fills
+the **Homepage** row.
 
 The art is generated, not drawn by hand: `art/make_art.py` produces all three
 images and is committed alongside them, so a tweak to the palette or the wording
@@ -265,26 +281,29 @@ Under **Permadeath Lock** in the sandbox settings:
 Type these in chat as an admin (`/pd` is a shorthand):
 
 ```
-/permadeath status          is the lock on, and how many are locked out
-/permadeath status <user>   everything the mod knows about one player
-/permadeath ui              open the admin panel
-/permadeath list            show the death list
-/permadeath binds           every place a Fate Token is bound to
-/permadeath revive <user>   bring a player back, keeping their skills
-/permadeath pardon <user>   let a player back in, from scratch
-/permadeath give <user>     hand a player a Fate Token
-/permadeath take <user>     take a Fate Token back
-/permadeath add <user>      lock a player out by hand
-/permadeath clear confirm   wipe the whole death list
-/permadeath reload          re-read the death list from disk
+/fate status          is the lock on, and how many are locked out
+/fate status <user>   everything the mod knows about one player
+/fate ui              open the admin panel
+/fate list            show the death list
+/fate binds           every place a Fate Token is bound to
+/fate revive <user>   bring a player back, keeping their skills
+/fate pardon <user>   let a player back in, from scratch
+/fate give <user>     hand a player a Fate Token
+/fate take <user>     take a Fate Token back
+/fate add <user>      lock a player out by hand
+/fate clear confirm   wipe the whole death list
+/fate reload          re-read the death list from disk
 ```
+
+`/permadeath` and `/pd` still work. Every server running this before the rename
+has the old word in its admin notes, and an alias costs one line.
 
 Usernames are matched case-insensitively, may contain **spaces**, and may be
 quoted:
 
 ```
-/permadeath pardon Willy Guggenheim
-/permadeath pardon "Willy Guggenheim"
+/fate pardon Willy Guggenheim
+/fate pardon "Willy Guggenheim"
 ```
 
 Both work. Until 1.9.1 neither did: the parser took only the next word, so the
@@ -301,7 +320,7 @@ are free to make a new character, and it collects the old one's skills.
 
 ### When nothing seems to be happening
 
-`/permadeath status <user>` answers it in one go: are they online, are they
+`/fate status <user>` answers it in one go: are they online, are they
 dead, are they **exempt**, how many Fate Tokens are they carrying, are they on
 the death list, are they owed a restore, **all seven sandbox switches**, and
 which Lua state answered.
@@ -323,7 +342,7 @@ not recorded, no Fate Token spent, not locked out.
 
 ### The admin panel
 
-`/permadeath ui` opens a window over the **whole roster** — everyone online as
+`/fate ui` opens a window over the **whole roster** — everyone online as
 well as everyone on the death list. Most of what an admin needs to know is about
 people who are not dead, so limiting it to the list made it much less useful
 than it looks.
@@ -578,7 +597,7 @@ not be reached".
 ### Finding a bound token that has been lost
 
 Every bind is written down twice: on the item, and in a registry the server
-keeps in `PermadeathLock_binds.txt`. `/permadeath binds` lists all of them.
+keeps in `PermadeathLock_binds.txt`. `/fate binds` lists all of them.
 
 ```
 3 bound Fate Token(s):
@@ -634,7 +653,7 @@ beats a right-looking one we have to supply ourselves.
 Nothing spawns them by default; that is a deliberate balance decision left to you.
 
 From the admin panel, select a player and press **Give token** or **Take token**.
-From chat, `/permadeath give <user>` and `/permadeath take <user>` do the same.
+From chat, `/fate give <user>` and `/fate take <user>` do the same.
 Vanilla's `/additem <username> Base.FateToken` also works.
 
 The target has to be **online**: a token is a real item and someone has to be
@@ -670,6 +689,65 @@ table.insert(ProceduralDistributions.list["MedicalClinicMisc"].items, 0.5)
 
 The number is a weight, not a percentage — keep it low.
 
+## Putting tokens in the world
+
+Off by default. A Fate Token undoes the only rule this mod has, so whether the
+world hands them out is deliberately the server's decision and not the mod's —
+out of the box, the only Fate Token that exists is one an admin gave somebody.
+
+Turn on **Fate Tokens spawn in loot** and they turn up in cash registers, and
+more often in banks and vaults. Two settings shape it: how rare, and how much
+better a bank is than a corner shop.
+
+### What the rarity numbers actually mean
+
+The number attached to an item in a container's loot list is a **relative
+weight inside that list**, not a percentage. Its real odds depend on what else
+is in the list and how many draws the container makes, so the same weight is
+rarer in a well-stocked container than a sparse one. As a feel for the scale
+vanilla uses:
+
+| Weight | Roughly |
+| --- | --- |
+| 10–100 | Filler. Every other container. |
+| 1–4 | Ordinary loot. You will find some. |
+| 0.1–0.5 | Rare. The things you remember finding. |
+| under 0.1 | Most playthroughs will never see one. |
+
+The four rarity settings sit deliberately at the bottom of that:
+
+| Setting | Register weight | With the default 4× bank bonus |
+| --- | --- | --- |
+| Almost never | 0.05 | 0.2 |
+| **Very rare** (default) | 0.10 | 0.4 |
+| Rare | 0.30 | 1.2 |
+| Uncommon | 1.00 | 4.0 |
+
+The world's own **Loot Rarity** sandbox setting scales all of it again on top,
+so a server already running Abundant loot gets more of these too.
+
+### How they are attached
+
+Containers are matched **by name pattern**, not by a hard-coded list of keys:
+anything whose distribution name contains `register` or `till` gets the plain
+weight, and anything containing `bank` or `vault` gets the bonus. That catches
+the shop till, the gas station till and the bank counter alike, and keeps
+working when the game reshuffles its tables between builds.
+
+A hard-coded key that no longer exists fails **silently** — the item simply
+never spawns and nothing says why, which is indistinguishable from bad luck. So
+the boot log names every list it touched and the weight it used:
+
+```
+[PermadeathLock] Fate Tokens added to loot: very rare. Weight 0.1 in 6
+register-like list(s), 0.4 in 3 bank-like list(s).
+[PermadeathLock] loot lists: CashRegister@0.1, BankVault@0.4, ...
+```
+
+and if it matches nothing at all, that is a `WARNING`, not a shrug. `/fate
+status` repeats the summary in game, because an admin standing in an empty shop
+should not have to go and read a boot log.
+
 ## The death list
 
 Stored at `Zomboid/Lua/PermadeathLock_deaths.txt`, one tab-separated record per
@@ -680,7 +758,7 @@ username <tab> steamID <tab> timestamp <tab> reason <tab> skills <tab> locked <t
 ```
 
 It is plain text on purpose: you can edit it with the server down and then run
-`/permadeath reload`, or just add a bare username on its own line to lock someone
+`/fate reload`, or just add a bare username on its own line to lock someone
 out. Lines starting with `#` are ignored. The Steam ID is recorded for
 identification only — matching is always by username.
 
@@ -698,16 +776,16 @@ identification only — matching is always by username.
 4. Reconnect and make a new character — you should get the notice and be
    disconnected within a few seconds.
 5. As an admin (second account, or turn `ExemptAdmins` back on), run
-   `/permadeath revive <name>`, reconnect on the first account, and confirm the
+   `/fate revive <name>`, reconnect on the first account, and confirm the
    skills come back.
 6. For the Fate Token: `/additem <name> Base.FateToken`, die again, and check the
    console says `died holding a Fate Token; not locked out`. You should be able to
    reconnect straight away, with your skills.
-7. For the pardon path: die, then `/permadeath pardon <name>` while your corpse is
-   still in the world. Wait two in-game minutes, run `/permadeath list`, and
+7. For the pardon path: die, then `/fate pardon <name>` while your corpse is
+   still in the world. Wait two in-game minutes, run `/fate list`, and
    confirm you are **not** back on it. Then make a new character and confirm you
    are let in.
-8. For the panel: `/permadeath ui`, and confirm you appear on it while alive.
+8. For the panel: `/fate ui`, and confirm you appear on it while alive.
    Select yourself, press **Give token**, and watch the Tokens column go to 1
    without you touching Refresh. **Take token** should put it back to 0.
 

@@ -7,8 +7,8 @@ Sandbox_EN = {
     Sandbox_PermadeathLock_ExemptAdmins = "Exempt admins",
     Sandbox_PermadeathLock_ExemptAdmins_tooltip = "Admins are never added to the death list and are never blocked. Useful for testing, and stops you locking yourself out of your own server.",
 
-    Sandbox_PermadeathLock_KillOnSpawn = "Kill locked-out players instead of disconnecting them"
-    Sandbox_PermadeathLock_KillOnSpawn_tooltip = "On: a locked-out player who makes a new character is killed on the spot and stays connected, and every character after that dies the same way. Off: they are shown a notice and their client disconnects itself, with 'Kill clients that ignore the block' as the backstop. Leaving them connected is much easier to watch while testing, and reads as a rule rather than a crash."
+    Sandbox_PermadeathLock_KillOnSpawn = "Kill locked-out players instead of disconnecting them",
+    Sandbox_PermadeathLock_KillOnSpawn_tooltip = "On: a locked-out player who makes a new character is killed on the spot and stays connected, and every character after that dies the same way. Off: they are shown a notice and their client disconnects itself, with 'Kill clients that ignore the block' as the backstop. Leaving them connected is much easier to watch while testing, and reads as a rule rather than a crash.",
 
     Sandbox_PermadeathLock_EnforceKill = "Kill clients that ignore the block",
     Sandbox_PermadeathLock_EnforceKill_tooltip = "Only used when 'Kill locked-out players instead of disconnecting them' is off. The block is then enforced by asking the client to disconnect, which a modified client can ignore; with this on, a locked-out player still in the world one minute later is killed server-side instead.",
@@ -19,8 +19,22 @@ Sandbox_EN = {
     Sandbox_PermadeathLock_FateTokenEnabled = "Fate Tokens work",
     Sandbox_PermadeathLock_FateTokenEnabled_tooltip = "Dying while carrying a Fate Token (Base.FateToken) spends it instead of locking you out: your next character keeps the skills of the one that died. Turn off to disable the item without removing it from the world.",
 
-    Sandbox_PermadeathLock_FateBinding = "Fate Tokens can be bound to a place"
-    Sandbox_PermadeathLock_FateBinding_tooltip = "Right-clicking a Fate Token offers 'Bind your fate here'. Die carrying a token afterwards and your next character comes back to that spot instead of a spawn point the game picks. The binding is spent along with the token."
+    Sandbox_PermadeathLock_FateBinding = "Fate Tokens can be bound to a place",
+    Sandbox_PermadeathLock_FateBinding_tooltip = "Right-clicking a Fate Token offers 'Bind your fate here'. Die carrying a token afterwards and your next character comes back to that spot instead of a spawn point the game picks. The binding is spent along with the token.",
+
+    Sandbox_PermadeathLock_FateTokenLoot = "Fate Tokens spawn in loot",
+    Sandbox_PermadeathLock_FateTokenLoot_tooltip = "Off by default: no Fate Token exists anywhere until an admin hands one out. Turn on and they can be found in cash registers, and rather more often in banks. A token undoes the only rule this mod has, so whether the world gives them away is deliberately your decision and not the mod's.",
+
+    Sandbox_PermadeathLock_FateTokenLootRarity = "How often Fate Tokens are found",
+    Sandbox_PermadeathLock_FateTokenLootRarity_tooltip = "How heavily a Fate Token is weighted against everything else in a cash register. 'Almost never' means most servers will never see one; 'Uncommon' puts them on a par with an ordinary useful find. The world's own Loot Rarity setting scales this again on top.",
+
+    Sandbox_PermadeathLock_LootRarity1 = "Almost never",
+    Sandbox_PermadeathLock_LootRarity2 = "Very rare",
+    Sandbox_PermadeathLock_LootRarity3 = "Rare",
+    Sandbox_PermadeathLock_LootRarity4 = "Uncommon",
+
+    Sandbox_PermadeathLock_FateTokenBankBonus = "Bank multiplier",
+    Sandbox_PermadeathLock_FateTokenBankBonus_tooltip = "How much likelier a Fate Token is in a bank or a vault than in an ordinary till. At the default of 4, a token that is 'very rare' in a shop register is four times as likely behind a bank counter - which is still rare.",
 
     Sandbox_PermadeathLock_FateTokenConsume = "Fate Tokens are consumed",
     Sandbox_PermadeathLock_FateTokenConsume_tooltip = "Remove the token from the body when it saves someone. Turn off and the token stays on the corpse, so it can be looted and used again.",

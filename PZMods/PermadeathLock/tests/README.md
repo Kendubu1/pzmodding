@@ -19,15 +19,23 @@ Run from the **repository root**:
 ```bash
 lua5.1 PZMods/PermadeathLock/tests/test_store.lua
 lua5.1 PZMods/PermadeathLock/tests/test_server.lua
+lua5.1 PZMods/PermadeathLock/tests/test_loot.lua
 lua5.1 PZMods/PermadeathLock/tests/test_layout.lua
 lua5.1 PZMods/PermadeathLock/tests/test_commands.lua
 sh      PZMods/PermadeathLock/tests/test_gating.sh
 ```
 
-`test_commands.lua` drives the `/permadeath` chat parser against a stubbed
+`test_commands.lua` drives the `/fate` chat parser against a stubbed
 ISChat. Usernames may contain spaces and people quote them, and the parser took
 only the first word after the subcommand — so `pardon Willy Guggenheim`
 addressed `Willy` and `pardon "Willy Guggenheim"` addressed `"Willy`.
+
+`test_loot.lua` drives the loot injection against stand-in distribution tables:
+that the token reaches registers and banks at the right weights, that nothing
+else in the world grows one, that the rarity scale and bank multiplier do what
+they say, and that a second merge does not double the drop rate. Its loudest
+check is that matching **no** containers is a warning — that failure has no
+in-game symptom, and looks exactly like bad luck.
 
 `test_layout.lua` builds the admin panel against stubbed UI classes and checks
 that no band lands on another: the status line clears the title bar, the column

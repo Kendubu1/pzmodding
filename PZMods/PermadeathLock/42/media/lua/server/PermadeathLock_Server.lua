@@ -651,18 +651,19 @@ Events.EveryOneMinute.Add(sweep)
 --------------------------------------------------------------------------------
 
 local HELP = {
-    "/permadeath status            - is the lock on, and how many are locked out",
-    "/permadeath status <user>     - everything the mod knows about one player",
-    "/permadeath list              - show the death list",
-    "/permadeath binds             - every place a Fate Token is bound to",
-    "/permadeath ui                - open the admin panel",
-    "/permadeath give <user>       - hand a player a Fate Token",
-    "/permadeath take <user>       - take a Fate Token back",
-    "/permadeath revive <user>     - bring a player back, keeping their skills",
-    "/permadeath pardon <user>     - let a player back in, from scratch",
-    "/permadeath add <user>        - lock a player out by hand",
-    "/permadeath clear confirm     - wipe the whole death list",
-    "/permadeath reload            - re-read the death list from disk",
+    "/fate status          - is the lock on, and how many are locked out",
+    "/fate status <user>   - everything the mod knows about one player",
+    "/fate list            - show the death list",
+    "/fate binds           - every place a Fate Token is bound to",
+    "/fate ui              - open the admin panel",
+    "/fate give <user>     - hand a player a Fate Token",
+    "/fate take <user>     - take a Fate Token back",
+    "/fate revive <user>   - bring a player back, keeping their skills",
+    "/fate pardon <user>   - let a player back in, from scratch",
+    "/fate add <user>      - lock a player out by hand",
+    "/fate clear confirm   - wipe the whole death list",
+    "/fate reload          - re-read the death list from disk",
+    "(/permadeath and /pd still work)",
 }
 
 ---@param player IsoPlayer
@@ -675,7 +676,7 @@ end
 ---@param target string?
 local function commandRevive(admin, target)
     if target == nil then
-        tell(admin, "Usage: /permadeath revive <username>")
+        tell(admin, "Usage: /fate revive <username>")
         return
     end
 
@@ -706,7 +707,7 @@ end
 ---@param target string?
 local function commandPardon(admin, target)
     if target == nil then
-        tell(admin, "Usage: /permadeath pardon <username>")
+        tell(admin, "Usage: /fate pardon <username>")
         return
     end
 
@@ -850,7 +851,7 @@ local function commandListData(admin)
         tokens = PL.getOption("FateTokenEnabled", true) == true,
         -- How many bound places are on record at all, including tokens nobody
         -- online is holding. The panel can only show a coordinate for someone
-        -- it can see; this is the hint that /permadeath binds knows about more.
+        -- it can see; this is the hint that /fate binds knows about more.
         binds = Binds.count(),
         rows = rows,
     })
@@ -876,7 +877,7 @@ end
 local function commandToken(admin, target, give)
     local verb = give and "give" or "take"
     if target == nil then
-        tell(admin, "Usage: /permadeath " .. verb .. " <username>")
+        tell(admin, "Usage: /fate " .. verb .. " <username>")
         return
     end
 
@@ -1053,7 +1054,7 @@ end
 ---@param args table
 local function handleAdmin(player, args)
     if not player:isAccessLevel("admin") then
-        tell(player, "You need admin access to use /permadeath.")
+        tell(player, "You need admin access to use /fate.")
         return
     end
 
@@ -1073,6 +1074,10 @@ local function handleAdmin(player, args)
     elseif sub == "status" then
         local state = PL.isEnabled() and "ON" or "OFF"
         tell(player, "Permadeath Lock " .. PL.VERSION .. " is " .. state .. ". " .. Store.count() .. " player(s) on the death list.")
+        -- Whether the world spawns tokens, said in game. Otherwise the only
+        -- record of it is one line in a boot log, which is no use to an admin
+        -- standing in a shop wondering why every till is empty.
+        if PL.lootSummary ~= nil then tell(player, PL.lootSummary) end
     elseif sub == "list" then
         commandList(player)
     elseif sub == "binds" then
@@ -1093,7 +1098,7 @@ local function handleAdmin(player, args)
         commandToken(player, target, false)
     elseif sub == "add" then
         if target == nil then
-            tell(player, "Usage: /permadeath add <username>")
+            tell(player, "Usage: /fate add <username>")
         elseif Store.addManual(target, "added by " .. player:getUsername()) then
             tell(player, target .. " added to the death list.")
         else
@@ -1101,7 +1106,7 @@ local function handleAdmin(player, args)
         end
     elseif sub == "clear" then
         if target ~= "confirm" then
-            tell(player, "This wipes all " .. Store.count() .. " record(s). Run: /permadeath clear confirm")
+            tell(player, "This wipes all " .. Store.count() .. " record(s). Run: /fate clear confirm")
         else
             local removed = Store.clear()
             strikes = {}

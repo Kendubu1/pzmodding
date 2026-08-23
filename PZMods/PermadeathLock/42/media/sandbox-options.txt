@@ -64,3 +64,31 @@ option PermadeathLock.FateBinding
     page = PermadeathLock,
     translation = PermadeathLock_FateBinding,
 }
+
+option PermadeathLock.FateTokenLoot
+{
+    type = boolean,
+    default = false,
+    page = PermadeathLock,
+    translation = PermadeathLock_FateTokenLoot,
+}
+
+option PermadeathLock.FateTokenLootRarity
+{
+    type = enum,
+    numValues = 4,
+    default = 2,
+    page = PermadeathLock,
+    translation = PermadeathLock_FateTokenLootRarity,
+    valueTranslation = PermadeathLock_LootRarity,
+}
+
+option PermadeathLock.FateTokenBankBonus
+{
+    type = double,
+    min = 1.0,
+    max = 20.0,
+    default = 4.0,
+    page = PermadeathLock,
+    translation = PermadeathLock_FateTokenBankBonus,
+}

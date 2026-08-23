@@ -478,7 +478,7 @@ function Store.record(player, reason, saved, bind)
     return record
 end
 
---- Mark a player as dead without them being online. Used by /permadeath add.
+--- Mark a player as dead without them being online. Used by /fate add.
 ---@param username string
 ---@param reason string?
 ---@return table? record

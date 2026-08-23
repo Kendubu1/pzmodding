@@ -2,7 +2,7 @@
     Permadeath Lock - admin panel.
 
     A window over the roster: pick a player, act on them. Opened with
-    /permadeath ui.
+    /fate ui.
 
     It lists everyone online as well as everyone on the death list, because most
     of what an admin needs to see is about people who are NOT dead - who is
@@ -564,7 +564,7 @@ function PermadeathLockUI:setData(data)
     -- lying in a crate has a place on record and no row here to show it on.
     local binds = ""
     if (data.binds or 0) > 0 then
-        binds = string.format(", %d bound (/permadeath binds)", data.binds)
+        binds = string.format(", %d bound (/fate binds)", data.binds)
     end
 
     self.status:setName(string.format(
