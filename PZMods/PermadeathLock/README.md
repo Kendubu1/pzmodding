@@ -6,6 +6,17 @@ come back with a new character. Admins can pardon
 someone (fresh start) or revive them (new character, old skills), and players
 carrying a **Fate Token** buy back one death without needing an admin at all.
 
+## Publishing
+
+`workshop.txt` and `preview.png` sit at the mod root, matching the layout of an
+already-published mod in this repo. `workshop.txt` has **no `id=` line**: the
+in-game uploader assigns one on first upload and writes it back. Keep that line
+once it appears — losing it publishes a second, separate Workshop item instead
+of updating the first.
+
+`preview.png` and `42/icon.png` are currently the poster image reused. They
+work; a purpose-made preview would sell it better.
+
 ## Install
 
 Copy the `PermadeathLock` folder into `Zomboid/mods/`, so that
