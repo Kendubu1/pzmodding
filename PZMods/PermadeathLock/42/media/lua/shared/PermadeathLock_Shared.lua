@@ -9,7 +9,7 @@
 PermadeathLock = PermadeathLock or {}
 local PL = PermadeathLock
 
-PL.VERSION = "1.15.0"
+PL.VERSION = "1.15.1"
 
 -- Module name used by sendClientCommand / sendServerCommand. An internal
 -- wire name, not a label: it does not change when the mod is renamed.
@@ -144,12 +144,10 @@ end
 -- server does all of it: it counts a player's tokens for the admin panel, spends
 -- one on death, and adds or removes one when an admin hands it out.
 --
--- Handing out used to be done by the target's client, on the reasoning that a
--- player's inventory belongs to their own machine. In Build 42 it does not: the
--- client added the item, the server never saw it, and the death check - which
--- reads the server's inventory - let the player be locked out while carrying
--- three tokens. Inventory changes are made server-side, as vanilla's /additem
--- does.
+-- All of it server-side, as vanilla's /additem is. A player's inventory looks
+-- like their own machine's business, but in Build 42 it is not: an item added
+-- client-side never reaches the server, and the death check reads the server's
+-- inventory. A token added from the wrong side saves nobody.
 
 local scanTokens
 

@@ -271,9 +271,8 @@ function PermadeathLockUI:bands()
 
     -- Bottom up: the buttons anchor to the bottom of the frame and the list
     -- takes whatever is left between them, rather than the list being sized
-    -- first and the buttons landing wherever that leaves them. That ordering
-    -- is what pushed the second row two pixels past the bottom edge in 1.4.0,
-    -- underneath the resize strip.
+    -- first and the buttons landing wherever that leaves them, which puts the
+    -- second row under the resize strip along the bottom edge.
     local secondRow = self.height - m.bottom - m.button
     local firstRow = secondRow - m.button - m.pad
 

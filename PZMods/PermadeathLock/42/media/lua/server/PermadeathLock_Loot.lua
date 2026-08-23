@@ -61,10 +61,10 @@ end
 
 --- Whether this item list already has a Fate Token in it.
 ---
---- Not paranoia. A co-op Host runs two Lua states in one process and this mod
---- has been bitten by that before; a distribution event firing twice would
---- quietly double the drop rate, which is exactly the kind of bug nobody
---- notices until the tokens are everywhere.
+--- Not paranoia. A co-op Host runs two Lua states in one process, so anything
+--- that mutates shared state has to be safe against running twice - here that
+--- would quietly double every drop rate, with nothing to show for it until
+--- tokens were everywhere.
 ---@param items table flat {name, weight, name, weight, ...}
 ---@return boolean
 local function alreadyListed(items)

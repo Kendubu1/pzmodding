@@ -79,9 +79,9 @@ function ISChat:onCommandEntered()
             -- opens, and the server refuses a non-admin, so nothing is granted
             -- by letting the client open its own window.
             --
-            -- This interception went missing in 1.3.0, and the symptom was
-            -- confusing: the server has no 'ui' subcommand, so the forwarded
-            -- word fell through to the help text and the panel never appeared.
+            -- It has to be intercepted here: the server has no 'ui'
+            -- subcommand, so a forwarded 'ui' falls through to the help text
+            -- and no panel appears.
             if PermadeathLockUI ~= nil then
                 PermadeathLockUI.open()
             end

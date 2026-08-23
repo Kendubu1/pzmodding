@@ -439,8 +439,7 @@ local function runPendingTeleport(player, key)
     -- And try from here as well, which is what works in single player and is
     -- harmless when the client's move wins. Any error is LOGGED rather than
     -- swallowed: a throw here and a move that quietly does not hold are
-    -- different problems, and both used to be reported as "could not be
-    -- reached".
+    -- different problems and should not be reported the same way.
     local serverMoved = "no teleportTo on this build"
     if player.teleportTo ~= nil then
         local ok, err = pcall(function() player:teleportTo(x, y, z) end)
@@ -690,11 +689,11 @@ local function commandRevive(admin, target)
 
     local online = findOnline(record.username)
     if online == nil then
-        tell(admin, record.username .. " revived. Their skills will be restored when they next log in.")
+        tell(admin, record.username .. " revived. Their skills will be restored when they next play.")
     elseif online:isDead() then
         -- The game exposes no way to un-kill a character, so the body stays dead.
         tell(admin, record.username .. " revived, but their current character is already dead - the game gives no way")
-        tell(admin, "to undo that. Tell them to reconnect; their skills will be restored to the new character.")
+        tell(admin, "to undo that. Tell them to respawn; their skills go to the new character.")
     else
         applyRestore(online, record)
         online:getBodyDamage():RestoreToFullHealth()
@@ -719,18 +718,18 @@ local function commandPardon(admin, target)
     strikes[key] = nil
     blockedAt[key] = nil
 
-    tell(admin, target .. " pardoned. They may rejoin with a fresh character.")
+    tell(admin, target .. " pardoned. They may respawn with a fresh character.")
 
     -- Only flagged when they are online AND dead right now, which is the case
     -- the flag exists for. Setting it for an offline player would also excuse a
-    -- fresh death in the minute after they reconnect.
+    -- fresh death in the minute after they come back.
     local online = findOnline(target)
     if online ~= nil and online:isDead() then
         forgiven[key] = true
         -- Worth saying out loud: a pardon does not stand their character back
         -- up, and an admin watching the corpse not move assumes it did nothing.
-        tell(admin, "Their current character is still dead - the game gives no way to undo that. They")
-        tell(admin, "need to reconnect and make a new one; they will not be blocked.")
+        tell(admin, "Their current character is still dead - the game gives no way to undo that.")
+        tell(admin, "They can respawn as normal; they will not be blocked.")
     end
 
     print("[PermadeathLock] " .. admin:getUsername() .. " pardoned " .. target .. ".")
@@ -860,14 +859,10 @@ end
 --- Hand a player a Fate Token, or take one back.
 ---
 --- Done here, on the server, and NOT by asking the target's client to do it.
---- 1.5.0 had it the other way round, reasoning that a player's inventory
---- belongs to their own machine. That was wrong for Build 42, and wrong in a
---- way that mattered far more than a cosmetic count: the client added the item
---- and reported success, the server never saw it, and the death check reads the
---- server's inventory. A token handed out through the panel therefore saved
---- nobody - players died carrying three of them and were locked out anyway.
---- The count the admin was shown said 0 for the same reason, which was the
---- visible half of the same fault.
+--- A player's inventory looks like their own machine's business, but in Build 42
+--- it is not: a client-side add reports success, never reaches the server, and
+--- the death check reads the server's inventory. A token added from the wrong
+--- side saves nobody, and shows as 0 in the panel for the same reason.
 ---
 --- Vanilla's own /additem adds server-side and works, death check included.
 --- This does the same thing.
@@ -1266,11 +1261,11 @@ local function onClientCommand(module, command, player, args)
         if record == nil then return end
 
         -- Nothing is done to the character here, deliberately. This runs from
-        -- OnCreatePlayer, while the character is still loading into the world.
-        -- Acting at that instant is what black-screened people: it is where the
-        -- kill used to happen, and it is where a whole character's worth of
-        -- perk levels used to be applied in one go. Both now wait for the
-        -- client to say it has settled - see spawnSettled above.
+        -- OnCreatePlayer, while the character is still loading into the world,
+        -- and acting at that instant black-screens the client: there is no
+        -- valid camera target yet, and it does not recover. The kill and the
+        -- perk restore both wait for the client to say it has settled - see
+        -- spawnSettled above.
         if record.pendingRestore and not player:isDead() then
             sendServerCommand(player, MODULE, "settle", {})
         elseif record.locked and not PL.isExempt(player) then

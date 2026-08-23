@@ -3,7 +3,7 @@ IGUI_EN = {
 
 	IGUI_PermadeathLock_BlockedKilled = "You died on this server, and permadeath is enabled here. No new character of yours is allowed to live - this one dies now, and so will the next. An admin can lift it: they can pardon you, or revive you and give you back what you learned.",
 
-	IGUI_PermadeathLock_TokenSpent = "Your Fate Token burns away. You are NOT locked out - reconnect and make a new character, and the skills this one earned come with you. Your body and everything on it stay where they fell.",
+	IGUI_PermadeathLock_TokenSpent = "Your Fate Token burns away. You are NOT locked out - respawn as normal, and the skills this character earned come with you. Your body and everything on it stay where they fell.",
 
 	IGUI_PermadeathLock_FateSealed = "Your fate has been decided. You carried no Fate Token, so this world is closed to you: a new character will not be allowed in. Wait, and pray for a pardon - only an admin can lift this.",
 }

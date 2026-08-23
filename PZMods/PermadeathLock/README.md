@@ -39,10 +39,9 @@ is only a local folder.
 line is cheaper than working out which spelling this build wants. `url=` fills
 the **Homepage** row.
 
-The art is generated, not drawn by hand: `art/make_art.py` produces all three
-images and is committed alongside them, so a tweak to the palette or the wording
-is a one-line edit and a re-run rather than a lost source file. It seeds its
-randomness, so the same script always yields the same coin.
+`art/make_art.py` is the source for all three images and is committed alongside
+them, so a change to the palette or the wording is an edit and a re-run rather
+than a lost original. It is seeded: the same script always yields the same coin.
 
 | File | Size | What it is for |
 | --- | --- | --- |
@@ -50,8 +49,9 @@ randomness, so the same script always yields the same coin.
 | `42/poster.png` | 512×512 | Shown larger in the in-game mod panel, so it has room for a line of pitch. |
 | `42/icon.png` | 128×128 | The mod list. The token alone — it still reads at 32px, which is what that list gives it. |
 
-The first version of these was a red prohibition sign, which reads as *banned*
-or *error* rather than as a game mod, and was the same file in all three slots.
+Each slot gets its own cut rather than one image reused three times: the
+thumbnail needs the name on it, the icon needs to survive being shrunk to a
+tab-sized square, and the poster has room for a line of pitch.
 
 ## Install
 
@@ -87,11 +87,10 @@ PermadeathLock/
         └── lua/{shared,server,client}/
 ```
 
-**The translations sit in `common/`, not in `42/`.** Kept there because the one
-mod nearby whose translations demonstrably load does the same, and ours - in the
-version folder - did not, through several attempts. Nothing about the files
-themselves was wrong; the file names are right and so are the table names. They
-are build-independent text, so `common/` costs nothing either way.
+**The translations sit in `common/`, not in `42/`.** That is where they load
+reliably from, and they are build-independent text, so the version folder buys
+nothing. Note also that an `IGUI_EN = {...}` table must live in a file named
+`IG_UI_EN.txt` — a file called `IGUI_EN.txt` is never read.
 
 Build 42 only loads files from the version folder matching the running build, and
 `mod.info` lives *inside* that folder. To also ship a Build 41 version, add a
@@ -132,7 +131,7 @@ fault, not noise.**
 
 **If you are hosting, you are almost certainly an admin, and `ExemptAdmins`
 defaults to on** - your deaths will be ignored until you turn it off in the
-sandbox settings. That looks identical to the mod being broken.
+sandbox settings, and an ignored death looks exactly like nothing happening.
 
 ## How enforcement works
 
@@ -329,10 +328,9 @@ That last line matters on a co-op Host — see *Where it runs*. Getting this
 reply **twice** means the server half is loaded twice, which is a fault in
 itself.
 
-Reach for it first. Almost every "the mod is broken" report has been one of
-those lines. An exempt player's death in particular does nothing at all — not
-recorded, no token spent, nothing locked — which from the inside is
-indistinguishable from a fault. The server log now says so explicitly when it
+Reach for it first: it answers most questions on its own. An exempt player's
+death in particular does nothing at all — not recorded, no token spent, nothing
+locked — which from the inside is indistinguishable from a fault. The server log now says so explicitly when it
 happens:
 
 ```
@@ -371,23 +369,23 @@ are dropped one at a time in this order:
 `Skills held` → `Died` → `Bind` → `Tokens` → `State`
 
 `Player` is never dropped, and a column only ever disappears as the window
-shrinks — widen it and everything comes straight back. Fractions of the window
-width, which is what this used to use, were fine while the panel was always wide
-and fell apart the moment it was dragged narrow: 15% of a small number is not
-enough room for "awaiting restore" however you slice it.
+shrinks — widen it and everything comes straight back. Measuring beats setting
+the columns at fractions of the window width, which only holds while the window
+is wide: 15% of a small number is not enough room for "awaiting restore" however
+you slice it.
 
 Its bands are laid out from both edges inward: the status line and column titles
 down from the title bar, the buttons up from the bottom, and the list takes what
 is left between them. Sizing the list first and letting the buttons fall where
-that put them is what pushed the bottom row off the frame in 1.4.0, underneath
-the resize strip.
+that leaves them puts the bottom row under the resize strip, which
+`ISCollapsableWindow` lays along the whole bottom edge.
 
 One geometry function, `bands()`, answers where everything goes, and both
 `createChildren` and `layout` go through it. Children are therefore *built* at
 their real size rather than at a placeholder that gets corrected a moment later:
 `ISScrollingListBox` positions its scrollbar when it is built and never moves it
-again, so a list born 10x10 got a 10px bar at x = -7 — a sliver hanging off the
-left edge — and its rows did not appear at all until the window was dragged to a
+again, so a list built at 10x10 gets a 10px bar at x = -7 — a sliver hanging off
+the left edge — and shows no rows at all until the window is dragged to a
 new size.
 
 Every band's height comes from `getTextManager():getFontHeight(UIFont.Small)`,
@@ -417,10 +415,9 @@ is the single most common reason for "the mod isn't working". **`dead, not
 listed`** means a corpse the sweep has not recorded yet, or one belonging to
 someone an admin has just pardoned.
 
-The client opens the panel itself rather than asking the server to; the server
-has no `ui` subcommand to fall through to, and when the client-side handling
-went missing in 1.3.0 the symptom was the command silently printing the help
-text.
+The client opens the panel itself rather than asking the server to. The server
+has no `ui` subcommand, so without the client-side interception the word falls
+through to the help text and no panel appears.
 
 It is only a face on the chat commands. Every button sends the same message the
 typed command does, and the server re-checks the sender's access level before
@@ -453,7 +450,7 @@ levels the dead one had.
 
 - Target **offline** → they are unlocked, and their skills are restored the moment
   they log in with a new character.
-- Target **online but dead** → same, but they must reconnect first; the corpse
+- Target **online but dead** → same, but they have to respawn first; the corpse
   stays a corpse. The command tells you so.
 - Target **online and alive** (they already made a new character) → skills are
   restored immediately and they are healed to full.
@@ -461,8 +458,8 @@ levels the dead one had.
 `pardon` just removes them from the list — they come back with nothing.
 
 Pardoning someone whose character is *still lying dead in the world* does not
-stand that character back up; nothing can. They have to reconnect and make a new
-one, and the command says so. Their corpse is left alone by the sweep from then
+stand that character back up; nothing can. They respawn as normal, and the
+command says so. Their corpse is left alone by the sweep from then
 on, so the pardon is not quietly undone a minute later.
 
 Skills are restored, not overwritten: a level the new character already exceeds is
@@ -591,8 +588,8 @@ would make the teleport work only for places you were already near.
 What the log does say, per attempt: what the client reported, where the server
 thinks the character is, and — as `server-side raised: …` — any error thrown by
 `teleportTo`, which is logged rather than swallowed. A throw and a move that
-quietly does not hold are different problems, and both used to arrive as "could
-not be reached".
+quietly does not hold are different problems and should not arrive looking the
+same.
 
 ### Finding a bound token that has been lost
 
@@ -773,14 +770,14 @@ identification only — matching is always by username.
    `/createhorde 30` with godmode off, or the debug menu.
 3. Check the console for `[PermadeathLock] <name> died ... and is locked out`, and
    that your name appears in the death list file.
-4. Reconnect and make a new character — you should get the notice and be
-   disconnected within a few seconds.
+4. Respawn — you should get the notice, and the new character should die within
+   a few seconds.
 5. As an admin (second account, or turn `ExemptAdmins` back on), run
-   `/fate revive <name>`, reconnect on the first account, and confirm the
+   `/fate revive <name>`, respawn on the first account, and confirm the
    skills come back.
 6. For the Fate Token: `/additem <name> Base.FateToken`, die again, and check the
    console says `died holding a Fate Token; not locked out`. You should be able to
-   reconnect straight away, with your skills.
+   respawn straight away, with your skills.
 7. For the pardon path: die, then `/fate pardon <name>` while your corpse is
    still in the world. Wait two in-game minutes, run `/fate list`, and
    confirm you are **not** back on it. Then make a new character and confirm you
