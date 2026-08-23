@@ -21,6 +21,7 @@ lua5.1 PZMods/PermadeathLock/tests/test_store.lua
 lua5.1 PZMods/PermadeathLock/tests/test_server.lua
 lua5.1 PZMods/PermadeathLock/tests/test_loot.lua
 lua5.1 PZMods/PermadeathLock/tests/test_translations.lua
+lua5.1 PZMods/PermadeathLock/tests/test_keyring.lua
 lua5.1 PZMods/PermadeathLock/tests/test_layout.lua
 lua5.1 PZMods/PermadeathLock/tests/test_commands.lua
 sh      PZMods/PermadeathLock/tests/test_gating.sh
@@ -44,6 +45,11 @@ each `IGUI_` key the Lua asks for is written, and that the `common/` and `42/`
 copies are identical. Every failure it catches looks the same in game — a raw
 key where a sentence should be — which is invisible from the repo and obvious to
 a player.
+
+`test_keyring.lua` drives the `AcceptItemFunction.KeyRing` wrapper: that a Fate
+Token is accepted, that keys and vanilla's own extras still are, that a hammer
+still is not, and that every answer except our own item is still vanilla's. It
+also wraps twice to prove the hook is idempotent.
 
 `test_layout.lua` builds the admin panel against stubbed UI classes and checks
 that no band lands on another: the status line clears the title bar, the column

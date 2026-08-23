@@ -9,7 +9,7 @@
 PermadeathLock = PermadeathLock or {}
 local PL = PermadeathLock
 
-PL.VERSION = "1.16.0"
+PL.VERSION = "1.17.0"
 
 -- Module name used by sendClientCommand / sendServerCommand. An internal
 -- wire name, not a label: it does not change when the mod is renamed.
@@ -309,4 +309,51 @@ function PL.isExempt(player)
         return true
     end
     return false
+end
+
+--------------------------------------------------------------------------------
+-- the key ring
+--------------------------------------------------------------------------------
+
+-- A Fate Token belongs on a key ring - it is a coin you keep on you and must not
+-- lose - but it is deliberately NOT made a key to get there.
+--
+-- The key ring is a container (`ItemType = base:container`, capacity 1) and what
+-- it takes is decided by `AcceptItemFunction.KeyRing`, which already lets a few
+-- things on that are not keys: a whistle, some multi-tools. Adding ours to that
+-- list is the same move vanilla makes for those, and it leaves the item alone.
+--
+-- Retyping the token as a key would be the shorter diff and the worse idea. A
+-- key is a thing the game reasons about - it carries a lock id, it is what door
+-- and vehicle code looks for, and other mods that iterate a player's keys would
+-- start finding ours. None of that is worth a container slot.
+
+local keyRingHooked = false
+
+--- Let Fate Tokens go on a key ring.
+---
+--- Safe to call more than once: the flag matters because a co-op Host runs two
+--- Lua states, and a wrapper wrapped twice would call vanilla's check twice.
+function PL.allowOnKeyRings()
+    if keyRingHooked then return end
+    if AcceptItemFunction == nil or AcceptItemFunction.KeyRing == nil then return end
+    keyRingHooked = true
+
+    local vanilla = AcceptItemFunction.KeyRing
+    AcceptItemFunction.KeyRing = function(container, item, ...)
+        if item ~= nil and item.getFullType ~= nil and item:getFullType() == PL.FATE_TOKEN then
+            return true
+        end
+        -- Everything else is still vanilla's decision, passed through whole:
+        -- other mods hook this too, and swallowing their answer would quietly
+        -- undo them.
+        return vanilla(container, item, ...)
+    end
+end
+
+-- Now if the game has already built its table, and again at boot if it has not.
+-- The order these load in is not ours to choose.
+PL.allowOnKeyRings()
+if Events ~= nil and Events.OnGameBoot ~= nil then
+    Events.OnGameBoot.Add(PL.allowOnKeyRings)
 end

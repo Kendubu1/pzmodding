@@ -619,6 +619,25 @@ thinks the character is, and — as `server-side raised: …` — any error thro
 quietly does not hold are different problems and should not arrive looking the
 same.
 
+### On a key ring
+
+A Fate Token can go on a key ring, which is where a thing you must not lose
+belongs. It is **not** made a key to get there.
+
+The key ring is a container (`ItemType = base:container`, capacity 1) and what
+it accepts is decided by `AcceptItemFunction.KeyRing` — which already allows a
+few things that are not keys, such as a whistle. The mod wraps that function and
+adds the Fate Token to the list, which is the same move vanilla makes for those.
+
+Retyping the token as a key would be the shorter diff and the worse idea. A key
+is a thing the game reasons about: it carries a lock id, it is what door and
+vehicle code looks for, and any mod iterating a player's keys would start
+finding ours. Not worth a container slot.
+
+The wrap passes every other item straight through to vanilla's answer, so other
+mods hooking the same function still get theirs, and it is idempotent — a co-op
+Host runs two Lua states, and a double wrap would run vanilla's check twice.
+
 ### Finding a bound token that has been lost
 
 Every bind is written down twice: on the item, and in a registry the server
