@@ -79,25 +79,37 @@ PermadeathLock/
         └── lua/{shared,server,client}/
 ```
 
-**The translations are shipped three times** — at the mod root, in `common/`,
-and in `42/` — as identical files:
+**Translations ship in two formats, because Build 42.15 changed it.** Up to
+42.14 a translation file was a Lua table in `Name_EN.txt`; from 42.15 it is a
+flat JSON object in `Name.json`, same folder, language suffix dropped:
+
+| Build | File | Contents |
+| --- | --- | --- |
+| ≤ 42.14 | `Translate/EN/Sandbox_EN.txt` | `Sandbox_EN = { Key = "text", }` |
+| ≥ 42.15 | `Translate/EN/Sandbox.json` | `{ "Key": "text" }` |
+
+A build reads its own format and **ignores the other**. Being wrong is silent:
+the game renders the key instead of the sentence and logs nothing, which is
+what a raw `Tooltip_FateToken` on the item and a settings page full of
+`Sandbox_PermadeathLock_...` actually were. Not a folder problem, which is
+where two rounds of guessing went.
+
+The `.txt` files under `common/` are the **source**. Everything else is built:
 
 ```
-PermadeathLock/media/lua/shared/Translate/EN/
-PermadeathLock/common/media/lua/shared/Translate/EN/
-PermadeathLock/42/media/lua/shared/Translate/EN/
+python3 tools/build_translations.py
 ```
 
-Which root the game reads them from is **not** the same question as which root
-it loads Lua from: the Lua VM and the Java translator walk different paths, and
-a multi-version mod (`mod.info` inside `42/`, with a `common/`) puts three
-plausible answers on the table. Getting it wrong is silent — the game renders
-the key instead of the sentence and logs nothing — which cost this mod a raw
-`Tooltip_FateToken` on the item and a settings page full of
-`Sandbox_PermadeathLock_...`. A few kilobytes of duplicated text is cheaper
-than being wrong; `test_translations.lua` asserts all three stay byte-identical.
+which writes both formats into both `common/` and `42/`. `test_translations.lua`
+fails if a `.json` has fallen behind its `.txt`.
 
-Once one is confirmed working in game, the other two can go.
+Two related Build 42 differences, from the same evidence:
+
+- **Enum sandbox values are keyed `Sandbox_<translation>_option<N>`**, and
+  `sandbox-options.txt` carries no `valueTranslation` line at all. The Build 41
+  scheme leaves the dropdown showing raw keys.
+- **`versionMin=`** in `mod.info` is what fills the mod panel's `ZomboidVersion`
+  row.
 
 Two rules that are easy to break and invisible until a player sees a raw key:
 

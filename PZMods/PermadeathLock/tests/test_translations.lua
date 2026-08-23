@@ -14,13 +14,8 @@
 -- Each of those is now a failing test instead of a screenshot.
 
 local ROOT = "PZMods/PermadeathLock/"
--- Three roots, because which one the Java translator reads is not the same
--- question as which one the Lua loader reads, and getting it wrong is silent:
--- the game shows the key instead of the sentence and says nothing. Identical
--- copies in all three cost a few kilobytes; the checks below keep them in step.
 local COMMON = ROOT .. "common/media/lua/shared/Translate/EN/"
 local VERSIONED = ROOT .. "42/media/lua/shared/Translate/EN/"
-local BARE = ROOT .. "media/lua/shared/Translate/EN/"
 
 local failures = 0
 local function check(label, got, want)
@@ -95,16 +90,39 @@ check("the IGUI table lives in IG_UI_EN.txt", read(COMMON .. "IG_UI_EN.txt") ~= 
 check("and there is no IGUI_EN.txt to be ignored", read(COMMON .. "IGUI_EN.txt"), nil)
 
 --------------------------------------------------------------------------------
-io.write("\n-- shipped in both places the game might look --\n")
+io.write("\n-- both formats, and both roots --\n")
 
--- Nothing here can settle which root the game actually reads, and being wrong
--- looks like a raw key on a player's screen. All three are shipped; this keeps
--- them from drifting apart.
+-- Build 42.15 replaced the Lua-table Name_EN.txt with a flat JSON Name.json in
+-- the same folder. A build reads its own format and ignores the other, so both
+-- are shipped, generated from the .txt by tools/build_translations.py. A .json
+-- that has fallen behind its .txt is the whole failure mode this guards.
 for _, spec in ipairs(FILES) do
     check(spec.file .. " matches the 42/ copy",
         readUnstamped(VERSIONED .. spec.file), readUnstamped(COMMON .. spec.file))
-    check(spec.file .. " matches the mod-root copy",
-        readUnstamped(BARE .. spec.file), readUnstamped(COMMON .. spec.file))
+end
+
+for _, spec in ipairs(FILES) do
+    local stem = string.gsub(spec.file, "_EN%.txt$", "")
+    local entries = loaded[spec.table] or {}
+
+    for _, folder in ipairs({ COMMON, VERSIONED }) do
+        local body = read(folder .. stem .. ".json")
+        local label = stem .. ".json"
+        if folder == VERSIONED then label = label .. " (42/)" end
+
+        check(label .. " exists", body ~= nil, true)
+        if body ~= nil then
+            -- Every key the .txt declares has to be in the .json too, or a
+            -- 42.15 player sees that one string as its key.
+            local missing = 0
+            for key in pairs(entries) do
+                if string.find(body, '"' .. key .. '"', 1, true) == nil then
+                    missing = missing + 1
+                end
+            end
+            check(label .. " carries every key", missing, 0)
+        end
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -123,17 +141,16 @@ for key in string.gmatch(options, "translation%s*=%s*([A-Za-z_]+)") do
 end
 check("options were actually found to check", count > 0, true)
 
--- An enum renders one entry per value, numbered from 1. A missing one shows the
--- raw key in the dropdown.
-for name, values in string.gmatch(options, "valueTranslation%s*=%s*([A-Za-z_]+)[^}]-numValues%s*=%s*(%d+)") do
+-- An enum renders one entry per value. Build 42 keys them
+-- Sandbox_<translation>_option<N>, with no separate valueTranslation line -
+-- which is what shipped Build 42 mods do, and is not the Build 41 scheme.
+check("no Build 41 valueTranslation lines remain",
+    string.find(options, "valueTranslation", 1, true), nil)
+
+for values, name in string.gmatch(options, "numValues%s*=%s*(%d+)[^}]-translation%s*=%s*([A-Za-z_]+)") do
     for i = 1, tonumber(values) do
-        check(name .. i .. " is named", sandbox["Sandbox_" .. name .. i] ~= nil, true)
-    end
-end
--- numValues usually precedes valueTranslation, so match that order too.
-for values, name in string.gmatch(options, "numValues%s*=%s*(%d+)[^}]-valueTranslation%s*=%s*([A-Za-z_]+)") do
-    for i = 1, tonumber(values) do
-        check(name .. i .. " is named", sandbox["Sandbox_" .. name .. i] ~= nil, true)
+        local key = "Sandbox_" .. name .. "_option" .. i
+        check(key .. " is named", sandbox[key] ~= nil, true)
     end
 end
 

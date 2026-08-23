@@ -272,6 +272,43 @@ the game did not find it. Two causes:
 
 ---
 
+## 7b. Build 42.15 changed the translation file format
+
+The symptom: **every** string your mod supplies renders as its own key —
+`Tooltip_FateToken` in an inventory, `Sandbox_MyMod_Enabled` on the settings
+page — while the base game's own text is fine. Nothing is logged.
+
+The cause: **42.15 replaced the Lua-table `.txt` with a flat JSON object.** Same
+folder, and the filename drops the language suffix:
+
+| Build | File | Contents |
+| --- | --- | --- |
+| ≤ 42.14 | `Translate/EN/Sandbox_EN.txt` | `Sandbox_EN = { Key = "text", }` |
+| ≥ 42.15 | `Translate/EN/Sandbox.json` | `{ "Key": "text" }` |
+
+A build reads its own format and **ignores the other entirely**. Ship both,
+generated from one source so they cannot drift — hand-maintaining two copies of
+the same strings is how half of them end up stale.
+
+Two more things Build 42 does differently, from the same evidence:
+
+- **Enum sandbox values are keyed `Sandbox_<translation>_option<N>`**, and there
+  is no `valueTranslation` line in `sandbox-options.txt` at all. The Build 41
+  scheme — a separate `valueTranslation` key plus a bare number suffix — leaves
+  the dropdown showing raw keys.
+- **`versionMin=42.14.0`** in `mod.info` is what fills the mod panel's
+  `ZomboidVersion` row, and version folders can be *minor*-versioned
+  (`42.14/`, `42.15/`) so one upload can serve both formats.
+
+How this was found, which is the transferable part: read a **recently updated**
+Build 42 mod's source. One that ships `42.14/` and `42.15/` folders side by side
+shows the change as a diff between its own two copies. Guides and wikis lagged
+it; a mod that had to survive the update did not.
+
+Source: [phobos-dthorga/mod-pz-chemistry-pathways](https://github.com/phobos-dthorga/mod-pz-chemistry-pathways)
+
+---
+
 ## 8. Build 42 structure and syntax
 
 ```

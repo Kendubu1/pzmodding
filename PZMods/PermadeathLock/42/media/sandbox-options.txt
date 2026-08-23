@@ -80,7 +80,6 @@ option PermadeathLock.FateTokenLootRarity
     default = 2,
     page = PermadeathLock,
     translation = PermadeathLock_FateTokenLootRarity,
-    valueTranslation = PermadeathLock_LootRarity,
 }
 
 option PermadeathLock.FateTokenBankBonus

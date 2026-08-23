@@ -1,3 +1,0 @@
-Tooltip_EN = {
-	Tooltip_FateToken = "[root] Death is not the end for those who carry it. Die with this on you and the token burns away in your place: you are not locked out, and everything you learned comes back with you. <br>Right-click it to bind your fate to where you stand, and it is there you will wake. <br>Your body, and all it carries, stays where it fell.",
-}

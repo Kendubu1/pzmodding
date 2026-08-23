@@ -1,5 +1,5 @@
 Sandbox_EN = {
-    Sandbox_PermadeathLock = "Fate Token [common]",
+    Sandbox_PermadeathLock = "Fate Token",
 
     Sandbox_PermadeathLock_Enabled = "Enable permadeath lock",
     Sandbox_PermadeathLock_Enabled_tooltip = "When on, a player who dies is added to the death list and cannot return with a new character. Turn off to suspend the lock without uninstalling the mod; the death list is kept.",
@@ -28,10 +28,10 @@ Sandbox_EN = {
     Sandbox_PermadeathLock_FateTokenLootRarity = "How rare a found Fate Token is",
     Sandbox_PermadeathLock_FateTokenLootRarity_tooltip = "How strongly a Fate Token competes with the other loot in a cash register. It is a relative weight, not a percentage: the odds in any one till depend on what else that till can hold, and your world's own Loot Rarity setting scales all of it again. ALMOST NEVER - rarer than anything the base game spawns; tokens become a rumour most players never confirm. VERY RARE (default) - about as scarce as loot gets, so finding one is an event. RARE - on a par with the base game's scarce finds; a dedicated looter will turn one up eventually. UNCOMMON - as common as an ordinary useful item, so most players will carry one before long, and deaths stop being final for anyone who searches.",
 
-    Sandbox_PermadeathLock_LootRarity1 = "Almost never - rarer than any vanilla loot",
-    Sandbox_PermadeathLock_LootRarity2 = "Very rare - finding one is an event",
-    Sandbox_PermadeathLock_LootRarity3 = "Rare - a dedicated looter will find one",
-    Sandbox_PermadeathLock_LootRarity4 = "Uncommon - most players will carry one",
+    Sandbox_PermadeathLock_FateTokenLootRarity_option1 = "Almost never - rarer than any vanilla loot",
+    Sandbox_PermadeathLock_FateTokenLootRarity_option2 = "Very rare - finding one is an event",
+    Sandbox_PermadeathLock_FateTokenLootRarity_option3 = "Rare - a dedicated looter will find one",
+    Sandbox_PermadeathLock_FateTokenLootRarity_option4 = "Uncommon - most players will carry one",
 
     Sandbox_PermadeathLock_FateTokenBankBonus = "How much better banks are",
     Sandbox_PermadeathLock_FateTokenBankBonus_tooltip = "Multiplies the rarity above for banks and vaults only, so robbing a bank is worth the zombies in it. At the default of 4, a token that is 'very rare' in a shop till is four times as likely behind a bank counter - which is still rare. Set it to 1 to make a bank no better than a corner shop, or raise it to concentrate every token in the world into a few dangerous buildings.",

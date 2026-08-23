@@ -9,7 +9,7 @@
 PermadeathLock = PermadeathLock or {}
 local PL = PermadeathLock
 
-PL.VERSION = "1.15.3"
+PL.VERSION = "1.16.0"
 
 -- Module name used by sendClientCommand / sendServerCommand. An internal
 -- wire name, not a label: it does not change when the mod is renamed.
