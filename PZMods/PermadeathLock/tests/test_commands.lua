@@ -45,6 +45,8 @@ function ISModalDialog:new(_x, _y, _w, _h, message)
     return { initialise = function() end, addToUIManager = function() end }
 end
 
+function getSpecificPlayer() return getPlayer() end
+
 function getCore()
     return { getScreenWidth = function() return 1920 end,
              getScreenHeight = function() return 1080 end }
@@ -75,6 +77,7 @@ PermadeathLockUI = { open = function() uiOpened = uiOpened + 1 end }
 dofile("PZMods/PermadeathLock/42/media/lua/shared/PermadeathLock_Shared.lua")
 dofile("PZMods/PermadeathLock/42/media/lua/client/PermadeathLock_Client.lua")
 dofile("PZMods/PermadeathLock/42/media/lua/client/PermadeathLock_Commands.lua")
+dofile("PZMods/PermadeathLock/42/media/lua/client/PermadeathLock_TokenMenu.lua")
 
 local onServerCommand = handlers["OnServerCommand"][1]
 
@@ -192,6 +195,41 @@ check("and for the block", string.find(killed or "", "IGUI_") == nil, true)
 translationsLoaded = true
 local translated = notice("tokenSpent")
 check("a loaded translation is preferred", translated, "translated: IGUI_PermadeathLock_TokenSpent")
+
+io.write("\n-- the Fate Token's right-click menu --\n")
+
+local fillMenu = handlers["OnFillInventoryObjectContextMenu"][1]
+
+--- A stand-in context menu that records what was added to it.
+local function menu()
+    local added = {}
+    return { added = added, addOption = function(_, label) added[#added + 1] = label end }
+end
+
+---@param fullType string
+local function item(fullType)
+    return { getFullType = function() return fullType end }
+end
+
+local m = menu()
+fillMenu(0, m, { item("Base.FateToken") })
+check("the entry appears on a Fate Token", m.added[1], "Bind your fate here")
+
+m = menu()
+fillMenu(0, m, { item("Base.Hammer") })
+check("and on nothing else", #m.added, 0)
+
+-- it is offered for a token inside a stack, which is how the game passes them
+m = menu()
+fillMenu(0, m, { { items = { item("Base.FateToken") } } })
+check("a stacked token counts", m.added[1], "Bind your fate here")
+
+-- REGRESSION: an error escaping a context menu builder takes down the WHOLE
+-- menu - doors, corpses, inventory, everything. A neighbouring mod in this repo
+-- did exactly that. Nothing here may throw.
+local exploding = setmetatable({}, { __index = function() error("boom") end })
+local ok = pcall(fillMenu, 0, exploding, { item("Base.FateToken") })
+check("a broken menu does not escape the builder", ok, true)
 
 io.write("\n")
 if failures == 0 then

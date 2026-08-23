@@ -232,6 +232,8 @@ Under **Permadeath Lock** in the sandbox settings:
 | `RestoreSkillsOnRevive` | on | Revived players get their old skill levels on their next character. |
 | `FateTokenEnabled` | on | Dying with a Fate Token spends it instead of locking you out. |
 | `FateTokenConsume` | on | The token is removed from the body when it saves someone. Off = lootable and reusable. |
+| `FateBinding` | on | Right-clicking a token offers "Bind your fate here", and a spent token returns you there. |
+| `RestoreAppearance` | on | A restored character keeps the face of the one that died. |
 
 ## Admin commands
 
@@ -470,6 +472,39 @@ shield. Your corpse and everything on it still stay where they fell.
 
 One token is spent per death. Carrying three does not make you immortal three
 times over in a single death — but the other two are still on the body.
+
+### Binding a token to a place
+
+Right-click a Fate Token → **Bind your fate here**. Die carrying a token
+afterwards and your next character wakes at that spot instead of wherever the
+game would have put them. The binding is spent along with the token, so coming
+back to the same place twice takes two of them.
+
+Only a token pays for this. An admin **revive** does not use your bind and does
+not consume it — that is a favour, not the bargain you paid for.
+
+If the bound spot cannot be reached — built over since, or in a chunk the server
+does not have loaded — you are left where the game put you and told so. Nobody
+gets dropped inside a wall.
+
+The entry lives on the **item**, not on the ground. A world context-menu entry is
+offered to every player on every right-click whether they own a token or not,
+and an error raised while the game builds a context menu takes the *whole* menu
+down — doors, corpses, inventory, everything. That happened to a neighbouring
+mod in this repo. On the item it only exists where it means something, and the
+builder is wrapped besides.
+
+### Coming back as yourself
+
+A restored character keeps the skin tone, hair and beard of the one that died,
+so a Fate Token brings back the same person rather than a stranger with their
+skills. Clothing is not included: those are inventory items and they stay on the
+corpse with everything else.
+
+The face is written down with `getLastStandString` at the moment of death and
+applied by the player's **own client** on the way back — a character's
+appearance is rendered and networked by the machine that owns it, and this mod
+has twice learned what happens when the server writes state the client owns.
 
 It shows in the inventory under **Junk**, which is a stock Build 42 category and
 where the game files oddments.

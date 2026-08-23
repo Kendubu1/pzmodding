@@ -19,6 +19,12 @@ Sandbox_EN = {
     Sandbox_PermadeathLock_FateTokenEnabled = "Fate Tokens work",
     Sandbox_PermadeathLock_FateTokenEnabled_tooltip = "Dying while carrying a Fate Token (Base.FateToken) spends it instead of locking you out: your next character keeps the skills of the one that died. Turn off to disable the item without removing it from the world.",
 
+    Sandbox_PermadeathLock_FateBinding = "Fate Tokens can be bound to a place"
+    Sandbox_PermadeathLock_FateBinding_tooltip = "Right-clicking a Fate Token offers 'Bind your fate here'. Die carrying a token afterwards and your next character comes back to that spot instead of a spawn point the game picks. The binding is spent along with the token."
+
+    Sandbox_PermadeathLock_RestoreAppearance = "Come back with the same face"
+    Sandbox_PermadeathLock_RestoreAppearance_tooltip = "A restored character keeps the skin tone, hair and beard of the one that died, so a Fate Token brings back the same person rather than a stranger with their skills. Clothing is not included - that stays on the corpse with everything else."
+
     Sandbox_PermadeathLock_FateTokenConsume = "Fate Tokens are consumed",
     Sandbox_PermadeathLock_FateTokenConsume_tooltip = "Remove the token from the body when it saves someone. Turn off and the token stays on the corpse, so it can be looted and used again.",
 

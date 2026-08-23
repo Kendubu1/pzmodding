@@ -141,6 +141,9 @@ local function makePlayer(username, opts)
     self = {
         _dead = opts.dead or false,
         _healed = false,
+        _x = opts.x or 100,
+        _y = opts.y or 200,
+        _z = 0,
         _levels = held,
         getUsername = function() return username end,
         getSteamID = function() return "7656119800000000" end,
@@ -158,6 +161,19 @@ local function makePlayer(username, opts)
             if opts.dieWhenUnhealedPerk == t and not self._healed then self._dead = true end
         end,
         Kill = function() self._dead = true end,
+        getX = function() return self._x end,
+        getY = function() return self._y end,
+        getZ = function() return self._z end,
+        teleportTo = function(_, x, y, z)
+            if opts.noTeleport then return end
+            self._x, self._y, self._z = x, y, z
+        end,
+        getHumanVisual = function()
+            return {
+                getLastStandString = function() return opts.visual end,
+                loadLastStandString = function() end,
+            }
+        end,
         getBodyDamage = function()
             return { RestoreToFullHealth = function() self._healed = true end }
         end,
@@ -826,6 +842,84 @@ online = { tokenAdmin }
 sent = {}
 onClientCommand(MODULE, "admin", tokenAdmin, { sub = "take", target = "Ghosty" })
 check("offline target is refused", lastCommandTo("Admin"), "message")
+
+--------------------------------------------------------------------------------
+io.write("\n-- binding a Fate Token to a place --\n")
+
+reset()
+SandboxVars.PermadeathLock.FateBinding = true
+SandboxVars.PermadeathLock.RestoreAppearance = true
+
+-- binding needs a token actually in hand, whatever the menu offered
+local broke = makePlayer("Broke", { tokens = 0, x = 500, y = 600 })
+online = { broke }
+sent = {}
+onClientCommand(MODULE, "bind", broke, { x = 500, y = 600, z = 0 })
+check("no token, no binding", Store.getBind("Broke"), nil)
+check("and they are told why", lastCommandTo("Broke"), "message")
+
+-- with one, the spot is remembered
+local rob = makePlayer("Rob", { tokens = 1, x = 500, y = 600, visual = "FACE-DATA" })
+online = { rob }
+onClientCommand(MODULE, "bind", rob, { x = 500, y = 600, z = 0 })
+check("the bind is stored", Store.getBind("Rob") ~= nil, true)
+check("at the right place", Store.getBind("Rob").x, 500)
+
+-- die on it, come back to it
+rob._dead = true
+sweep()
+check("the token saved them", Store.isLocked("Rob"), false)
+check("and the face was captured", Store.get("Rob").visual, "FACE-DATA")
+
+local robNew = makePlayer("Rob", { x = 1, y = 1 })
+online = { robNew }
+sent = {}
+onClientCommand(MODULE, "spawnSettled", robNew, {})
+check("they wake at the bound spot", math.floor(robNew._x), 500)
+check("and the same face is sent to their client", (function()
+    for _, e in ipairs(sent) do
+        if e.command == "restoreLook" and e.args.visual == "FACE-DATA" then return true end
+    end
+    return false
+end)(), true)
+check("the binding is spent with the token", Store.getBind("Rob"), nil)
+
+-- an admin revive is not that bargain: no teleport
+reset()
+local sal = makePlayer("Sal", { tokens = 1, x = 700, y = 800 })
+online = { sal }
+onClientCommand(MODULE, "bind", sal, { x = 700, y = 800, z = 0 })
+Store.record(sal, "test")
+Store.revive("Sal")
+local salNew = makePlayer("Sal", { x = 5, y = 5 })
+online = { salNew }
+onClientCommand(MODULE, "spawnSettled", salNew, {})
+check("a revive does not use the bind", math.floor(salNew._x), 5)
+check("and leaves it for the token that paid for it", Store.getBind("Sal") ~= nil, true)
+
+-- a spot that cannot be reached leaves them where the game put them
+reset()
+local tim = makePlayer("Tim", { tokens = 1, x = 900, y = 900 })
+online = { tim }
+onClientCommand(MODULE, "bind", tim, { x = 900, y = 900, z = 0 })
+tim._dead = true
+sweep()
+local timNew = makePlayer("Tim", { x = 5, y = 5, noTeleport = true })
+online = { timNew }
+sent = {}
+onClientCommand(MODULE, "spawnSettled", timNew, {})
+check("an unreachable bind strands nobody", math.floor(timNew._x), 5)
+check("and says so rather than failing silently", lastCommandTo("Tim"), "message")
+
+-- both switches off, both features stay out of the way
+reset()
+SandboxVars.PermadeathLock.FateBinding = false
+local urs = makePlayer("Urs", { tokens = 1, x = 300, y = 300 })
+online = { urs }
+sent = {}
+onClientCommand(MODULE, "bind", urs, { x = 300, y = 300, z = 0 })
+check("binding switched off is refused", Store.getBind("Urs"), nil)
+SandboxVars.PermadeathLock.FateBinding = true
 
 --------------------------------------------------------------------------------
 io.write("\n-- what the mod knows about one player --\n")

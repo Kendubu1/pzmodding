@@ -71,6 +71,7 @@ dofile(base .. "server/PermadeathLock_Store.lua")
 dofile(base .. "client/PermadeathLock_AdminUI.lua")
 dofile(base .. "client/PermadeathLock_Client.lua")
 dofile(base .. "client/PermadeathLock_Commands.lua")
+dofile(base .. "client/PermadeathLock_TokenMenu.lua")
 
 -- The server half is live if it hooked the sweep; the client half if it hooked
 -- the spawn handshake and replaced the chat command handler.

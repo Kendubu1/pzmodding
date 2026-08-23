@@ -9,7 +9,7 @@
 PermadeathLock = PermadeathLock or {}
 local PL = PermadeathLock
 
-PL.VERSION = "1.11.1"
+PL.VERSION = "1.12.0"
 
 -- Module name used by sendClientCommand / sendServerCommand.
 PL.MODULE = "PermadeathLock"
@@ -25,6 +25,10 @@ PL.DEATH_FILE = "PermadeathLock_deaths.txt"
 -- and blow up on the first sweep. Creating the table in shared - which loads
 -- before both - means every file captures the same table whatever the order.
 PL.Store = PL.Store or {}
+
+-- Bind points, written alongside the death list. A separate file because a bind
+-- belongs to a living player who has no death record yet.
+PL.BIND_FILE = "PermadeathLock_binds.txt"
 
 -- The Fate Token. Dying while carrying one spends it instead of locking you out.
 PL.FATE_TOKEN = "Base.FateToken"

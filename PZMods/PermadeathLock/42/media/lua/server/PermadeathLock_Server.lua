@@ -307,6 +307,65 @@ local function failedRestore(player, record, killedBy)
     })
 end
 
+--- Put a restored character where their Fate Token said to.
+---
+--- Only for a token, never for an admin revive: a bind is something the player
+--- paid for and placed, and a pardon or a revive is not that bargain.
+---
+--- Done here on the server, which is what vanilla's own teleport does, and then
+--- read back - a square that has since been built over, or is in a chunk the
+--- server has not got loaded, must not strand anyone. The spawn the game
+--- already chose is a perfectly good outcome; being dropped inside a wall is
+--- not.
+---@param player IsoPlayer
+---@param record table
+local function returnToBind(player, record)
+    if record.reason ~= PL.REASON_TOKEN then return end
+    if not PL.getOption("FateBinding", true) then return end
+
+    local bind = Store.getBind(player:getUsername())
+    if bind == nil then return end
+
+    -- Spent along with the token that paid for it.
+    Store.clearBind(player:getUsername())
+
+    if player.teleportTo == nil then
+        print("[PermadeathLock] this build has no teleportTo; bind point ignored.")
+        return
+    end
+
+    local before = { x = player:getX(), y = player:getY() }
+    local ok = pcall(function() player:teleportTo(bind.x + 0.5, bind.y + 0.5, bind.z) end)
+
+    local moved = ok and math.abs(player:getX() - bind.x) < 2 and math.abs(player:getY() - bind.y) < 2
+    if moved then
+        sendServerCommand(player, MODULE, "notice", {
+            text = "Your Fate Token brings you back to the place you bound it. That binding is"
+                .. " spent - bind another token if you want to come back here again.",
+        })
+        print("[PermadeathLock] " .. player:getUsername() .. " returned to their bind at "
+            .. bind.x .. "," .. bind.y .. "," .. bind.z .. ".")
+    else
+        tell(player, "Your bound spot could not be reached, so you are where the game put you.")
+        print("[PermadeathLock] " .. player:getUsername() .. "'s bind at " .. bind.x .. ","
+            .. bind.y .. " could not be reached; left at " .. before.x .. "," .. before.y .. ".")
+    end
+end
+
+--- Give a restored character the face the dead one had.
+---
+--- Applied by the owning client, not from here. A character's appearance is
+--- rendered and networked by the machine that owns it, and this mod has already
+--- learned twice what happens when the server writes state the client owns.
+---@param player IsoPlayer
+---@param record table
+local function restoreLook(player, record)
+    if record.visual == nil or record.visual == "" then return end
+    if not PL.getOption("RestoreAppearance", true) then return end
+
+    sendServerCommand(player, MODULE, "restoreLook", { visual = record.visual })
+end
+
 --- Hand a revived player's queued skills to the character they are now playing.
 ---@param player IsoPlayer
 ---@param record table
@@ -366,6 +425,9 @@ local function applyRestore(player, record)
     -- their life and their skills back, and were told nothing they could see.
     sendServerCommand(player, MODULE, "notice", { text = source .. " " .. detail })
     tell(player, source .. " " .. detail)
+
+    restoreLook(player, record)
+    returnToBind(player, record)
 
     print("[PermadeathLock] Restored " .. record.username .. " (" .. restored .. " skills).")
     -- Loud on purpose. A perk in the snapshot that the game no longer knows
@@ -906,6 +968,32 @@ local function onClientCommand(module, command, player, args)
     end
 
     if not PL.isEnabled() then return end
+
+    if command == "bind" then
+        -- The coordinates are the client's, and they are the one thing here it
+        -- is reasonable to take from it: a player can only bind where they are
+        -- standing, and standing somewhere is not a privilege. They are still
+        -- rounded and range-checked, and binding needs a token in hand, which
+        -- is checked here rather than trusted from the menu that offered it.
+        if not PL.getOption("FateBinding", true) then
+            tell(player, "Binding a Fate Token is switched off on this server.")
+            return
+        end
+        if PL.findToken(player) == nil then
+            tell(player, "You need a Fate Token in hand to bind your fate.")
+            return
+        end
+
+        local x, y, z = tonumber(args.x), tonumber(args.y), tonumber(args.z)
+        if x == nil or y == nil then return end
+
+        Store.setBind(player:getUsername(), x, y, z or 0)
+        tell(player, "Your fate is bound to this spot. Die carrying a Fate Token and you"
+            .. " will come back here.")
+        print("[PermadeathLock] " .. player:getUsername() .. " bound their fate to "
+            .. math.floor(x) .. "," .. math.floor(y) .. "," .. math.floor(z or 0) .. ".")
+        return
+    end
 
     if command == "spawnSettled" then
         -- The client has finished loading and is telling us it is safe to touch

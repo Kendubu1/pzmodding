@@ -286,4 +286,10 @@ and run the new harness against it.
   which takes right-click away from the *entire game* — doors, corpses,
   inventory. Make it click-through before it goes on screen, never after.
 - **An error thrown while building a context menu takes the whole menu down.**
-  Guard the builder.
+  Guard the builder. And prefer the *inventory* context menu over the world one
+  where you can: a world entry is built for every player on every right-click,
+  whether your item is involved or not, so it is the one with the blast radius.
+- **Probe Java objects by field, not by `type()`.** `type(x) == "table"` looks
+  like a way to tell a Lua wrapper from a game object, and it works right up
+  until anything else in the list is also a table — another mod's entry, or a
+  test double. `x.getFullType ~= nil` asks the question you actually mean.

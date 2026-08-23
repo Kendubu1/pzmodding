@@ -113,6 +113,25 @@ local function perksByKey()
     return index
 end
 
+--- The character's face, as one string.
+---
+--- getLastStandString is the game's own way of writing an appearance down - skin
+--- tone, hair, hair colour, beard - and loadLastStandString reads it back. It
+--- does NOT cover clothing: those are inventory items and they stay on the
+--- corpse with everything else.
+---@param player IsoPlayer
+---@return string?
+local function snapshotVisual(player)
+    if player == nil or player.getHumanVisual == nil then return nil end
+
+    local visual = player:getHumanVisual()
+    if visual == nil or visual.getLastStandString == nil then return nil end
+
+    local text = visual:getLastStandString()
+    if text == nil or text == "" then return nil end
+    return tostring(text)
+end
+
 --- Snapshot every perk the character has at least one level in.
 ---@param player IsoPlayer
 ---@return table<string, integer>
@@ -309,6 +328,7 @@ local function serialise(record)
         skills,
         record.locked and "1" or "0",
         record.pendingRestore and "1" or "0",
+        clean(record.visual),
     }, FIELD_SEP)
 end
 
@@ -329,6 +349,9 @@ local function deserialise(line)
         -- locked unless the file says otherwise.
         locked = (fields[6] or "1") ~= "0",
         pendingRestore = (fields[7] or "0") == "1",
+        -- Absent in files written before appearance was kept, which is fine:
+        -- those players come back with whatever face they pick.
+        visual = fields[8],
     }
 end
 
@@ -450,6 +473,7 @@ function Store.record(player, reason, saved)
         time = getTimestamp(),
         reason = reason or "died",
         skills = snapshotSkills(player),
+        visual = snapshotVisual(player),
         locked = not saved,
         pendingRestore = saved == true,
     }
@@ -548,6 +572,99 @@ function Store.clear()
     records = {}
     Store.save()
     return removed
+end
+
+--------------------------------------------------------------------------------
+-- bind points
+--------------------------------------------------------------------------------
+--
+-- Where a Fate Token brings you back. Kept in their own file rather than on the
+-- death record, because a bind is set by a LIVING player who has no record yet
+-- and has to survive until they die - possibly days later, across restarts.
+--
+--     username <tab> x <tab> y <tab> z
+
+---@type table<string, table>
+local binds = {}
+local bindsLoaded = false
+
+local function loadBinds()
+    binds = {}
+    bindsLoaded = true
+
+    local reader = getFileReader(PL.BIND_FILE, true)
+    if reader == nil then return end
+
+    local line = reader:readLine()
+    while line ~= nil do
+        if line ~= "" and string.sub(line, 1, 1) ~= "#" then
+            local fields = split(line, FIELD_SEP)
+            local key = PL.key(fields[1])
+            local x, y, z = tonumber(fields[2]), tonumber(fields[3]), tonumber(fields[4])
+            if key ~= nil and x ~= nil and y ~= nil then
+                binds[key] = { username = fields[1], x = x, y = y, z = z or 0 }
+            end
+        end
+        line = reader:readLine()
+    end
+    reader:close()
+end
+
+local function saveBinds()
+    local writer = getFileWriter(PL.BIND_FILE, true, false)
+    if writer == nil then
+        print("[PermadeathLock] ERROR: could not open " .. PL.BIND_FILE .. " for writing.")
+        return
+    end
+
+    writer:writeln("# PermadeathLock bind points - username, x, y, z")
+    for _, bind in pairs(binds) do
+        writer:writeln(table.concat({
+            clean(bind.username), tostring(bind.x), tostring(bind.y), tostring(bind.z),
+        }, FIELD_SEP))
+    end
+    writer:close()
+end
+
+--- Where this player has bound their fate, if anywhere.
+---@param username string?
+---@return table? bind
+function Store.getBind(username)
+    if not bindsLoaded then loadBinds() end
+    local key = PL.key(username)
+    if key == nil then return nil end
+    return binds[key]
+end
+
+---@param username string
+---@param x number
+---@param y number
+---@param z number?
+function Store.setBind(username, x, y, z)
+    if not bindsLoaded then loadBinds() end
+    local key = PL.key(username)
+    if key == nil then return end
+
+    binds[key] = {
+        username = username,
+        x = math.floor(x),
+        y = math.floor(y),
+        z = math.floor(z or 0),
+    }
+    saveBinds()
+end
+
+--- Forget a bind. The token that paid for it has been spent.
+---@param username string
+---@return boolean cleared
+function Store.clearBind(username)
+    if not bindsLoaded then loadBinds() end
+    local key = PL.key(username)
+    if key == nil or binds[key] == nil then return false end
+
+    binds[key] = nil
+    saveBinds()
+    return true
 end
 
 --------------------------------------------------------------------------------
