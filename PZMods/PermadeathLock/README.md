@@ -1,10 +1,19 @@
-# Permadeath Lock
+# Fate Token — Multiplayer Permadeath
 
 Permadeath for Project Zomboid **Build 42** multiplayer — dedicated servers and
 co-op Host games alike. When a player dies they go on a death list and cannot
 come back with a new character. Admins can pardon
 someone (fresh start) or revive them (new character, old skills), and players
 carrying a **Fate Token** buy back one death without needing an admin at all.
+
+**The Workshop name and the internal id are deliberately different.** The
+listing is *Fate Token*, because the token is the thing that makes this mod
+different from every other permadeath mod and a title should sell what you get
+rather than what you lose. The id stays `PermadeathLock`, and so do
+`PL.MODULE`, `SandboxVars.PermadeathLock`, the `IGUI_PermadeathLock_*` keys, the
+chat command and the death file: none of that is visible to a player, and
+renaming it would break the sandbox settings of everyone already running it in
+exchange for nothing.
 
 ## Publishing
 
@@ -14,8 +23,19 @@ in-game uploader assigns one on first upload and writes it back. Keep that line
 once it appears — losing it publishes a second, separate Workshop item instead
 of updating the first.
 
-`preview.png` and `42/icon.png` are currently the poster image reused. They
-work; a purpose-made preview would sell it better.
+The art is generated, not drawn by hand: `art/make_art.py` produces all three
+images and is committed alongside them, so a tweak to the palette or the wording
+is a one-line edit and a re-run rather than a lost source file. It seeds its
+randomness, so the same script always yields the same coin.
+
+| File | Size | What it is for |
+| --- | --- | --- |
+| `preview.png` | 512×512 | The Workshop thumbnail. Carries the name, because the grid renders it small. |
+| `42/poster.png` | 512×512 | Shown larger in the in-game mod panel, so it has room for a line of pitch. |
+| `42/icon.png` | 128×128 | The mod list. The token alone — it still reads at 32px, which is what that list gives it. |
+
+The first version of these was a red prohibition sign, which reads as *banned*
+or *error* rather than as a game mod, and was the same file in all three slots.
 
 ## Install
 

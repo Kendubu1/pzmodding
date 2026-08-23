@@ -1,12 +1,14 @@
 version=1
-title=Permadeath Lock
+title=Fate Token - Multiplayer Permadeath
 tags=Build 42;Multiplayer;Balance;Items
 visibility=public
-description=Permadeath for multiplayer. When a player dies they go on a death list and cannot come back with a new character - so the run ends when it ends, and the world keeps the weight of it.
+description=Multiplayer permadeath, with one way back. When a player dies they go on a death list and cannot return with a new character - the run ends when it ends, and the world keeps the weight of it.
 description=
 description=Works on dedicated servers and co-op Host games. Single player is deliberately left alone: the mod loads and does nothing.
 description=
 description=[b]The Fate Token[/b] is an item that buys back one death. Die carrying one and it burns away in your place: you are not locked out, and your next character keeps the skills the dead one earned. Nothing spawns them by default - handing them out is yours to decide.
+description=
+description=[b]Bind a token to a place[/b] and it brings you back there. Right-click the token and the coordinate is written onto that token, not onto you - so you can carry several bound to different spots, and a binding travels with the item if you drop it or trade it away. Admins can list every bound place with [i]/permadeath binds[/i], so a coordinate is never lost with the coin.
 description=
 description=[b]Admins[/b] get an in-game panel ([i]/permadeath ui[/i]) listing everyone online as well as everyone on the death list, with their state, how long ago they died, the skills held for them, and the Fate Tokens they are carrying. Pardon someone to let them start over, revive them to give their next character the old one's skill levels, or hand out and take back tokens from the same window. Everything the panel does, chat can do too.
 description=
