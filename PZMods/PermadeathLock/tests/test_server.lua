@@ -1102,6 +1102,37 @@ check("status repeats the loot setting", lootLine, true)
 PermadeathLock.lootSummary = nil
 
 --------------------------------------------------------------------------------
+io.write("\n-- another mod emptying the body --\n")
+
+-- The real server that turned this up had three other mods on it, one of which
+-- transfers a corpse's inventory at death. If it gets there first the token is
+-- gone before the sweep looks, and a player who paid for a life is locked out
+-- and then killed on their next spawn. The client's own death report is the
+-- earliest this side hears about it, so the token is noted from the body then.
+reset()
+local looted = makePlayer("Looted", { tokens = 1 })
+online = { looted }
+
+-- Dies before any sweep has seen them alive, so there is no memo to fall back
+-- on - the body is all we have.
+looted._dead = true
+onClientCommand(MODULE, "reportDeath", looted, {})
+check("the token on the body counts", Store.isLocked("Looted"), false)
+check("and the life is owed back", Store.get("Looted").pendingRestore, true)
+
+-- And the other way round: nothing on the body must not erase what we already
+-- knew from when they were alive. Another mod having emptied the corpse is not
+-- evidence that they were never carrying one.
+reset()
+local stripped = makePlayer("Stripped", { tokens = 1 })
+online = { stripped }
+sweep()                                    -- seen alive, carrying it
+stripped._items[1] = nil                   -- something takes the body's contents
+stripped._dead = true
+onClientCommand(MODULE, "reportDeath", stripped, {})
+check("an emptied body does not undo what we saw", Store.isLocked("Stripped"), false)
+
+--------------------------------------------------------------------------------
 io.write("\n-- the bind registry --\n")
 
 -- The point of the registry: the COORDINATE survives the token. A token in a

@@ -215,6 +215,25 @@ local function rememberToken(player)
     carriedToken[key] = PL.findToken(player) ~= nil
 end
 
+--- Note a token still reachable on a player who has just died.
+---
+--- Only ever sets the flag, never clears it, which is what makes it safe to run
+--- on a corpse where rememberToken is not: finding nothing here means nothing,
+--- because the inventory may already have moved.
+---
+--- This is a race with every other mod that touches a body at death. A corpse
+--- looter, an inventory-transfer mod, a "keep your bag" mod - if one of those
+--- gets there first the token is gone before we look, and the player is locked
+--- out having paid for a life they never got. We cannot win that race reliably,
+--- but the client reports its own death immediately, which is the earliest this
+--- side ever hears about it, so it is the best look we get.
+---@param player IsoPlayer
+local function noteTokenOnBody(player)
+    local key = PL.key(player:getUsername())
+    if key == nil then return end
+    if PL.findToken(player) ~= nil then carriedToken[key] = true end
+end
+
 --- Burn the token. Failure is not fatal: the save is already earned, and the
 --- corpse keeping the item is a smaller problem than denying the rescue.
 ---@param item InventoryItem
@@ -1277,10 +1296,11 @@ local function onClientCommand(module, command, player, args)
     if PL.isExempt(player) then return end
 
     if command == "reportDeath" then
-        -- The client reports the instant it dies. If the server has not caught
-        -- up yet this is the last chance to see the inventory intact, so take a
-        -- snapshot either way; rememberToken is a no-op once they are dead.
+        -- The client reports the instant it dies, which is the earliest this
+        -- side hears about it and so the best chance of seeing the body before
+        -- another mod empties it.
         rememberToken(player)
+        noteTokenOnBody(player)
         -- Verified against the character's real state rather than taken on trust.
         if player:isDead() then recordDeath(player, "died") end
     end
