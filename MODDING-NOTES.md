@@ -330,6 +330,35 @@ Source: [phobos-dthorga/mod-pz-chemistry-pathways](https://github.com/phobos-dth
 
 ---
 
+## 7c. Build 42 draws dropped items in 3D, so they need a world model
+
+Symptom: an item converted from Build 41 is **invisible** — on the floor, and
+often in the inventory too. No error, no warning, nothing in the log.
+
+Cause: Build 41 drew a dropped item as its 2D icon, so `Icon` alone was enough.
+Build 42 puts a **3D model** on the floor, and an item with no model to draw
+draws nothing.
+
+Three separate fields, and they are not interchangeable:
+
+| Field | Where it shows |
+| --- | --- |
+| `WeaponSprite` | In the character's hands (weapons only) |
+| `StaticModel` | Attached to the body, and in some UI |
+| `WorldStaticModel` | **On the ground.** The one a B41 conversion forgets. |
+
+A weapon carrying only `WeaponSprite` looks right while equipped and vanishes
+the moment it is dropped. Check every item that has a mesh: shipping Build 42
+mods declare `WorldStaticModel` on essentially all of them.
+
+`media/models_X/` is still the folder, and the `model X { mesh = …, texture = …
+}` script block is unchanged — so when a model goes missing, suspect the item
+that references it rather than the model itself.
+
+Source: [RHay6868/pz-mods-hayes-customs](https://github.com/RHay6868/pz-mods-hayes-customs)
+
+---
+
 ## 8. Build 42 structure and syntax
 
 ```

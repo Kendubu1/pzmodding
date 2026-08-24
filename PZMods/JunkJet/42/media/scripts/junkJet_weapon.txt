@@ -15,7 +15,20 @@ module JunkJet
         DisplayName = Junk Jet,
         DisplayCategory = Weapon,
         Icon = JunkJet,
+        /*
+            WeaponSprite is the model in the character's hands. StaticModel and
+            WorldStaticModel are what it looks like everywhere else, and the gun
+            had neither.
+
+            That was fine in Build 41, where a dropped item rendered as its 2D
+            icon. Build 42 puts a 3D model on the floor instead, so an item with
+            no world model has nothing to draw and is simply invisible - no
+            error, no warning. The ammo and the magazine below always declared
+            both, which is why they show and the gun does not.
+        */
         WeaponSprite = JunkJet,
+        StaticModel = JunkJet,
+        WorldStaticModel = JunkJet,
         ItemType = base:weapon,
         SubCategory = Firearm,
         Ranged = TRUE,
