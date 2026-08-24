@@ -47,7 +47,11 @@ independently.
 
 ## Testing
 
-`TESTING.md` is the build-by-build plan for what only the game can check.
+`TESTING.md` is the build-by-build plan for what only the game can check,
+including step-by-step instructions for getting **both** builds installed side
+by side — Build 41 lives on Steam's permanent `legacy41` branch, and a copy of
+it kept outside Steam saves re-downloading several gigabytes every time you
+switch.
 Offline, the arithmetic has its own suites:
 
 ```
@@ -57,15 +61,20 @@ lua5.1 tests/test_flight.lua      where a fired thing goes and where it lands
 
 ## Installing while working on it
 
-Copy the `JunkJet` folder into `%USERPROFILE%\Zomboid\mods\`, so that
-`Zomboid\mods\JunkJet\42\mod.info` exists.
+Copy the `JunkJet` folder into the game's user folder, so that
+`mods\JunkJet\42\mod.info` exists.
 
-`watch-junkjet.ps1` does that on a loop, so a save reaches the game without a
-manual copy:
+`watch-junkjet.ps1` does that on a loop, into **both** builds' user folders, and
+skips whichever is not installed:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\watch-junkjet.ps1
 ```
+
+It writes to `%USERPROFILE%\Zomboid\mods\JunkJet` for Build 42 and
+`C:\PZ41Data\mods\JunkJet` for Build 41; edit `$targets` at the top if your
+Build 41 install keeps its data elsewhere. `TESTING.md` explains how to get that
+second install without re-downloading the game every time.
 
 Mods are not hot-loaded — restart the game or server to pick changes up.
 

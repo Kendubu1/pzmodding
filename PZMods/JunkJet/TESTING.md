@@ -12,23 +12,99 @@ lua5.1 PZMods/JunkJet/tests/test_ammorule.lua
 lua5.1 PZMods/JunkJet/tests/test_flight.lua
 ```
 
-## Installing a test copy
+## Getting both builds on one machine
 
-The game loads `Zomboid/mods/JunkJet/`, and the folder that goes there is the
-mod folder itself:
+Steam gives you one Project Zomboid at a time, but Build 41 is a permanent
+branch, so you can have both installed side by side and stop re-downloading.
+
+### Which build am I running?
+
+The version is in the **bottom-left of the main menu**. Build 41 reads
+`41.78.19`; Build 42 reads `42.x`.
+
+### Step 1 — get Build 41 down
+
+1. Steam → **Library**
+2. Right-click **Project Zomboid** → **Properties**
+3. **Betas** tab
+4. In the beta/branch dropdown, choose **`legacy41`** — it is listed as Build
+   41.78.19
+5. Close Properties. Steam re-downloads the game. Wait for it to finish.
+
+You are now on Build 41. That alone is enough to test one build — switch the
+dropdown back to **None** to return to Build 42.
+
+**But switching re-downloads several gigabytes each way**, which is miserable if
+you are going back and forth. Step 2 stops that.
+
+### Step 2 — keep a copy of Build 41 so you never download it again
+
+While still on `legacy41`:
+
+1. Open the install folder. Steam → right-click the game → **Manage** →
+   **Browse local files**. It is usually:
+   `C:\Program Files (x86)\Steam\steamapps\common\ProjectZomboid`
+2. **Copy that whole folder** to somewhere outside Steam, e.g. `C:\PZ41`.
+   (Copy — do not move. Steam will notice a missing folder and repair it.)
+3. Back in Steam: **Properties → Betas → None**. Steam re-downloads Build 42
+   into its own folder.
+
+Now you have both, permanently:
+
+| Build | How you launch it |
+| --- | --- |
+| 42 | Steam, normally |
+| 41 | Run `C:\PZ41\ProjectZomboid64.exe` directly |
+
+Build 41 launched this way will not fetch Workshop mods, which does not matter
+here — you are testing a local copy.
+
+### Step 3 — stop the two builds fighting over your saves
+
+Both installs write to the same `%USERPROFILE%\Zomboid\` folder by default,
+and **a Build 41 world cannot be opened in Build 42 or the other way round**.
+Give Build 41 its own:
+
+1. Right-click `C:\PZ41\ProjectZomboid64.exe` → **Create shortcut**
+2. Right-click the shortcut → **Properties**
+3. On the end of the **Target** box, after the quotes, add a space and:
+   `-cachedir=C:\PZ41Data`
+4. Launch Build 41 from that shortcut from now on
+
+Build 41 now keeps its saves, logs and mods under `C:\PZ41Data\`, and Build 42
+keeps using `%USERPROFILE%\Zomboid\`. Neither can corrupt the other.
+
+If that argument does not work on your build, the fallback is simply to **back
+up `%USERPROFILE%\Zomboid\Saves\` before switching** and accept that you keep
+one world at a time.
+
+## Installing the mod
+
+The folder that goes into the game is the mod folder itself:
 
 ```
-PZMods/JunkJet/  ->  %USERPROFILE%\Zomboid\mods\JunkJet\
+PZMods\JunkJet\  ->  <user folder>\mods\JunkJet\
 ```
 
-`watch-junkjet.ps1` in the mod folder mirrors it on a two-second loop:
+`watch-junkjet.ps1` mirrors it into **both** installs on a two-second loop, and
+skips whichever one is not there:
 
 ```
 powershell -ExecutionPolicy Bypass -File .\watch-junkjet.ps1
 ```
 
+It copies to `%USERPROFILE%\Zomboid\mods\JunkJet` (Build 42) and
+`C:\PZ41Data\mods\JunkJet` (Build 41). If you put Build 41's data folder
+somewhere else, edit the `$targets` list at the top of the script.
+
 **Lua is not hot-loaded.** Restart the game after every change, not just the
-save.
+save. You do not need to restart the watch script.
+
+### Turn the mod on, in both
+
+A fresh install has it disabled. In each build: **main menu → Mods**, tick
+**Fallout 4 Junk Jet**, and for an existing world also enable it in that world's
+mod list.
 
 ## Which build is which
 
