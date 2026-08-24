@@ -68,6 +68,48 @@ repository, so it could not be patched in a way that survives a reinstall.
 
 `mod.info` and `workshop.txt` are now written by hand and checked in.
 
+## Loading the Junk Jet
+
+Right-click anything in your inventory → **Load into Junk Jet**. It takes the
+item and puts a round in the gun. Select a stack, or several things at once, and
+the entry says how many it will take.
+
+Two sandbox settings decide what qualifies:
+
+| Setting | Default | What it does |
+| --- | --- | --- |
+| Only junk can be loaded | on | Restricts it to items the game files under Junk. Turn off and anything qualifies. |
+| Heaviest thing you can load | 1.0 | In the game's own units — a toy car is about 0.1, a hammer 2. Set to 0 for no limit. |
+
+Three things are never loadable whatever the settings say: the Junk Jet, its
+rounds, and its magazine. Nor is a container, which would take its contents
+along with it.
+
+### Why this is not a recipe
+
+The crafting recipe lists about eighty item names, written into a script file
+that the game reads once at boot. **No sandbox setting can reach it** — which is
+why the config asked for twice on the Workshop page was never possible in that
+shape, and why the answer had to be a Lua action instead. Lua can read settings;
+a script file cannot.
+
+The rule lives in `common/media/lua/shared/junkJet_ammoRule.lua`, apart from the
+menu that uses it and free of game state, because it is the part with a decision
+in it and the part `tests/test_ammorule.lua` can check offline.
+
+The crafting recipe still works and still has its list. Deleting it is the other
+half of this job — see below.
+
+## Still to do
+
+- **Delete the recipe's hardcoded item list.** Build 41 recipes can call a Lua
+  function for their inputs (`[Recipe.GetItemTypes.Something]`, which this mod
+  already uses for the hammer and saw), so the list could be generated from the
+  same rule the menu uses. Whether Build 42's `craftRecipe` has an equivalent
+  hook is unknown.
+- **Visible projectile** — seeing the junk actually fly. Builds on the loading
+  work above.
+
 ## Not yet verified in game
 
 The Build 42 conversion is complete but untested. These are the parts that were

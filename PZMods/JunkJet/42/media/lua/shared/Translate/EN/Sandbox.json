@@ -1,0 +1,7 @@
+{
+    "Sandbox_JunkJet": "Junk Jet",
+    "Sandbox_JunkJet_AmmoJunkOnly": "Only junk can be loaded",
+    "Sandbox_JunkJet_AmmoJunkOnly_tooltip": "On: only items the game files under Junk - toys, ornaments, empty cans, the things nobody misses - can go down the hopper. Off: anything at all can, subject to the weight limit below, so a tin of beans is fair game and so is a hammer. Off is the setting for people who wanted to fire literally anything.",
+    "Sandbox_JunkJet_MaxAmmoWeight": "Heaviest thing you can load",
+    "Sandbox_JunkJet_MaxAmmoWeight_tooltip": "Nothing heavier than this can be loaded, in the game's own weight units - a toy car is about 0.1, a hammer 2. Set it to 0 to remove the limit entirely and let the Junk Jet swallow anything you can carry."
+}

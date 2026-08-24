@@ -1,1 +1,26 @@
 VERSION = 1,
+
+/*
+    Deliberately booleans and numbers, no enums. An enum's value labels are
+    keyed differently in the two builds - Build 41 wants a separate
+    valueTranslation, Build 42 wants Sandbox_<name>_optionN - and this file is
+    shared by both, so an enum would render as raw keys on one of them.
+*/
+
+option JunkJet.AmmoJunkOnly
+{
+    type = boolean,
+    default = true,
+    page = JunkJet,
+    translation = JunkJet_AmmoJunkOnly,
+}
+
+option JunkJet.MaxAmmoWeight
+{
+    type = double,
+    min = 0.0,
+    max = 10.0,
+    default = 1.0,
+    page = JunkJet,
+    translation = JunkJet_MaxAmmoWeight,
+}
