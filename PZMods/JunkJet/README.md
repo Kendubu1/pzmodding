@@ -112,12 +112,45 @@ serialise into the save and sync over the network. Capped at 64 remembered
 rounds — mod data rides along on every sync — and rounds past the cap still
 fire, they just fire as anonymous junk.
 
+## Flying junk you can pick up
+
+Fire the Junk Jet and the thing you loaded flies, lands, and can be picked up
+again. Landing is the part that makes the weapon what it is, and it comes almost
+free: the round already knows it was a toy car, so a toy car goes on the ground
+and is an ordinary world item from that moment.
+
+The work is split so the half with decisions in it can be tested without the
+game:
+
+| File | Does |
+| --- | --- |
+| `shared/junkJet_flight.lua` | Pure arithmetic. Where the junk is each tick, and when it stops. Touches nothing in the world — the caller injects a function answering "is the way from here to there blocked". |
+| `client/junkJet_projectile.lua` | Finds squares, decides what blocked means, draws, drops the item, and hangs off the trigger. |
+
+`tests/test_flight.lua` covers the flight: that a diagonal shot does not travel
+further than a straight one, that a blocked shot lands **against** the wall
+rather than inside it — junk inside a wall cannot be retrieved — and that a
+zero-speed shot terminates instead of hanging the game.
+
+### What is honestly not solved
+
+Every one of these is shared with the mods that already do this, and none of it
+is fixed here either:
+
+| Problem | Consequence |
+| --- | --- |
+| **Walls have no side.** The square test cannot tell a north-south wall from an east-west one, so a shot passing a wall can read as a hit. Where the build offers `isBlockedTo`, the directional question is asked properly; otherwise it falls back, in the one function a fix has to touch. | Occasional phantom stops near walls |
+| **No elevation.** Junk flies flat. | Firing off a balcony looks wrong. Bow and Arrow has had this for years |
+| **Single-machine.** The shot simulates where it was fired. | Other players do not see it. `JunkJetProjectile.fire()` is a separate entry point precisely so a server command can call it later |
+| **`Render3DItem` may not exist on every build.** | Drawing fails quietly and the round still flies and still lands — invisible junk you can pick up beats a Lua error every tick |
+| **A repeating weapon breaks the one-shot-at-a-time assumption** both reference mods are built on. | Hard ceiling of 12 in the air; past it junk lands at the muzzle rather than queueing work |
+| **`OnWeaponSwing` for a ranged weapon** is the conventional hook but is not confirmed on every build. | If the gun shoots and nothing flies, suspect that line first; `OnPlayerAttackFinished` is the alternative |
+
 ## Still to do
 
-### Flying junk you can pick up
+### Reference reading
 
-The headline feature, and the reason the hopper remembers its contents. Two
-existing mods do this and both were read before planning it:
+Two existing mods do this and both were read before planning it:
 
 - **Bow and Arrow** moves the arrow using the technique from Nolan's Driving
   Cars mod — the world item is removed and re-placed a square along, every
@@ -126,18 +159,9 @@ existing mods do this and both were read before planning it:
   reusable `ISBaseObject`-derived class with its full Lua source included, and
   its newer versions use **`Render3DItem`** rather than shuffling a world item.
 
-What those two also tell us, which is the more valuable half:
-
-| Known problem | Consequence here |
-| --- | --- |
-| Collision checks a square for a wall tile but cannot tell a north-south wall from an east-west one | Shooting *past* a wall can register as a hit |
-| Elevation is unsolved — arrows do not pitch up or down | Junk flies flat; firing off a balcony will look wrong |
-| Multiplayer is the weakest part of both; the reference mod's own page says arrows are "more lethal in multiplayer due to game limitations", and a drawn bow renders wrongly to other players | The shot has to be broadcast and re-simulated per client, and getting it wrong is invisible to the shooter |
-| One arrow at a time is the assumed load | A Junk Jet firing repeatedly needs a hard cap on concurrent projectiles |
-
-Landing and pickup is the easy half and comes almost free: the round already
-knows its item type, so on impact the real item is placed on the ground square
-and picked up like anything else.
+Their own pages are candid about the weak points, which is where the table
+above came from — the reference mod says arrows are "more lethal in multiplayer
+due to game limitations", and that a drawn bow renders wrongly to other players.
 
 ### Other
 
