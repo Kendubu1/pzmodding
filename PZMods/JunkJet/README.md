@@ -45,6 +45,16 @@ which writes `.txt` into `common/` for Build 41 and both `.txt` and `.json` into
 `42/`. This is the layout a large dual-build mod ships, arrived at
 independently.
 
+## Testing
+
+`TESTING.md` is the build-by-build plan for what only the game can check.
+Offline, the arithmetic has its own suites:
+
+```
+lua5.1 tests/test_ammorule.lua    what counts as ammo, what the hopper remembers
+lua5.1 tests/test_flight.lua      where a fired thing goes and where it lands
+```
+
 ## Installing while working on it
 
 Copy the `JunkJet` folder into `%USERPROFILE%\Zomboid\mods\`, so that
@@ -70,9 +80,14 @@ repository, so it could not be patched in a way that survives a reinstall.
 
 ## Loading the Junk Jet
 
-Right-click anything in your inventory → **Load into Junk Jet**. It takes the
-item and puts a round in the gun. Select a stack, or several things at once, and
-the entry says how many it will take.
+Right-click anything in your inventory → **Load into Junk Jet**. Select a stack,
+or several things at once, and the entry says how many it will take.
+
+Loading is a **timed action**, about half a second an item, and it cancels if
+you walk. It used to be instant, which was two problems wearing one coat: forty
+items became forty rounds mid-horde with no time cost, where crafting a round
+takes ten seconds — and it felt like nothing had happened. One action per item,
+so a stack of thirty reads as thirty loads you can watch and walk away from.
 
 Two sandbox settings decide what qualifies:
 
@@ -170,11 +185,9 @@ due to game limitations", and that a drawn bow renders wrongly to other players.
   already uses for the hammer and saw), so the list could be generated from the
   same rule the menu uses. Whether Build 42's `craftRecipe` has an equivalent
   hook is unknown.
-- **A timed action for loading.** It is instant today, which is both a balance
-  change — forty items become forty rounds mid-horde — and weightless.
-- **Multiplayer check on loading.** It changes the inventory client-side, the
-  way vanilla's reload does. Believed right, not verified, and the person who
-  asked for the feature runs a multiplayer server.
+- **Multiplayer check on loading and firing.** Both happen client-side, the way
+  vanilla's reload does. Believed right, not verified, and the person who asked
+  for the feature runs a multiplayer server. See `TESTING.md`.
 
 ## Not yet verified in game
 

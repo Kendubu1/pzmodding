@@ -16,8 +16,7 @@
 ]]
 
 require "junkJet_ammoRule"
-
-local ADD_ONE = 1
+require "TimedActions/ISTimedActionQueue"
 
 --- The player's Junk Jet, the one in their hands for preference.
 ---@param player IsoPlayer
@@ -37,37 +36,17 @@ local function findJunkJet(player)
     return nil
 end
 
---- Stuff one item down the hopper.
----@param player IsoPlayer
----@param weapon InventoryItem
----@param item InventoryItem
-local function loadOne(player, weapon, item)
-    local inventory = player:getInventory()
-    if inventory == nil then return end
-
-    -- Read before the item is destroyed, obviously, but worth saying: this is
-    -- the only moment the gun can learn what it is loaded with. Afterwards the
-    -- item is gone and a round is just a number.
-    local fullType = item:getFullType()
-
-    -- Removed first. If the ammo count were raised first and the removal then
-    -- failed, the player would have gained a round and kept the junk.
-    inventory:Remove(item)
-
-    weapon:setCurrentAmmoCount((weapon:getCurrentAmmoCount() or 0) + ADD_ONE)
-    JunkJetAmmo.push(weapon, fullType)
-
-    -- The count lives on the weapon item, so the change has to be broadcast or
-    -- only this machine knows about it.
-    if syncItemFields ~= nil then syncItemFields(player, weapon) end
-end
-
+--- Queue one loading action per item.
+---
+--- One each rather than one for the lot, so a stack of thirty reads as thirty
+--- loads the player can watch and walk away from. Each action re-checks that
+--- its item is still there, because the one before it may have taken it.
 ---@param player IsoPlayer
 ---@param weapon InventoryItem
 ---@param items InventoryItem[]
 local function loadAll(player, weapon, items)
     for _, item in ipairs(items) do
-        loadOne(player, weapon, item)
+        ISTimedActionQueue.add(JunkJetLoadAction:new(player, weapon, item))
     end
 end
 
