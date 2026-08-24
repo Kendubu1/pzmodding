@@ -93,6 +93,47 @@ check("and so is the weight", maxWeight, 3.5)
 SandboxVars.JunkJet.MaxAmmoWeight = 0
 check("and again on the next call", select(2, JunkJetAmmo.rules()), 0)
 
+--------------------------------------------------------------------------------
+io.write("\n-- the gun remembers what went in --\n")
+
+-- Ammo count alone is enough to fire. It is not enough to fly a toy car across
+-- the street and let somebody pick the toy car up, which is the whole point of
+-- the weapon, so the hopper's contents are recorded as they go in.
+local function gun()
+    local data = {}
+    return { getModData = function() return data end }
+end
+
+local jj = gun()
+check("a new gun is empty", #JunkJetAmmo.contents(jj), 0)
+check("and popping an empty gun is not a crash", JunkJetAmmo.pop(jj), nil)
+
+JunkJetAmmo.push(jj, "Base.ToyCar")
+JunkJetAmmo.push(jj, "Base.Dice")
+check("two things went in", #JunkJetAmmo.contents(jj), 2)
+
+-- First in, first out: you fire the toy car you loaded first.
+check("the first one out is the first one in", JunkJetAmmo.pop(jj), "Base.ToyCar")
+check("then the second", JunkJetAmmo.pop(jj), "Base.Dice")
+check("and then nothing", JunkJetAmmo.pop(jj), nil)
+
+-- Item mod data rides along on every sync, so the queue is capped. Rounds past
+-- the cap still fire; they just fire as anonymous junk.
+local full = gun()
+for i = 1, JunkJetAmmo.MEMORY + 10 do
+    JunkJetAmmo.push(full, "Base.ToyCar")
+end
+check("the queue stops growing at the cap", #JunkJetAmmo.contents(full), JunkJetAmmo.MEMORY)
+check("and says so rather than pretending", JunkJetAmmo.push(full, "Base.Dice"), false)
+
+-- Two guns must not share a hopper.
+local a, b = gun(), gun()
+JunkJetAmmo.push(a, "Base.ToyCar")
+check("one gun's load does not reach another", #JunkJetAmmo.contents(b), 0)
+
+check("nil is not a crash", JunkJetAmmo.push(nil, "Base.ToyCar"), false)
+check("nor is an empty type", JunkJetAmmo.push(a, ""), false)
+
 io.write("\n")
 if failures == 0 then
     io.write("all checks passed\n")

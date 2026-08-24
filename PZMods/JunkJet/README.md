@@ -100,15 +100,57 @@ in it and the part `tests/test_ammorule.lua` can check offline.
 The crafting recipe still works and still has its list. Deleting it is the other
 half of this job — see below.
 
+### The gun remembers what is in it
+
+Loading records the item's type on the weapon, oldest first, not just a count.
+Ammo count alone is enough to *fire*; it is not enough to fly a toy car across
+the street and let somebody pick the toy car up, and that moment at the hopper
+is the only chance the gun ever gets to learn what it is holding.
+
+Stored as one delimited string in the weapon's mod data, because that has to
+serialise into the save and sync over the network. Capped at 64 remembered
+rounds — mod data rides along on every sync — and rounds past the cap still
+fire, they just fire as anonymous junk.
+
 ## Still to do
+
+### Flying junk you can pick up
+
+The headline feature, and the reason the hopper remembers its contents. Two
+existing mods do this and both were read before planning it:
+
+- **Bow and Arrow** moves the arrow using the technique from Nolan's Driving
+  Cars mod — the world item is removed and re-placed a square along, every
+  tick.
+- **Projectile and Targeting System Example** is the same lineage, written as a
+  reusable `ISBaseObject`-derived class with its full Lua source included, and
+  its newer versions use **`Render3DItem`** rather than shuffling a world item.
+
+What those two also tell us, which is the more valuable half:
+
+| Known problem | Consequence here |
+| --- | --- |
+| Collision checks a square for a wall tile but cannot tell a north-south wall from an east-west one | Shooting *past* a wall can register as a hit |
+| Elevation is unsolved — arrows do not pitch up or down | Junk flies flat; firing off a balcony will look wrong |
+| Multiplayer is the weakest part of both; the reference mod's own page says arrows are "more lethal in multiplayer due to game limitations", and a drawn bow renders wrongly to other players | The shot has to be broadcast and re-simulated per client, and getting it wrong is invisible to the shooter |
+| One arrow at a time is the assumed load | A Junk Jet firing repeatedly needs a hard cap on concurrent projectiles |
+
+Landing and pickup is the easy half and comes almost free: the round already
+knows its item type, so on impact the real item is placed on the ground square
+and picked up like anything else.
+
+### Other
 
 - **Delete the recipe's hardcoded item list.** Build 41 recipes can call a Lua
   function for their inputs (`[Recipe.GetItemTypes.Something]`, which this mod
   already uses for the hammer and saw), so the list could be generated from the
   same rule the menu uses. Whether Build 42's `craftRecipe` has an equivalent
   hook is unknown.
-- **Visible projectile** — seeing the junk actually fly. Builds on the loading
-  work above.
+- **A timed action for loading.** It is instant today, which is both a balance
+  change — forty items become forty rounds mid-horde — and weightless.
+- **Multiplayer check on loading.** It changes the inventory client-side, the
+  way vanilla's reload does. Believed right, not verified, and the person who
+  asked for the feature runs a multiplayer server.
 
 ## Not yet verified in game
 

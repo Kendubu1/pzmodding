@@ -73,3 +73,79 @@ function JunkJetAmmo.canLoad(item, junkOnly, maxWeight)
 
     return true
 end
+
+--------------------------------------------------------------------------------
+-- what is actually in the hopper
+--------------------------------------------------------------------------------
+
+-- The gun remembers WHAT was loaded, not just how much.
+--
+-- Ammo count alone is enough to fire, and that is all this did at first. But
+-- the point of the Junk Jet is that it shoots your rubbish, and a round you can
+-- watch fly and then pick up has to know it was a toy car. Recording it at load
+-- time is nearly free; reconstructing it later is impossible.
+--
+-- Kept as one delimited string in the weapon's mod data rather than a table:
+-- item mod data has to serialise into the save and sync over the network, and a
+-- string does both without argument.
+
+local LOADED = "jjLoaded"
+local SEP = ";"
+
+-- Long before the gun's own 999-round ceiling. A remembered queue is carried in
+-- item mod data on every sync, so it is capped at something a magazine could
+-- plausibly hold; rounds past it still fire, they just fire as anonymous junk.
+JunkJetAmmo.MEMORY = 64
+
+---@param weapon InventoryItem?
+---@return string[] fullTypes, oldest first
+function JunkJetAmmo.contents(weapon)
+    if weapon == nil or weapon.getModData == nil then return {} end
+
+    local data = weapon:getModData()
+    local packed = data ~= nil and data[LOADED] or nil
+    if packed == nil or packed == "" then return {} end
+
+    local out = {}
+    for entry in string.gmatch(packed, "[^" .. SEP .. "]+") do
+        out[#out + 1] = entry
+    end
+    return out
+end
+
+---@param weapon InventoryItem?
+---@param list string[]
+local function store(weapon, list)
+    if weapon == nil or weapon.getModData == nil then return end
+
+    local data = weapon:getModData()
+    if data == nil then return end
+    data[LOADED] = #list > 0 and table.concat(list, SEP) or nil
+end
+
+--- Remember one more thing down the hopper.
+---@param weapon InventoryItem?
+---@param fullType string?
+---@return boolean remembered false once the queue is full
+function JunkJetAmmo.push(weapon, fullType)
+    if weapon == nil or fullType == nil or fullType == "" then return false end
+
+    local list = JunkJetAmmo.contents(weapon)
+    if #list >= JunkJetAmmo.MEMORY then return false end
+
+    list[#list + 1] = fullType
+    store(weapon, list)
+    return true
+end
+
+--- Take the next thing out, oldest first: what goes in first comes out first.
+---@param weapon InventoryItem?
+---@return string? fullType, nil once the gun is firing anonymous junk
+function JunkJetAmmo.pop(weapon)
+    local list = JunkJetAmmo.contents(weapon)
+    if #list == 0 then return nil end
+
+    local first = table.remove(list, 1)
+    store(weapon, list)
+    return first
+end

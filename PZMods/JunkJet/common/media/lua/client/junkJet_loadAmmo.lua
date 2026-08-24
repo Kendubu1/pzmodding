@@ -45,11 +45,17 @@ local function loadOne(player, weapon, item)
     local inventory = player:getInventory()
     if inventory == nil then return end
 
+    -- Read before the item is destroyed, obviously, but worth saying: this is
+    -- the only moment the gun can learn what it is loaded with. Afterwards the
+    -- item is gone and a round is just a number.
+    local fullType = item:getFullType()
+
     -- Removed first. If the ammo count were raised first and the removal then
     -- failed, the player would have gained a round and kept the junk.
     inventory:Remove(item)
 
     weapon:setCurrentAmmoCount((weapon:getCurrentAmmoCount() or 0) + ADD_ONE)
+    JunkJetAmmo.push(weapon, fullType)
 
     -- The count lives on the weapon item, so the change has to be broadcast or
     -- only this machine knows about it.
