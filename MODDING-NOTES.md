@@ -359,6 +359,34 @@ Source: [RHay6868/pz-mods-hayes-customs](https://github.com/RHay6868/pz-mods-hay
 
 ---
 
+## 7d. Build 42 craftRecipe: what a Build 41 conversion gets wrong
+
+Converting `recipe` to `craftRecipe` is mostly mechanical, and three things in
+the middle of it are not. All three fail quietly - the recipe either never
+appears or asks for something absurd - and all three were confirmed by reading
+a shipping mod with ~300 recipes rather than from a guide.
+
+- **`NeedToBeLearn` keeps Build 41's capitalisation.** The rest of the block is
+  lowercase (`time`, `category`, `inputs`, `timedAction`), which makes
+  `needToBeLearn` look right. It is a script key like any other and a
+  mismatched one is simply not read.
+- **A drainable is one item, kept, flagged.** Build 41 counted units:
+  `BlowTorch=90`. Build 42 is `item 1 [Base.BlowTorch] mode:keep
+  flags[MayDegrade]` and the game does the draining. Carrying the 41 number
+  across asks for ninety blowtorches and destroys them.
+- **`category` is free-form.** A mod names whatever category it likes and it
+  parses; there is no fixed list to violate. Only where the recipe lands in the
+  crafting UI is at stake.
+
+**`OnCreate` survives, with the same signature.** `OnCreate = MyTable.myFunc`
+and `function MyTable.myFunc(items, result, player)` work in Build 42 exactly as
+in Build 41 - so a callback can live in `common/` and serve both. Worth knowing
+because it is easy to assume it is gone and silently drop the behaviour, which
+is what happened here: the Junk Jet's auto-load lived in `41/`, and Build 42
+players lost it without a word.
+
+---
+
 ## 8. Build 42 structure and syntax
 
 ```

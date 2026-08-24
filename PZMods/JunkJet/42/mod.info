@@ -5,4 +5,4 @@ authors=saint_kendrick
 description=Junk Jet fires any junk item loaded into its hopper, such as a toy car. Items must be loaded in manually, and fired items have a chance of being picked up after being shot, making this a ranged weapon with theoretically unlimited ammunition
 poster=poster.png
 icon=icon.png
-modversion=1.2.0
+modversion=1.3.0

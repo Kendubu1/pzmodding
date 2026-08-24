@@ -10,15 +10,21 @@ module JunkJet
         `craftRecipe` with inputs/outputs. Format verified against a shipping
         B42 mod (VanillaAppliancesExtended), not guessed.
 
-        NOT yet verified in game, flagged so they get checked rather than
-        trusted:
-          - `needToBeLearn` - B41 used NeedToBeLearn:True with the magazine's
-            TeachedRecipes. The B42 spelling is unconfirmed.
-          - `category` values - B41's "Weapons" may not be a B42 category.
-          - BlowTorch as a drainable: B41 asked for 90 units. How B42 counts
-            drainable use in a recipe is unconfirmed.
+        Checked against a shipping B42 mod with 300 recipes, which settled
+        three things that had been guessed:
+          - NeedToBeLearn keeps Build 41's capitalisation. It was lowercase
+            here, which is a script key that would not have matched.
+          - A drainable is `item 1 ... mode:keep flags[MayDegrade]`, and the
+            game does the draining. This asked for 90 blowtorches and destroyed
+            them.
+          - `category` is free-form; a mod names whatever category it likes, so
+            "Weapons" parses. Whether it groups with vanilla's weapon recipes in
+            the crafting UI is cosmetic and still unconfirmed.
 
-        MetalPipe is deliberately Base.Pipe here: B42 renamed it.
+        STILL UNVERIFIED: Base.Pipe. Build 42 is understood to have renamed
+        MetalPipe, but neither reference mod uses one, so this is the one item
+        here taken on documentation alone. `/additem Base.Pipe` in game settles
+        it in a second.
 
         The long junk list below is temporary. The planned ammo rework makes
         every carryable item valid ammo and deletes this entirely.
@@ -29,7 +35,8 @@ module JunkJet
         timedAction = Making,
         time = 10,
         category = Weapons,
-        needToBeLearn = true,
+        NeedToBeLearn = true,
+        OnCreate = JunkJetRecipes.loadAmmo,
         inputs
         {
             item 1 [Base.Money;Base.Bell;Base.Button;Base.CatToy;Base.ChessBlack;Base.ChessWhite;Base.Cologne;Base.Crayons;Base.CreditCard;Base.DogChew;Base.KnittingNeedles;Base.Leash;Base.Perfume;Base.Pinecone;Base.RubberBand;Base.ToiletPaper;Base.ToyCar;Base.WaterDish;Base.Bricktoys;Base.Frame;Base.Rubberducky;Base.Rubberducky2;Base.Doll;Base.Cork;Base.Corkscrew;Base.Toothbrush;Base.Toothpaste;Base.CardDeck;Base.Comb;Base.Dice;Base.Cube;Base.Locket;Base.Razor;Base.ToyBear;Base.Wallet;Base.Wallet2;Base.Wallet3;Base.Wallet4;Base.Yoyo;Base.BeerCanEmpty;Base.PopEmpty;Base.Pop2Empty;Base.Pop3Empty;Base.Camera;Base.CameraDisposable;Base.CameraExpensive;Base.CameraFilm;Base.Chopsticks;Base.Plate;Base.PlateBlue;Base.PlateOrange;Base.PlateFancy;Base.PaperNapkins;Base.Straw;Base.PlasticTray;Base.FountainCup;Base.CuttingBoardPlastic;Base.CuttingBoardWooden;Base.GamePieceBlack;Base.GamePieceRed;Base.GamePieceWhite;Base.CheckerBoard;Base.BackgammonBoard;Base.PokerChips;Base.Stapler;Base.HolePuncher;Base.Belt;Base.KatePic;Base.JamesPic;Base.HankPic;Base.MariannePic;Base.ChrisPic;Base.CortmanPic;Base.BobPic;Base.CaseyPic;Base.Cigarettes;Base.Baseball;Base.Basketball;Base.Dart;Base.Football;Base.GolfBall;Base.SoccerBall;Base.TennisBall;Base.Football2;Base.PoolBall] mode:destroy,
@@ -45,7 +52,7 @@ module JunkJet
         timedAction = Making,
         time = 3000,
         category = Weapons,
-        needToBeLearn = true,
+        NeedToBeLearn = true,
         SkillRequired = MetalWelding:1,
         xpAward = MetalWelding:25,
         inputs
@@ -57,7 +64,7 @@ module JunkJet
             item 15 [Base.Nails] mode:destroy,
             item 1 [Base.Wire] mode:destroy,
             item 1 [Base.CarBattery1] mode:destroy,
-            item 90 [Base.BlowTorch] mode:destroy,
+            item 1 [Base.BlowTorch] mode:keep flags[MayDegrade],
             item 1 [Base.WeldingMask] mode:keep,
             item 1 tags[base:hammer] mode:keep,
             item 1 tags[base:saw] mode:keep,
