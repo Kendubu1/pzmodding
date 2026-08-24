@@ -330,14 +330,18 @@ Source: [phobos-dthorga/mod-pz-chemistry-pathways](https://github.com/phobos-dth
 
 ---
 
-## 7c. Build 42 draws dropped items in 3D, so they need a world model
+## 7c. An item with no world model is invisible on the ground
 
-Symptom: an item converted from Build 41 is **invisible** — on the floor, and
-often in the inventory too. No error, no warning, nothing in the log.
+Symptom: an older item is **invisible** where it is dropped. No error, no
+warning, nothing in the log.
 
-Cause: Build 41 drew a dropped item as its 2D icon, so `Icon` alone was enough.
-Build 42 puts a **3D model** on the floor, and an item with no model to draw
-draws nothing.
+Cause: a dropped item is drawn as a **3D model**, and an item with no model to
+draw draws nothing. `Icon` alone was enough back when the ground showed a 2D
+sprite, and an item written then still parses perfectly today.
+
+(Which build made that switch is not pinned down here — 3D ground items landed
+during Build 41's run, not at 42. The rule holds either way; the version does
+not matter to it.)
 
 Three separate fields, and they are not interchangeable:
 
@@ -348,14 +352,22 @@ Three separate fields, and they are not interchangeable:
 | `WorldStaticModel` | **On the ground.** The one a B41 conversion forgets. |
 
 A weapon carrying only `WeaponSprite` looks right while equipped and vanishes
-the moment it is dropped. Check every item that has a mesh: shipping Build 42
-mods declare `WorldStaticModel` on essentially all of them.
+the moment it is dropped. Check every item that has a mesh: a shipping Build 42
+mod declares `WorldStaticModel` on 119 of its items and `StaticModel` on 55.
 
-`media/models_X/` is still the folder, and the `model X { mesh = …, texture = …
-}` script block is unchanged — so when a model goes missing, suspect the item
-that references it rather than the model itself.
+When a model goes missing, suspect the **item that references it** before the
+model itself.
 
-Source: [RHay6868/pz-mods-hayes-customs](https://github.com/RHay6868/pz-mods-hayes-customs)
+Source: [phobos-dthorga/mod-pz-chemistry-pathways](https://github.com/phobos-dthorga/mod-pz-chemistry-pathways)
+(confirmed Build 42: `ItemType = base:*`, `versionMin=42.14.0`, `42.14/` and
+`42.15/` folders).
+
+**How this entry was nearly got wrong**, which is the part worth keeping: the
+first reference read for it declared `Type = Clothing`, had no version folders
+and no `versionMin` — a Build 41 mod that merely happened to sit inside a
+`Contents/` wrapper. Section 5b already says not to reason about Build 42 from
+a Build 41 mod, and it is easy to do anyway, because a repo gives no banner.
+**Check `ItemType = base:` before trusting anything a mod appears to prove.**
 
 ---
 
