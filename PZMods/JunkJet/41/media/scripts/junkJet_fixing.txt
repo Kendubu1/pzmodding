@@ -1,0 +1,37 @@
+/*
+    Repairing the Junk Jet. Asked for twice on the Workshop page and promised
+    in reply; this is that.
+
+    BUILD 41 ONLY, deliberately. The `fixing` block is Build 41 syntax that I
+    could confirm in shipping mods; whether Build 42 still reads it I could not
+    confirm from any of the three Build 42 mods I checked - none of them repairs
+    anything, so none of them proves it either way. Rather than ship a guess in
+    the Build 42 folder, this sits in 41/ where it is known to work.
+
+    That also matches where the request came from: "these are suggestions and
+    questions for Build 41 since this is being used on a MP server."
+
+    Fixers run cheapest-last: the metal options suit somebody who built the gun
+    in the first place, and tape is the field repair when you are nowhere near
+    a workbench. Skill requirements match the gun's own recipe, which wants
+    MetalWelding.
+*/
+module JunkJet
+{
+    imports
+    {
+        Base
+    }
+
+    fixing Fix Junk Jet
+    {
+        Require : JunkJet_Weapon,
+
+        Fixer : SmallSheetMetal=2; MetalWelding=1,
+        Fixer : SheetMetal=1; MetalWelding=2,
+        Fixer : Screws=4; MetalWelding=1,
+        Fixer : DuctTape=2,
+        Fixer : Glue=2,
+        Fixer : Scotchtape=4,
+    }
+}

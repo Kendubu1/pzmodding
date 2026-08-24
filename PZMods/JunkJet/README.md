@@ -23,10 +23,27 @@ matters because the mod is in use on a Build 41 multiplayer server.
 | --- | --- |
 | `*/media/scripts/junkJet_weapon.txt` | B42 replaced `Type = Weapon` with `ItemType = base:weapon` |
 | `*/media/scripts/junkJet_recipe.txt` | B42 replaced `recipe` blocks with `craftRecipe` |
-| `41/media/lua/server/junkJet_reload.lua` | Defines `Recipe.OnCreate.junkJetAmmoLoad`. That namespace is B41's crafting system and does not exist in B42, so loading it there would error |
+| `41/media/scripts/junkJet_fixing.txt` | `fixing` blocks are confirmed Build 41 syntax. No Build 42 mod I could find repairs anything, so B42 repairability is unproven and not shipped as a guess |
+| `41/…/Translate/` vs `42/…/Translate/` | Build 42.15 replaced the Lua-table `Name_EN.txt` with a flat JSON `Name.json`. B41 reads only the `.txt`, so `common/` carries `.txt` alone and `42/` carries both |
 
-Everything else — textures, models, sounds, translations, distributions, sandbox
-options — is shared.
+Everything else — textures, models, sounds, distributions, sandbox options — is
+shared, and so is the crafting callback: Build 42's `craftRecipe` takes
+`OnCreate` with the same `(items, result, player)` signature Build 41's `recipe`
+did, so `common/media/lua/server/junkJet_reload.lua` serves both. It used to
+live in `41/` on the assumption that `Recipe.OnCreate` was Build-41-only, and
+Build 42 players silently lost the auto-load as a result.
+
+### Translations are generated
+
+`common/…/Translate/EN/*_EN.txt` are the **source**. Everything else is built:
+
+```
+python3 ../../tools/build_translations.py
+```
+
+which writes `.txt` into `common/` for Build 41 and both `.txt` and `.json` into
+`42/`. This is the layout a large dual-build mod ships, arrived at
+independently.
 
 ## Installing while working on it
 
