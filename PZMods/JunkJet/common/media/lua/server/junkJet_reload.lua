@@ -9,6 +9,8 @@
     all and the function was never even loaded.
 ]]
 
+require "junkJet_ammoRule"
+
 JunkJetRecipes = JunkJetRecipes or {}
 
 --- Put a freshly crafted round into the Junk Jet, if that is what is in hand.
@@ -20,7 +22,8 @@ function JunkJetRecipes.loadAmmo(items, result, player)
 
     local weapon = player:getPrimaryHandItem()
     if weapon == nil or weapon:getType() ~= "JunkJet_Weapon" then return end
-    if weapon:getAmmoType() ~= "JunkJet.JunkJet_Ammo" then return end
+    -- Either spelling. See JunkJetAmmo.isOurAmmo for why that matters.
+    if not JunkJetAmmo.isOurAmmo(weapon:getAmmoType()) then return end
 
     weapon:setCurrentAmmoCount(weapon:getCurrentAmmoCount() + 1)
 

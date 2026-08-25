@@ -251,6 +251,25 @@ Repeat Build 41 sections 3 and 4 — loading and flying — on 42.
 
 ---
 
+## Known crash, now fixed — worth re-checking
+
+If the console fills with this, several times a second, while the gun is in
+hand:
+
+```
+attempted index: getItemKey of non-table: null
+  Lua(Vanilla).hasBullets(ISFirearmRadialMenu.lua:136)
+```
+
+That was `AmmoType` being declared without its module. Every frame of the stack
+is vanilla, so it reads as a game bug; it was ours. Fixed in both builds.
+
+- [ ] Hold the gun and press/hold the **reload key** — no errors in the console
+- [ ] The firearm radial menu opens and shows the Junk Jet's ammo
+
+Worth pressing reload deliberately on both builds: the crash needed the radial
+menu to be opened, so ordinary shooting would never have shown it.
+
 ## When junk does not fly
 
 In order of likelihood:

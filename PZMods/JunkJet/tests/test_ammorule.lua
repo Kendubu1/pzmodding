@@ -134,6 +134,18 @@ check("one gun's load does not reach another", #JunkJetAmmo.contents(b), 0)
 check("nil is not a crash", JunkJetAmmo.push(nil, "Base.ToyCar"), false)
 check("nor is an empty type", JunkJetAmmo.push(a, ""), false)
 
+--------------------------------------------------------------------------------
+io.write("\n-- recognising our own ammo --\n")
+
+-- The script declares AmmoType module-qualified, because vanilla's firearm code
+-- looks it up and crashes on anything it cannot resolve. But a comparison
+-- against exactly one spelling is how a check silently never matches for a
+-- year, so both are accepted.
+check("the qualified name", JunkJetAmmo.isOurAmmo("JunkJet.JunkJet_Ammo"), true)
+check("and the bare one", JunkJetAmmo.isOurAmmo("JunkJet_Ammo"), true)
+check("somebody else's ammo is not ours", JunkJetAmmo.isOurAmmo("Base.223Bullets"), false)
+check("and nil is not either", JunkJetAmmo.isOurAmmo(nil), false)
+
 io.write("\n")
 if failures == 0 then
     io.write("all checks passed\n")

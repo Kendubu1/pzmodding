@@ -67,7 +67,20 @@ module JunkJet
         AngleFalloff = TRUE,
         StopPower = 40,
         /*============= AMMUNITION DATA============= */
-        AmmoType = JunkJet_Ammo,
+        /*
+            Module-qualified, as vanilla writes it (AmmoType = Base.223Bullets).
+            Unqualified, the game's own firearm code looks the ammo up, gets
+            nothing back, and then calls a method on nothing:
+
+                attempted index: getItemKey of non-table: null
+                  ISFirearmRadialMenu.lua:136 hasBullets
+                  ISReloadWeaponAction.lua:362 BeginAutomaticReload
+
+            The stack is entirely vanilla, which makes it look like a game bug.
+            It is not - it is this line. It fires whenever the gun is in hand
+            and the reload key is touched, several times a second.
+        */
+        AmmoType = JunkJet.JunkJet_Ammo,
         /* MagazineType = JunkJet_Drum, */
         JamGunChance = 0,
         MaxAmmo = 999,

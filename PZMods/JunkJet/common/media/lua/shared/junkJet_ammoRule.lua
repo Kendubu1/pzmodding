@@ -149,3 +149,16 @@ function JunkJetAmmo.pop(weapon)
     store(weapon, list)
     return first
 end
+
+--- Whether an ammo type string refers to the Junk Jet's own rounds.
+---
+--- Tolerant of both spellings on purpose. The script declares the ammo
+--- module-qualified, which is what vanilla does and what its firearm code
+--- needs; but the engine has not always handed the same form back, and a
+--- comparison against one spelling that silently never matches is exactly the
+--- kind of fault that hides for a year. Matching either costs nothing.
+---@param ammoType string?
+---@return boolean
+function JunkJetAmmo.isOurAmmo(ammoType)
+    return ammoType == "JunkJet.JunkJet_Ammo" or ammoType == "JunkJet_Ammo"
+end

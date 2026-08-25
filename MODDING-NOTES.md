@@ -399,6 +399,36 @@ players lost it without a word.
 
 ---
 
+## 7e. A vanilla stack trace can still be your bug
+
+Symptom, repeating several times a second while a modded gun is in hand:
+
+```
+attempted index: getItemKey of non-table: null
+  Lua(Vanilla).hasBullets(ISFirearmRadialMenu.lua:136)
+  Lua(Vanilla).BeginAutomaticReload(ISReloadWeaponAction.lua:362)
+```
+
+Every frame of that stack is `Lua(Vanilla)`. Nothing in it names the mod, which
+makes it read as a game bug. It is not: the game asked the weapon for its ammo
+type, looked the item up, got nothing, and called a method on nothing.
+
+Cause: `AmmoType = MyAmmo` written **unqualified**. Vanilla always writes
+`AmmoType = Base.223Bullets` — module included — and its firearm code resolves
+that string against the item registry with no fallback.
+
+The general rule, which is worth more than the specific fix: **when the engine
+crashes on a null lookup, find the string you handed it.** A stack that is all
+vanilla means the game trusted something you wrote.
+
+And when comparing such a string in your own Lua, accept both spellings. A
+comparison against exactly one form that silently never matches is a fault that
+can hide for a very long time — this mod's "load the round you just made into
+the gun" check had been testing for the qualified name while the script
+declared the bare one.
+
+---
+
 ## 8. Build 42 structure and syntax
 
 ```
