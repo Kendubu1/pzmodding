@@ -1143,8 +1143,13 @@ local function handleAdmin(player, args)
             print("[PermadeathLock] " .. player:getUsername() .. " cleared the death list.")
         end
     elseif sub == "reload" then
+        -- Both files, because both are editable by hand and reloading only one
+        -- of them is a trap: an admin who fixes a coordinate in the bind file
+        -- and runs reload would be told it worked and see nothing change.
         Store.load()
-        tell(player, "Death list reloaded: " .. Store.count() .. " record(s).")
+        Binds.load()
+        tell(player, "Reloaded from disk: " .. Store.count() .. " death record(s), "
+            .. Binds.count() .. " token bind(s).")
     else
         sendHelp(player)
     end

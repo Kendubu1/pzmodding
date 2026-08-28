@@ -24,7 +24,11 @@ local records = {}
 local loaded = false
 
 local FIELD_SEP = "\t"
-local HEADER = "# PermadeathLock death list - username, steamID, timestamp, reason, skills, locked, pendingRestore"
+-- Written at the top of the file every save. It is the only documentation an
+-- admin editing this by hand has, so it lists every column, in order.
+local HEADER = "# PermadeathLock death list. Tab-separated, one player per line."
+    .. "\n# username\tsteamID\ttimestamp\treason\tskills\tlocked\tpendingRestore\tbind"
+    .. "\n# skills: Perk=level,Perk=level   locked/pendingRestore: 1 or 0   bind: x,y,z or empty"
 
 --------------------------------------------------------------------------------
 -- text helpers

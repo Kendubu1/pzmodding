@@ -815,6 +815,41 @@ and if it matches nothing at all, that is a `WARNING`, not a shrug. `/fate
 status` repeats the summary in game, because an admin standing in an empty shop
 should not have to go and read a boot log.
 
+## The two files an admin can edit
+
+Both are plain text in the server's `Zomboid/Lua/` folder, both are written with
+a header describing their own columns, and `/fate reload` re-reads **both**
+without a restart.
+
+| File | Holds |
+| --- | --- |
+| `PermadeathLock_deaths.txt` | The death list: who is locked out, who is owed a restore, and the skills held for them |
+| `PermadeathLock_binds.txt` | Every place a Fate Token has been bound to |
+
+Tab-separated, one record per line. Lines starting with `#` are ignored, so the
+header is safe to leave in place.
+
+`PermadeathLock_deaths.txt`:
+
+```
+# username  steamID  timestamp  reason  skills  locked  pendingRestore  bind
+```
+
+- `skills` — `Perk=level,Perk=level`
+- `locked` / `pendingRestore` — `1` or `0`
+- `bind` — `x,y,z`, or empty
+
+`PermadeathLock_binds.txt`:
+
+```
+# id  x  y  z  boundBy  time
+```
+
+**Edit with the server down, or run `/fate reload` afterwards.** The mod writes
+the whole file on every change, so an edit made while it is running will be
+overwritten the next time anyone dies. Reload re-reads both files and reports
+what it found.
+
 ## The death list
 
 Stored at `Zomboid/Lua/PermadeathLock_deaths.txt`, one tab-separated record per

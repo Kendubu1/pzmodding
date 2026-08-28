@@ -24,7 +24,9 @@ local PL = PermadeathLock
 local Binds = PL.Binds
 
 local FIELD_SEP = "\t"
-local HEADER = "# id\tx\ty\tz\tboundBy\ttime"
+-- The only documentation an admin editing this by hand has.
+local HEADER = "# PermadeathLock bind registry. Tab-separated, one bound token per line."
+    .. "\n# id\tx\ty\tz\tboundBy\ttime"
 
 ---@type table<number, table>
 local entries = {}
